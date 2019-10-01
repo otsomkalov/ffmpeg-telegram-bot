@@ -1,0 +1,8 @@
+version: '3.4'
+
+services:
+  webmtomp4telegrambot:
+    image: ${DOCKER_REGISTRY-}webmtomp4telegrambot
+    build:
+      context: .
+      dockerfile: WebMToMP4TelegramBot/Dockerfile
