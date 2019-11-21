@@ -6,3 +6,5 @@ services:
     build:
       context: .
       dockerfile: WebMToMP4TelegramBot/Dockerfile
+    volumes:
+      - /var/log/bots:/app/log
