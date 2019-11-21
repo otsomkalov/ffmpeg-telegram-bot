@@ -1,4 +1,4 @@
-﻿namespace WebMToMP4TelegramBot
+﻿namespace WebMToMP4TelegramBot.Models
 {
     public class ConvertedEntity
     {
@@ -7,7 +7,7 @@
         public int SendedMessageId { get; set; }
 
         public string OutputFileName { get; set; }
-        
+
         public int ReceivedMessageId { get; set; }
     }
 }
