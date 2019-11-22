@@ -51,8 +51,7 @@ namespace WebMToMP4TelegramBot
             return new
             {
                 message.From,
-                message.Chat,
-                message.Text
+                message.Chat
             };
         }
     }
