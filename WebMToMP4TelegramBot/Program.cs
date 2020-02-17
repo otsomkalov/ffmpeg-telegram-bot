@@ -1,25 +1,21 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Net;
 using System.Threading.Tasks;
 using FFmpeg.NET;
-using FFmpeg.NET.Events;
 using Serilog.Core;
 using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types;
-using WebMToMP4TelegramBot.Models;
 using File = System.IO.File;
 
 namespace WebMToMP4TelegramBot
 {
-    internal class Program
+    internal static class Program
     {
         private static TelegramBotClient _bot;
-        private static readonly Engine _ffmpeg = new Engine(@"/usr/local/bin/ffmpeg");
-        private static readonly WebClient _webClient = new WebClient();
-        private static readonly List<ConvertedEntity> _entities = new List<ConvertedEntity>();
+        private static readonly Engine FFMpeg = new Engine(@"/usr/local/bin/ffmpeg");
+        private static readonly WebClient WebClient = new WebClient();
         private static Logger _logger;
 
         private static async Task Main(string[] args)
@@ -37,8 +33,6 @@ namespace WebMToMP4TelegramBot
 
             _bot.OnMessage += OnMessageAsync;
 
-            _ffmpeg.Complete += OnConversionCompletedAsync;
-
             _bot.StartReceiving();
 
             _logger.Information("Bot started!");
@@ -54,7 +48,16 @@ namespace WebMToMP4TelegramBot
 
                 _logger.Information("Got message: {@Message}", message);
 
-                await ProcessMessageAsync(message);
+                if (message.Text?.StartsWith("/start") == true)
+                {
+                    await _bot.SendTextMessageAsync(
+                        new ChatId(message.Chat.Id),
+                        "Send me a video or link to WebM or add bot to group.");
+                }
+                else
+                {
+                    await ProcessMessageAsync(message);
+                }
             }
             catch (Exception e)
             {
@@ -62,119 +65,80 @@ namespace WebMToMP4TelegramBot
             }
         }
 
-        private static async Task ProcessMessageAsync(Message receivedMessage)
+        private static async Task ProcessMessageAsync(Message message)
         {
-            if (receivedMessage.Document != null)
+            Message sentMessage;
+            var inputFileName = $"{Path.GetTempPath()}{Guid.NewGuid()}.webm";
+
+            if (message.Document != null)
             {
-                if (!receivedMessage.Document.FileName.Contains(".webm",
-                    StringComparison.InvariantCultureIgnoreCase)) return;
+                if (!message.Document.FileName.Contains(".webm", StringComparison.InvariantCultureIgnoreCase)) return;
 
-                var msg = await _bot.SendTextMessageAsync(
-                    new ChatId(receivedMessage.Chat.Id),
+                sentMessage = await _bot.SendTextMessageAsync(
+                    new ChatId(message.Chat.Id),
                     "Downloading file...",
-                    replyToMessageId: receivedMessage.MessageId);
+                    replyToMessageId: message.MessageId);
 
-                await using (var fileStream = File.OpenWrite(receivedMessage.Document.FileName))
-                {
-                    await _bot.GetInfoAndDownloadFileAsync(receivedMessage.Document.FileId, fileStream);
-                }
-
-                var outputFileName = $"{Guid.NewGuid().ToString()}.mp4";
-
-                await _bot.EditMessageTextAsync(
-                    new ChatId(receivedMessage.Chat.Id),
-                    msg.MessageId,
-                    "Conversion in progress...");
-
-                var inputFile = new MediaFile(receivedMessage.Document.FileName);
-
-                var outputFile = new MediaFile(outputFileName);
-
-                _entities.Add(new ConvertedEntity
-                {
-                    ChatId = receivedMessage.Chat.Id,
-                    SendedMessageId = msg.MessageId,
-                    OutputFileName = outputFileName,
-                    ReceivedMessageId = receivedMessage.MessageId
-                });
-
-                await _ffmpeg.ConvertAsync(inputFile, outputFile);
+                await using var fileStream = File.Create(inputFileName);
+                await _bot.GetInfoAndDownloadFileAsync(message.Document.FileId, fileStream);
             }
             else
             {
-                if (receivedMessage.Text == null) return;
-                if (!receivedMessage.Text.Contains(".webm", StringComparison.InvariantCultureIgnoreCase)) return;
-                if (!Uri.TryCreate(receivedMessage.Text, UriKind.RelativeOrAbsolute, out var uri)) return;
+                if (string.IsNullOrEmpty(message.Text)) return;
+                if (!message.Text.Contains(".webm", StringComparison.InvariantCultureIgnoreCase)) return;
+                if (!Uri.TryCreate(message.Text, UriKind.RelativeOrAbsolute, out var uri)) return;
 
-                var sentMessage = await _bot.SendTextMessageAsync(
-                    new ChatId(receivedMessage.Chat.Id),
+                sentMessage = await _bot.SendTextMessageAsync(
+                    new ChatId(message.Chat.Id),
                     "Downloading file...",
-                    replyToMessageId: receivedMessage.MessageId);
+                    replyToMessageId: message.MessageId);
 
-                await _webClient.DownloadFileTaskAsync(uri, uri.Segments.Last());
-
-
-                await _bot.EditMessageTextAsync(
-                    new ChatId(receivedMessage.Chat.Id),
-                    sentMessage.MessageId,
-                    "Conversion in progress...");
-
-                var inputFile = new MediaFile(uri.Segments.Last());
-
-                var outputFile = new MediaFile($"{Guid.NewGuid().ToString()}.mp4");
-
-                _entities.Add(new ConvertedEntity
-                {
-                    ChatId = receivedMessage.Chat.Id,
-                    SendedMessageId = sentMessage.MessageId,
-                    OutputFileName = outputFile.FileInfo.Name,
-                    ReceivedMessageId = receivedMessage.MessageId
-                });
-
-                await _ffmpeg.ConvertAsync(inputFile, outputFile);
+                await WebClient.DownloadFileTaskAsync(uri, inputFileName);
             }
-        }
 
-        private static async void OnConversionCompletedAsync(object sender, ConversionCompleteEventArgs eventArgs)
-        {
-            var convertedEntity = _entities.SingleOrDefault(entity =>
-                entity.OutputFileName == eventArgs.Output.FileInfo.Name);
+            sentMessage = await _bot.EditMessageTextAsync(
+                new ChatId(sentMessage.Chat.Id),
+                sentMessage.MessageId,
+                "Conversion in progress...");
 
-            if (convertedEntity == null) return;
+            var inputFile = new MediaFile(inputFileName);
 
-            await _bot.EditMessageTextAsync(
-                new ChatId(convertedEntity.ChatId),
-                convertedEntity.SendedMessageId,
+            var outputFile = await FFMpeg.ConvertAsync(inputFile,
+                new MediaFile($"{Path.GetTempPath()}{Guid.NewGuid().ToString()}.mp4"));
+
+            sentMessage = await _bot.EditMessageTextAsync(
+                new ChatId(sentMessage.Chat.Id),
+                sentMessage.MessageId,
                 "Generating thumbnail...");
 
-            var thumbnail = await _ffmpeg.GetThumbnailAsync(
-                eventArgs.Input,
-                new MediaFile($"{Guid.NewGuid()}.jpg"),
+            var thumbnail = await FFMpeg.GetThumbnailAsync(
+                outputFile,
+                new MediaFile($"{Path.GetTempPath()}{Guid.NewGuid()}.jpg"),
                 new ConversionOptions {Seek = TimeSpan.Zero});
 
             await _bot.EditMessageTextAsync(
-                new ChatId(convertedEntity.ChatId),
-                convertedEntity.SendedMessageId,
+                new ChatId(sentMessage.Chat.Id),
+                sentMessage.MessageId,
                 "Uploading file to Telegram...");
 
-            await using (var videoStream = File.OpenRead(eventArgs.Output.FileInfo.FullName))
+            await using (var videoStream = File.OpenRead(outputFile.FileInfo.FullName))
             {
                 await using var imageStream = File.OpenRead(thumbnail.FileInfo.FullName);
 
                 await _bot.SendVideoAsync(
-                    new ChatId(convertedEntity.ChatId),
-                    new InputMedia(videoStream, eventArgs.Output.FileInfo.Name),
-                    replyToMessageId: convertedEntity.ReceivedMessageId,
+                    new ChatId(sentMessage.Chat.Id),
+                    new InputMedia(videoStream, outputFile.FileInfo.Name),
+                    replyToMessageId: message.MessageId,
                     thumb: new InputMedia(imageStream, thumbnail.FileInfo.Name));
             }
 
-            await _bot.DeleteMessageAsync(new ChatId(convertedEntity.ChatId), convertedEntity.SendedMessageId);
+            await _bot.DeleteMessageAsync(
+                new ChatId(sentMessage.Chat.Id),
+                sentMessage.MessageId);
 
-            File.Delete(eventArgs.Input.FileInfo.FullName);
-            File.Delete(eventArgs.Output.FileInfo.FullName);
+            File.Delete(inputFile.FileInfo.FullName);
+            File.Delete(outputFile.FileInfo.FullName);
             File.Delete(thumbnail.FileInfo.FullName);
-
-            _entities.Remove(convertedEntity);
         }
     }
 }
