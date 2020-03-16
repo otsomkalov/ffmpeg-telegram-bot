@@ -15,7 +15,6 @@ namespace WebMToMP4TelegramBot
     {
         private static TelegramBotClient _bot;
         private static readonly Engine FFMpeg = new Engine(@"/usr/local/bin/ffmpeg");
-        private static readonly WebClient WebClient = new WebClient();
         private static Logger _logger;
 
         private static async Task Main(string[] args)
@@ -93,7 +92,9 @@ namespace WebMToMP4TelegramBot
                     "Downloading file...",
                     replyToMessageId: message.MessageId);
 
-                await WebClient.DownloadFileTaskAsync(uri, inputFileName);
+                using var webClient = new WebClient();
+
+                await webClient.DownloadFileTaskAsync(uri, inputFileName);
             }
 
             sentMessage = await _bot.EditMessageTextAsync(
