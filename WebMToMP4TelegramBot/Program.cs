@@ -71,7 +71,7 @@ namespace WebMToMP4TelegramBot
 
                 sentMessage = await _bot.SendTextMessageAsync(
                     new ChatId(message.Chat.Id),
-                    "Downloading file📥",
+                    "Downloading file 📥",
                     replyToMessageId: message.MessageId);
 
                 await using var fileStream = File.Create(inputFileName);
@@ -85,7 +85,7 @@ namespace WebMToMP4TelegramBot
 
                 sentMessage = await _bot.SendTextMessageAsync(
                     new ChatId(message.Chat.Id),
-                    "Downloading file📥",
+                    "Downloading file 📥",
                     replyToMessageId: message.MessageId);
 
                 using var webClient = new WebClient();
@@ -103,7 +103,7 @@ namespace WebMToMP4TelegramBot
                                 await _bot.EditMessageTextAsync(
                                     new ChatId(sentMessage.Chat.Id),
                                     sentMessage.MessageId,
-                                    "Not authorized to download video from this source🚫");
+                                    "Not authorized to download video from this source 🚫");
                                 
                                 return;
                             
@@ -111,7 +111,7 @@ namespace WebMToMP4TelegramBot
                                 await _bot.EditMessageTextAsync(
                                     new ChatId(sentMessage.Chat.Id),
                                     sentMessage.MessageId,
-                                    "Video not found⚠️");
+                                    "Video not found ⚠️");
                                 
                                 return;
                             
@@ -130,7 +130,7 @@ namespace WebMToMP4TelegramBot
             sentMessage = await _bot.EditMessageTextAsync(
                 new ChatId(sentMessage.Chat.Id),
                 sentMessage.MessageId,
-                "Conversion in progress🚀");
+                "Conversion in progress 🚀");
 
             var inputFile = new MediaFile(inputFileName);
 
@@ -140,7 +140,7 @@ namespace WebMToMP4TelegramBot
             sentMessage = await _bot.EditMessageTextAsync(
                 new ChatId(sentMessage.Chat.Id),
                 sentMessage.MessageId,
-                "Generating thumbnail🖼️");
+                "Generating thumbnail 🖼️");
 
             var thumbnail = await FFMpeg.GetThumbnailAsync(
                 outputFile,
@@ -150,7 +150,7 @@ namespace WebMToMP4TelegramBot
             await _bot.EditMessageTextAsync(
                 new ChatId(sentMessage.Chat.Id),
                 sentMessage.MessageId,
-                "Uploading file to Telegram📤");
+                "Uploading file to Telegram 📤");
 
             await using (var videoStream = File.OpenRead(outputFile.FileInfo.FullName))
             {
