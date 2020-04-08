@@ -7,6 +7,7 @@ using Serilog.Core;
 using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 using File = System.IO.File;
 
 namespace WebMToMP4TelegramBot
@@ -30,7 +31,7 @@ namespace WebMToMP4TelegramBot
 
             _bot = new TelegramBotClient(args[0]);
 
-            _bot.OnMessage += OnMessageAsync;
+            _bot.OnUpdate += OnUpdate;
 
             _bot.StartReceiving();
 
@@ -39,20 +40,46 @@ namespace WebMToMP4TelegramBot
             await Task.Delay(-1);
         }
 
-        private static async void OnMessageAsync(object sender, MessageEventArgs messageEventArgs)
+        private static async void OnUpdate(object? sender, UpdateEventArgs updateEventArgs)
         {
             try
             {
-                var message = messageEventArgs.Message;
+                switch (updateEventArgs.Update.Type)
+                {
+                    case UpdateType.Message:
+                        var message = updateEventArgs.Update.Message;
 
-                _logger.Information("Got message: {@Message}", message);
+                        _logger.Information("Got message: {@Message}", message);
 
-                if (message.Text?.StartsWith("/start") == true)
-                    await _bot.SendTextMessageAsync(
-                        new ChatId(message.Chat.Id),
-                        "Send me a video or link to WebM or add bot to group.");
-                else
-                    await ProcessMessageAsync(message);
+                        if (message.Text?.StartsWith("/start") == true)
+                            await _bot.SendTextMessageAsync(
+                                new ChatId(message.Chat.Id),
+                                "Send me a video or link to WebM or add bot to group.");
+                        else
+                            await ProcessMessageAsync(message);
+
+                        break;
+                    case UpdateType.ChannelPost:
+                        var channelPost = updateEventArgs.Update.ChannelPost;
+
+                        _logger.Information("Got channel post: {@Message}", channelPost);
+
+                        await ProcessMessageAsync(channelPost);
+
+                        break;
+                    case UpdateType.Unknown:
+                    case UpdateType.InlineQuery:
+                    case UpdateType.ChosenInlineResult:
+                    case UpdateType.CallbackQuery:
+                    case UpdateType.EditedMessage:
+                    case UpdateType.EditedChannelPost:
+                    case UpdateType.ShippingQuery:
+                    case UpdateType.PreCheckoutQuery:
+                    case UpdateType.Poll:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
             }
             catch (Exception e)
             {
@@ -104,26 +131,25 @@ namespace WebMToMP4TelegramBot
                                     new ChatId(sentMessage.Chat.Id),
                                     sentMessage.MessageId,
                                     "Not authorized to download video from this source 🚫");
-                                
+
                                 return;
-                            
+
                             case HttpStatusCode.NotFound:
                                 await _bot.EditMessageTextAsync(
                                     new ChatId(sentMessage.Chat.Id),
                                     sentMessage.MessageId,
                                     "Video not found ⚠️");
-                                
+
                                 return;
-                            
+
                             case HttpStatusCode.InternalServerError:
                                 await _bot.EditMessageTextAsync(
                                     new ChatId(sentMessage.Chat.Id),
                                     sentMessage.MessageId,
                                     "Server error 🛑");
-                                
+
                                 return;
                         }
-                            
                 }
             }
 
