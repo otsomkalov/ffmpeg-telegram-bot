@@ -6,5 +6,11 @@ services:
     build:
       context: .
       dockerfile: WebMToMP4TelegramBot/Dockerfile
+    ports:
+      - "8083:80"
     volumes:
       - /var/log/bots:/app/log
+  telegramapi:
+    image: julyighor/telegram-bot-api
+    ports:
+      - "8081:8081" 
