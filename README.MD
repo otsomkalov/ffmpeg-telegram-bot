@@ -5,7 +5,7 @@ Telegram Bot for converting WebM videos to MP4.
 ## Getting Started
 ### Prerequisites
 
-- [.NET Core 3.0](https://dotnet.microsoft.com/download) or higher
+- [.NET Core 3.1](https://dotnet.microsoft.com/download) or higher
 
 ### Installing
 
