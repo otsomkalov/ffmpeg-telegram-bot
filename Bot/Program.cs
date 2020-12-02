@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 
-namespace WebMToMP4TelegramBot
+namespace Bot
 {
     public class Program
     {

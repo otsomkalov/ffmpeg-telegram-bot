@@ -1,4 +1,4 @@
-﻿namespace WebMToMP4TelegramBot.Settings
+﻿namespace Bot.Settings
 {
     public class AppSettings
     {

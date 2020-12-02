@@ -2,10 +2,10 @@ version: '3.4'
 
 services:
   webmtomp4telegrambot:
-    image: ${DOCKER_REGISTRY-}webmtomp4telegrambot
+    image: ${DOCKER_REGISTRY-}webmtomp4bot
     build:
       context: .
-      dockerfile: WebMToMP4TelegramBot/Dockerfile
+      dockerfile: Bot/Dockerfile
     ports:
       - "8083:80"
     volumes:

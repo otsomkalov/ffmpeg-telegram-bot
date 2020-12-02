@@ -1,10 +1,10 @@
 ﻿using System.Threading.Tasks;
+using Bot.Services;
 using Microsoft.AspNetCore.Mvc;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using WebMToMP4TelegramBot.Services;
 
-namespace WebMToMP4TelegramBot.Controllers
+namespace Bot.Controllers
 {
     [ApiController]
     [Route("api/update")]

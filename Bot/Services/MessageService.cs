@@ -10,7 +10,7 @@ using Telegram.Bot.Types;
 using File = System.IO.File;
 using Message = Telegram.Bot.Types.Message;
 
-namespace WebMToMP4TelegramBot.Services
+namespace Bot.Services
 {
     public interface IMessageService
     {
@@ -89,89 +89,75 @@ namespace WebMToMP4TelegramBot.Services
 
         private async void HandleLinkAsync(Message receivedMessage, string link)
         {
+            var inputFileName = $"{Path.GetTempPath()}{Guid.NewGuid()}.webm";
+
+            var sentMessage = await _bot.SendTextMessageAsync(
+                new ChatId(receivedMessage.Chat.Id),
+                $"{link}\nDownloading file 📥",
+                replyToMessageId: receivedMessage.MessageId,
+                disableNotification: true);
+
+            using var webClient = new WebClient();
+
             try
             {
-                var inputFileName = $"{Path.GetTempPath()}{Guid.NewGuid()}.webm";
+                await webClient.DownloadFileTaskAsync(link, inputFileName);
 
-                var sentMessage = await _bot.SendTextMessageAsync(
-                    new ChatId(receivedMessage.Chat.Id),
-                    $"{link}\nDownloading file 📥",
-                    replyToMessageId: receivedMessage.MessageId,
-                    disableNotification: true);
-
-                using var webClient = new WebClient();
-
-                try
+                await ProcessFileAsync(receivedMessage, sentMessage, inputFileName, link);
+            }
+            catch (WebException webException)
+            {
+                if (webException.Response is HttpWebResponse response)
                 {
-                    await webClient.DownloadFileTaskAsync(link, inputFileName);
-
-                    await ProcessFileAsync(receivedMessage, sentMessage, inputFileName, link);
-                }
-                catch (WebException webException)
-                {
-                    if (webException.Response is HttpWebResponse response)
+                    switch (response.StatusCode)
                     {
-                        switch (response.StatusCode)
-                        {
-                            case HttpStatusCode.Unauthorized:
+                        case HttpStatusCode.Unauthorized:
 
-                                await _bot.EditMessageTextAsync(
-                                    new ChatId(sentMessage.Chat.Id),
-                                    sentMessage.MessageId,
-                                    $"{link}\nI am not authorized to download video from this source 🚫");
+                            await _bot.EditMessageTextAsync(
+                                new ChatId(sentMessage.Chat.Id),
+                                sentMessage.MessageId,
+                                $"{link}\nI am not authorized to download video from this source 🚫");
 
-                                return;
+                            return;
 
-                            case HttpStatusCode.NotFound:
+                        case HttpStatusCode.NotFound:
 
-                                await _bot.EditMessageTextAsync(
-                                    new ChatId(sentMessage.Chat.Id),
-                                    sentMessage.MessageId,
-                                    $"{link}\nVideo not found ⚠️");
+                            await _bot.EditMessageTextAsync(
+                                new ChatId(sentMessage.Chat.Id),
+                                sentMessage.MessageId,
+                                $"{link}\nVideo not found ⚠️");
 
-                                return;
+                            return;
 
-                            case HttpStatusCode.InternalServerError:
+                        case HttpStatusCode.InternalServerError:
 
-                                await _bot.EditMessageTextAsync(
-                                    new ChatId(sentMessage.Chat.Id),
-                                    sentMessage.MessageId,
-                                    $"{link}\nServer error 🛑");
+                            await _bot.EditMessageTextAsync(
+                                new ChatId(sentMessage.Chat.Id),
+                                sentMessage.MessageId,
+                                $"{link}\nServer error 🛑");
 
-                                return;
-                        }
+                            return;
                     }
                 }
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Error during processing link:");
             }
         }
 
         private async void HandleDocumentAsync(Message receivedMessage)
         {
-            try
+            var inputFileName = $"{Path.GetTempPath()}{Guid.NewGuid()}.webm";
+
+            var sentMessage = await _bot.SendTextMessageAsync(
+                new ChatId(receivedMessage.Chat.Id), 
+                $"{receivedMessage.Document.FileName}\nDownloading file 📥",
+                replyToMessageId: receivedMessage.MessageId,
+                disableNotification: true);
+
+            await using (var fileStream = File.Create(inputFileName))
             {
-                var inputFileName = $"{Path.GetTempPath()}{Guid.NewGuid()}.webm";
-
-                var sentMessage = await _bot.SendTextMessageAsync(
-                    new ChatId(receivedMessage.Chat.Id), 
-                    $"{receivedMessage.Document.FileName}\nDownloading file 📥",
-                    replyToMessageId: receivedMessage.MessageId,
-                    disableNotification: true);
-
-                await using (var fileStream = File.Create(inputFileName))
-                {
-                    await _bot.GetInfoAndDownloadFileAsync(receivedMessage.Document.FileId, fileStream);
-                }
-
-                await ProcessFileAsync(receivedMessage, sentMessage, inputFileName, receivedMessage.Document.FileName);
+                await _bot.GetInfoAndDownloadFileAsync(receivedMessage.Document.FileId, fileStream);
             }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Error during handling document:");
-            }
+
+            await ProcessFileAsync(receivedMessage, sentMessage, inputFileName, receivedMessage.Document.FileName);
         }
 
         private async Task ProcessFileAsync(Message receivedMessage, Message sentMessage, string inputFileName,
@@ -191,18 +177,16 @@ namespace WebMToMP4TelegramBot.Services
                 outputFile = await _engine.ConvertAsync(inputFile,
                     new MediaFile($"{Path.GetTempPath()}{Guid.NewGuid().ToString()}.mp4"));
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                _logger.LogError(e, "Error during file conversion:");
-
                 _ = _bot.EditMessageTextAsync(
                     new ChatId(sentMessage.Chat.Id),
                     sentMessage.MessageId,
                     $"{link}\nError during file conversion");
                 
                 CleanupFiles(inputFile);
-                
-                return;
+
+                throw;
             }
 
             _ = _bot.EditMessageTextAsync(
@@ -219,10 +203,8 @@ namespace WebMToMP4TelegramBot.Services
                     new MediaFile($"{Path.GetTempPath()}{Guid.NewGuid()}.jpg"),
                     new ConversionOptions {Seek = TimeSpan.Zero});
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                _logger.LogError(e, "Error during thumbnail generation:");
-
                 _ = _bot.EditMessageTextAsync(
                     new ChatId(sentMessage.Chat.Id),
                     sentMessage.MessageId,
@@ -230,7 +212,7 @@ namespace WebMToMP4TelegramBot.Services
                 
                 CleanupFiles(inputFile, outputFile);
 
-                return;
+                throw;
             }
 
             _ = _bot.EditMessageTextAsync(
@@ -257,14 +239,16 @@ namespace WebMToMP4TelegramBot.Services
                         caption: link,
                         disableNotification: true);
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
-                    _logger.LogError(e, "Error during file upload:");
-
                     _ = _bot.EditMessageTextAsync(
                         new ChatId(sentMessage.Chat.Id),
                         sentMessage.MessageId,
                         $"{link}\nError during file upload");
+                    
+                    CleanupFiles(inputFile, outputFile, thumbnail);
+
+                    throw;
                 }
             }
 
