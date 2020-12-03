@@ -227,36 +227,34 @@ namespace Bot.Services
                 sentMessage.MessageId, 
                 $"{link}\nUploading file to Telegram 📤");
 
-            await using (var videoStream = File.OpenRead(outputFile.FileInfo.FullName))
+            try
             {
+                await using var videoStream = File.OpenRead(outputFile.FileInfo.FullName);
                 await using var imageStream = File.OpenRead(thumbnail.FileInfo.FullName);
 
-                try
-                {
-                    await _bot.DeleteMessageAsync(
-                        new ChatId(sentMessage.Chat.Id),
-                        sentMessage.MessageId
-                    );
+                await _bot.DeleteMessageAsync(
+                    new ChatId(sentMessage.Chat.Id),
+                    sentMessage.MessageId
+                );
 
-                    await _bot.SendVideoAsync(
-                        new ChatId(sentMessage.Chat.Id),
-                        new InputMedia(videoStream, outputFile.FileInfo.Name),
-                        replyToMessageId: receivedMessage.MessageId,
-                        thumb: new InputMedia(imageStream, thumbnail.FileInfo.Name),
-                        caption: link,
-                        disableNotification: true);
-                }
-                catch (Exception)
-                {
-                    await _bot.EditMessageTextAsync(
-                        new ChatId(sentMessage.Chat.Id),
-                        sentMessage.MessageId,
-                        $"{link}\nError during file upload");
+                await _bot.SendVideoAsync(
+                    new ChatId(sentMessage.Chat.Id),
+                    new InputMedia(videoStream, outputFile.FileInfo.Name),
+                    replyToMessageId: receivedMessage.MessageId,
+                    thumb: new InputMedia(imageStream, thumbnail.FileInfo.Name),
+                    caption: link,
+                    disableNotification: true);
+            }
+            catch (Exception)
+            {
+                await _bot.EditMessageTextAsync(
+                    new ChatId(sentMessage.Chat.Id),
+                    sentMessage.MessageId,
+                    $"{link}\nError during file upload");
                     
-                    CleanupFiles(inputFile, outputFile, thumbnail);
+                CleanupFiles(inputFile, outputFile, thumbnail);
 
-                    throw;
-                }
+                throw;
             }
 
             CleanupFiles(inputFile, outputFile, thumbnail);
