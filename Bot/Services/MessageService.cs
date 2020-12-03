@@ -177,8 +177,10 @@ namespace Bot.Services
                 outputFile = await _engine.ConvertAsync(inputFile,
                     new MediaFile($"{Path.GetTempPath()}{Guid.NewGuid().ToString()}.mp4"));
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                _logger.LogError(e, "Error during file conversion:");
+
                 _ = _bot.EditMessageTextAsync(
                     new ChatId(sentMessage.Chat.Id),
                     sentMessage.MessageId,
@@ -203,8 +205,10 @@ namespace Bot.Services
                     new MediaFile($"{Path.GetTempPath()}{Guid.NewGuid()}.jpg"),
                     new ConversionOptions {Seek = TimeSpan.Zero});
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                _logger.LogError(e, "Error during file conversion:");
+
                 _ = _bot.EditMessageTextAsync(
                     new ChatId(sentMessage.Chat.Id),
                     sentMessage.MessageId,
@@ -239,8 +243,10 @@ namespace Bot.Services
                         caption: link,
                         disableNotification: true);
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
+                    _logger.LogError(e, "Error during file upload:");
+
                     _ = _bot.EditMessageTextAsync(
                         new ChatId(sentMessage.Chat.Id),
                         sentMessage.MessageId,
