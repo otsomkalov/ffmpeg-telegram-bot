@@ -24,13 +24,13 @@ namespace Bot.Controllers
             {
                 case UpdateType.Message:
 
-                    await _messageService.HandleAsync(update.Message);
+                    _messageService.HandleAsync(update.Message);
 
                     break;
                 
                 case UpdateType.ChannelPost:
 
-                    await _messageService.HandleAsync(update.ChannelPost);
+                    _messageService.HandleAsync(update.ChannelPost);
 
                     break;
             }

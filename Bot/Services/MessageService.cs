@@ -14,7 +14,7 @@ namespace Bot.Services
 {
     public interface IMessageService
     {
-        Task HandleAsync(Message message);
+        void HandleAsync(Message message);
     }
     
     public class MessageService : IMessageService
@@ -31,32 +31,39 @@ namespace Bot.Services
             _engine = engine;
         }
 
-        public async Task HandleAsync(Message message)
+        public async void HandleAsync(Message message)
         {
-            if (message.From?.IsBot == true)
+            try
             {
-                return;
-            }
+                if (message.From?.IsBot == true)
+                {
+                    return;
+                }
 
-            if (message.Text?.StartsWith("/start") == true)
-            {
-                await _bot.SendTextMessageAsync(
-                    new ChatId(message.Chat.Id),
-                    "Send me a video or link to WebM or add bot to group.");
+                if (message.Text?.StartsWith("/start") == true)
+                {
+                    await _bot.SendTextMessageAsync(
+                        new ChatId(message.Chat.Id),
+                        "Send me a video or link to WebM or add bot to group.");
+                }
+                else
+                {
+                    await ProcessMessageAsync(message);
+                }
             }
-            else
+            catch (Exception e)
             {
-                ProcessMessageAsync(message);
+                _logger.LogError(e, string.Empty);
             }
         }
         
-        private void ProcessMessageAsync(Message message)
+        private async Task ProcessMessageAsync(Message message)
         {
             if (message?.Document?.FileName?.EndsWith(".webm", StringComparison.InvariantCultureIgnoreCase) == true)
             {
                 if (message.Caption?.Contains("!nsfw", StringComparison.InvariantCultureIgnoreCase) != true)
                 {
-                    HandleDocumentAsync(message);
+                    await HandleDocumentAsync(message);
                 }
             }
 
@@ -68,7 +75,7 @@ namespace Bot.Services
 
                     foreach (Match match in matches)
                     {
-                        HandleLinkAsync(message, match.Value);
+                        await HandleLinkAsync(message, match.Value);
                     }   
                 }
             }
@@ -81,13 +88,13 @@ namespace Bot.Services
 
                     foreach (Match match in matches)
                     {
-                        HandleLinkAsync(message, match.Value);
+                        await HandleLinkAsync(message, match.Value);
                     }
                 }
             }
         }
 
-        private async void HandleLinkAsync(Message receivedMessage, string link)
+        private async Task HandleLinkAsync(Message receivedMessage, string link)
         {
             var inputFileName = $"{Path.GetTempPath()}{Guid.NewGuid()}.webm";
 
@@ -142,7 +149,7 @@ namespace Bot.Services
             }
         }
 
-        private async void HandleDocumentAsync(Message receivedMessage)
+        private async Task HandleDocumentAsync(Message receivedMessage)
         {
             var inputFileName = $"{Path.GetTempPath()}{Guid.NewGuid()}.webm";
 
@@ -163,7 +170,7 @@ namespace Bot.Services
         private async Task ProcessFileAsync(Message receivedMessage, Message sentMessage, string inputFileName,
             string link)
         {
-            _ = _bot.EditMessageTextAsync(
+            await _bot.EditMessageTextAsync(
                 new ChatId(sentMessage.Chat.Id),
                 sentMessage.MessageId,
                 $"{link}\nConversion in progress 🚀");
@@ -177,11 +184,9 @@ namespace Bot.Services
                 outputFile = await _engine.ConvertAsync(inputFile,
                     new MediaFile($"{Path.GetTempPath()}{Guid.NewGuid().ToString()}.mp4"));
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                _logger.LogError(e, "Error during file conversion:");
-
-                _ = _bot.EditMessageTextAsync(
+                await _bot.EditMessageTextAsync(
                     new ChatId(sentMessage.Chat.Id),
                     sentMessage.MessageId,
                     $"{link}\nError during file conversion");
@@ -191,7 +196,7 @@ namespace Bot.Services
                 throw;
             }
 
-            _ = _bot.EditMessageTextAsync(
+            await _bot.EditMessageTextAsync(
                 new ChatId(sentMessage.Chat.Id),
                 sentMessage.MessageId,
                 $"{link}\nGenerating thumbnail 🖼️");
@@ -205,11 +210,9 @@ namespace Bot.Services
                     new MediaFile($"{Path.GetTempPath()}{Guid.NewGuid()}.jpg"),
                     new ConversionOptions {Seek = TimeSpan.Zero});
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                _logger.LogError(e, "Error during file conversion:");
-
-                _ = _bot.EditMessageTextAsync(
+                await _bot.EditMessageTextAsync(
                     new ChatId(sentMessage.Chat.Id),
                     sentMessage.MessageId,
                     $"{link}\nError during file conversion");
@@ -219,7 +222,7 @@ namespace Bot.Services
                 throw;
             }
 
-            _ = _bot.EditMessageTextAsync(
+            await _bot.EditMessageTextAsync(
                 new ChatId(sentMessage.Chat.Id),
                 sentMessage.MessageId, 
                 $"{link}\nUploading file to Telegram 📤");
@@ -230,7 +233,7 @@ namespace Bot.Services
 
                 try
                 {
-                    _ = _bot.DeleteMessageAsync(
+                    await _bot.DeleteMessageAsync(
                         new ChatId(sentMessage.Chat.Id),
                         sentMessage.MessageId
                     );
@@ -243,11 +246,9 @@ namespace Bot.Services
                         caption: link,
                         disableNotification: true);
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
-                    _logger.LogError(e, "Error during file upload:");
-
-                    _ = _bot.EditMessageTextAsync(
+                    await _bot.EditMessageTextAsync(
                         new ChatId(sentMessage.Chat.Id),
                         sentMessage.MessageId,
                         $"{link}\nError during file upload");
