@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Bot.Services;
 using Microsoft.AspNetCore.Mvc;
 using Telegram.Bot.Types;
@@ -7,7 +8,7 @@ using Telegram.Bot.Types.Enums;
 namespace Bot.Controllers
 {
     [ApiController]
-    [Route("api/update")]
+    [Route("update")]
     public class UpdateController : ControllerBase
     {
         private readonly IMessageService _messageService;
@@ -24,15 +25,28 @@ namespace Bot.Controllers
             {
                 case UpdateType.Message:
 
-                    _messageService.HandleAsync(update.Message);
+                    await _messageService.HandleAsync(update.Message);
 
                     break;
                 
                 case UpdateType.ChannelPost:
 
-                    _messageService.HandleAsync(update.ChannelPost);
+                    await _messageService.HandleAsync(update.ChannelPost);
 
                     break;
+                case UpdateType.Unknown:
+                case UpdateType.InlineQuery:
+                case UpdateType.ChosenInlineResult:
+                case UpdateType.CallbackQuery:
+                case UpdateType.EditedMessage:
+                case UpdateType.EditedChannelPost:
+                case UpdateType.ShippingQuery:
+                case UpdateType.PreCheckoutQuery:
+                case UpdateType.Poll:
+                case UpdateType.PollAnswer:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(update.Type));
             }
 
             return Ok();
