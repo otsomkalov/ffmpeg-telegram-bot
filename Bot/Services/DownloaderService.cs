@@ -57,7 +57,9 @@ namespace Bot.Services
         {
             var response = await _downloaderQueue.ReceiveMessageAsync(cancellationToken: stoppingToken);
 
-            if (response.Value is not {Body: null} queueMessage) return;
+            var queueMessage = response.Value;
+            
+            if (queueMessage is null) return;
             
             var (receivedMessage, sentMessage, linkOrFileName) = JsonSerializer.Deserialize<DownloaderMessage>(queueMessage.Body)!;
             

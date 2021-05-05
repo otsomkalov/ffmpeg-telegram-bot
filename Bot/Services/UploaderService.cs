@@ -3,7 +3,6 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Queues;
-using Azure.Storage.Queues.Models;
 using Bot.Models;
 using Bot.Settings;
 using Microsoft.Extensions.Hosting;
@@ -53,8 +52,9 @@ namespace Bot.Services
         private async Task RunAsync(CancellationToken stoppingToken)
         {
             var response = await _uploaderQueue.ReceiveMessageAsync(cancellationToken: stoppingToken);
+            var queueMessage = response.Value;
 
-            if (response.Value is not { Body: null } queueMessage) return;
+            if (queueMessage is null) return;
 
             var (receivedMessage, sentMessage, inputFilePath, outputFilePath, thumbnailFilePath, linkOrFileName) =
                 JsonSerializer.Deserialize<UploaderMessage>(queueMessage.Body)!;

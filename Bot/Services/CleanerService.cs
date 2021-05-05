@@ -45,10 +45,11 @@ namespace Bot.Services
         private async Task RunAsync(CancellationToken stoppingToken)
         {
             var response = await _cleanerQueue.ReceiveMessageAsync(cancellationToken: stoppingToken);
+            var queueMessage = response.Value;
 
-            if (response.Value is not {Body: null} queueMessage) return;
+            if (queueMessage is null) return;
 
-            var (inputFilePath, outputFilePath, thumbnailFilePath) = JsonSerializer.Deserialize<CleanerMessage>(queueMessage.Body);
+            var (inputFilePath, outputFilePath, thumbnailFilePath) = JsonSerializer.Deserialize<CleanerMessage>(queueMessage.Body)!;
 
             CleanupFiles(inputFilePath, outputFilePath, thumbnailFilePath);
 
