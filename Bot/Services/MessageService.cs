@@ -49,8 +49,7 @@ namespace Bot.Services
         
         private async Task ProcessMessageAsync(Message message)
         {
-            if (message.Document != null && WebmRegex.IsMatch(message.Document.FileName) &&
-                (string.IsNullOrEmpty(message.Caption) || !Nsfw(message.Caption)))
+            if (message.Document != null && !string.IsNullOrEmpty(message.Document.FileName) && WebmRegex.IsMatch(message.Document.FileName))
             {
                 await SendMessageAsync(message);
             }
