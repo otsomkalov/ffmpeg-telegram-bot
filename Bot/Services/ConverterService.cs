@@ -110,6 +110,11 @@ namespace Bot.Services
                     $"{linkOrFilename}\nError during file conversion",
                     cancellationToken: stoppingToken);
 
+                await _converterQueue.DeleteMessageAsync(
+                    queueMessage.MessageId,
+                    queueMessage.PopReceipt,
+                    stoppingToken);
+                
                 await SendCleanerMessageAsync(inputFilePath);
 
                 throw;
@@ -140,6 +145,11 @@ namespace Bot.Services
                     $"{linkOrFilename}\nError during file conversion",
                     cancellationToken: stoppingToken);
 
+                await _converterQueue.DeleteMessageAsync(
+                    queueMessage.MessageId,
+                    queueMessage.PopReceipt,
+                    stoppingToken);
+                
                 await SendCleanerMessageAsync(inputFilePath, outputFilePath);
 
                 throw;
