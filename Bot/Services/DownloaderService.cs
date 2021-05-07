@@ -62,12 +62,19 @@ namespace Bot.Services
             if (queueMessage is null) return;
             
             var (receivedMessage, sentMessage, linkOrFileName) = JsonSerializer.Deserialize<DownloaderMessage>(queueMessage.Body)!;
-            
-            await _bot.EditMessageTextAsync(
-                new(sentMessage.Chat.Id),
-                sentMessage.MessageId,
-                $"{linkOrFileName}\nDownloading file 🚀",
-                cancellationToken: stoppingToken);
+
+            try
+            {
+                await _bot.EditMessageTextAsync(
+                    new(sentMessage.Chat.Id),
+                    sentMessage.MessageId,
+                    $"{linkOrFileName}\nDownloading file 🚀",
+                    cancellationToken: stoppingToken);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error during updating message:");
+            }
             
             var inputFilePath = $"{Path.GetTempPath()}{Guid.NewGuid()}.webm";
             
