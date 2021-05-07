@@ -59,11 +59,18 @@ namespace Bot.Services
             var (receivedMessage, sentMessage, inputFilePath, outputFilePath, thumbnailFilePath, linkOrFileName) =
                 JsonSerializer.Deserialize<UploaderMessage>(queueMessage.Body)!;
 
-            await _bot.EditMessageTextAsync(
-                new(sentMessage.Chat.Id),
-                sentMessage.MessageId,
-                $"{linkOrFileName}\nYour file is uploading 🚀",
-                cancellationToken: stoppingToken);
+            try
+            {
+                await _bot.EditMessageTextAsync(
+                    new(sentMessage.Chat.Id),
+                    sentMessage.MessageId,
+                    $"{linkOrFileName}\nYour file is uploading 🚀",
+                    cancellationToken: stoppingToken);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error during updating message:");
+            }
 
             try
             {

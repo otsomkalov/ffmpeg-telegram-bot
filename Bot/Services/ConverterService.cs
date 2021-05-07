@@ -63,11 +63,18 @@ namespace Bot.Services
             var (receivedMessage, sentMessage, inputFilePath, linkOrFilename) =
                 JsonSerializer.Deserialize<ConverterMessage>(queueMessage.Body)!;
 
-            await _bot.EditMessageTextAsync(
-                new(sentMessage.Chat.Id),
-                sentMessage.MessageId,
-                $"{linkOrFilename}\nConversion in progress 🚀",
-                cancellationToken: stoppingToken);
+            try
+            {
+                await _bot.EditMessageTextAsync(
+                    new(sentMessage.Chat.Id),
+                    sentMessage.MessageId,
+                    $"{linkOrFilename}\nConversion in progress 🚀",
+                    cancellationToken: stoppingToken);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error during updating message:");
+            }
 
             var mediaInfo = await FFmpeg.GetMediaInfo(inputFilePath, stoppingToken);
 
