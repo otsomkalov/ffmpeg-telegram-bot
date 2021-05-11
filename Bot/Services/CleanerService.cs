@@ -1,9 +1,10 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Storage.Queues;
+using Amazon.SQS;
 using Bot.Models;
 using Bot.Settings;
 using Microsoft.Extensions.Hosting;
@@ -14,14 +15,14 @@ namespace Bot.Services
 {
     public class CleanerService : BackgroundService
     {
-        private readonly QueueClient _cleanerQueue;
+        private readonly IAmazonSQS _sqsClient;
         private readonly ILogger<CleanerService> _logger;
         private readonly ServicesSettings _servicesSettings;
 
-        public CleanerService(IQueueFactory queueFactory, ILogger<CleanerService> logger, IOptions<ServicesSettings> servicesSettings)
+        public CleanerService(ILogger<CleanerService> logger, IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient)
         {
             _logger = logger;
-            _cleanerQueue = queueFactory.GetQueue(Queue.Cleaner);
+            _sqsClient = sqsClient;
             _servicesSettings = servicesSettings.Value;
         }
 
@@ -44,8 +45,9 @@ namespace Bot.Services
 
         private async Task RunAsync(CancellationToken stoppingToken)
         {
-            var response = await _cleanerQueue.ReceiveMessageAsync(cancellationToken: stoppingToken);
-            var queueMessage = response.Value;
+            var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.CleanerQueueUrl, stoppingToken);
+
+            var queueMessage = response.Messages.FirstOrDefault();
 
             if (queueMessage is null) return;
 
@@ -53,7 +55,7 @@ namespace Bot.Services
 
             CleanupFiles(inputFilePath, outputFilePath, thumbnailFilePath);
 
-            await _cleanerQueue.DeleteMessageAsync(queueMessage.MessageId, queueMessage.PopReceipt, stoppingToken);
+            await _sqsClient.DeleteMessageAsync(_servicesSettings.CleanerQueueUrl, queueMessage.ReceiptHandle, stoppingToken);
         }
 
         private static void CleanupFiles(string inputFilePath, string outputFilePath, string thumbnailFilePath)

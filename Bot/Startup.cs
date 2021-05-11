@@ -1,10 +1,14 @@
-﻿using Bot.Services;
+﻿using Amazon;
+using Amazon.Runtime;
+using Amazon.SQS;
+using Bot.Services;
 using Bot.Settings;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Xabe.FFmpeg;
@@ -28,7 +32,7 @@ namespace Bot
 
                     return new TelegramBotClient(telegramSettings.Token);
                 })
-                .AddSingleton<IQueueFactory, QueueFactory>()
+                .AddSingleton<IAmazonSQS>(_ => new AmazonSQSClient(new EnvironmentVariablesAWSCredentials(), RegionEndpoint.EUCentral1))
                 .AddTransient<IMessageService, MessageService>();
 
             services.Configure<ServicesSettings>(_configuration.GetSection(ServicesSettings.SectionName))

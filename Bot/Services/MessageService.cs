@@ -2,8 +2,10 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Azure.Storage.Queues;
+using Amazon.SQS;
 using Bot.Models;
+using Bot.Settings;
+using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Message = Telegram.Bot.Types.Message;
@@ -18,14 +20,16 @@ namespace Bot.Services
     public class MessageService : IMessageService
     {
         private readonly ITelegramBotClient _bot;
-        private readonly QueueClient _downloaderQueue;
+        private readonly IAmazonSQS _sqsClient;
+        private readonly ServicesSettings _servicesSettings;
         private static readonly Regex WebmRegex = new("[^ ]*.webm");
         private static readonly Regex WebmLinkRegex = new("https?[^ ]*.webm");
 
-        public MessageService(ITelegramBotClient bot, IQueueFactory queueFactory)
+        public MessageService(ITelegramBotClient bot, IAmazonSQS sqsClient, IOptions<ServicesSettings> servicesSettings)
         {
             _bot = bot;
-            _downloaderQueue = queueFactory.GetQueue(Queue.Downloader);
+            _sqsClient = sqsClient;
+            _servicesSettings = servicesSettings.Value;
         }
 
         public async Task HandleAsync(Message message)
@@ -51,7 +55,16 @@ namespace Bot.Services
         {
             if (message.Document != null && !string.IsNullOrEmpty(message.Document.FileName) && WebmRegex.IsMatch(message.Document.FileName))
             {
-                await SendMessageAsync(message);
+                if (string.IsNullOrEmpty(message.Caption))
+                {
+                    await SendMessageAsync(message);
+                }
+                else
+                {
+                    if (Nsfw(message.Caption)) return;
+
+                    await SendMessageAsync(message);
+                }
             }
             
             if (!string.IsNullOrEmpty(message.Caption) && !Nsfw(message.Caption))
@@ -90,7 +103,7 @@ namespace Bot.Services
 
             var downloaderMessage = new DownloaderMessage(receivedMessage, sentMessage, linkOrFileName);
 
-            await _downloaderQueue.SendMessageAsync(JsonSerializer.Serialize(downloaderMessage));
+            await _sqsClient.SendMessageAsync(_servicesSettings.DownloaderQueueUrl, JsonSerializer.Serialize(downloaderMessage));
         }
     }
 }

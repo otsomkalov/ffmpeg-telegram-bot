@@ -1,11 +1,11 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Storage.Queues;
-using Azure.Storage.Queues.Models;
+using Amazon.SQS;
 using Bot.Models;
 using Bot.Settings;
 using Microsoft.Extensions.Hosting;
@@ -20,19 +20,17 @@ namespace Bot.Services
 {
     public class DownloaderService : BackgroundService
     {
-        private readonly QueueClient _converterQueue;
-        private readonly QueueClient _downloaderQueue;
+        private readonly IAmazonSQS _sqsClient;
         private readonly ITelegramBotClient _bot;
         private readonly ILogger<DownloaderService> _logger;
         private readonly ServicesSettings _servicesSettings;
 
-        public DownloaderService(IQueueFactory queueFactory, ITelegramBotClient bot, ILogger<DownloaderService> logger,
-            IOptions<ServicesSettings> servicesSettings)
+        public DownloaderService(ITelegramBotClient bot, ILogger<DownloaderService> logger,
+            IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient)
         {
             _bot = bot;
             _logger = logger;
-            _converterQueue = queueFactory.GetQueue(Queue.Converter);
-            _downloaderQueue = queueFactory.GetQueue(Queue.Downloader);
+            _sqsClient = sqsClient;
             _servicesSettings = servicesSettings.Value;
         }
 
@@ -55,9 +53,9 @@ namespace Bot.Services
 
         private async Task RunAsync(CancellationToken stoppingToken)
         {
-            var response = await _downloaderQueue.ReceiveMessageAsync(cancellationToken: stoppingToken);
+            var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.DownloaderQueueUrl, stoppingToken);
 
-            var queueMessage = response.Value;
+            var queueMessage = response.Messages.FirstOrDefault();
             
             if (queueMessage is null) return;
             
@@ -87,13 +85,20 @@ namespace Bot.Services
                 await HandleLinkAsync(receivedMessage, sentMessage, linkOrFileName, inputFilePath);
             }
             
-            await _downloaderQueue.DeleteMessageAsync(queueMessage.MessageId, queueMessage.PopReceipt, stoppingToken);
-            
-            await _bot.EditMessageTextAsync(
-                new(sentMessage.Chat.Id),
-                sentMessage.MessageId,
-                $"{linkOrFileName}\nYour file is waiting to be converted 🕒",
-                cancellationToken: stoppingToken);
+            await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle, stoppingToken);
+
+            try
+            {
+                await _bot.EditMessageTextAsync(
+                    new(sentMessage.Chat.Id),
+                    sentMessage.MessageId,
+                    $"{linkOrFileName}\nYour file is waiting to be converted 🕒",
+                    cancellationToken: stoppingToken);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error during updating message:");
+            }
         }
 
         private async Task HandleLinkAsync(Message receivedMessage, Message sentMessage, string linkOrFileName, string inputFilePath)
@@ -159,7 +164,7 @@ namespace Bot.Services
         {
             var converterMessage = new ConverterMessage(receivedMessage, sentMessage, inputFilePath, linkOrFilename);
 
-            await _converterQueue.SendMessageAsync(JsonSerializer.Serialize(converterMessage));
+            await _sqsClient.SendMessageAsync(_servicesSettings.ConverterQueueUrl, JsonSerializer.Serialize(converterMessage));
         }
     }
 }

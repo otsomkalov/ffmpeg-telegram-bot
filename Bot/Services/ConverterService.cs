@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Storage.Queues;
+using Amazon.SQS;
 using Bot.Models;
 using Bot.Settings;
 using Microsoft.Extensions.Hosting;
@@ -18,21 +18,17 @@ namespace Bot.Services
 {
     public class ConverterService : BackgroundService
     {
-        private readonly QueueClient _converterQueue;
-        private readonly QueueClient _uploaderQueue;
-        private readonly QueueClient _cleanerQueue;
+        private readonly IAmazonSQS _sqsClient;
         private readonly ITelegramBotClient _bot;
         private readonly ILogger<ConverterService> _logger;
         private readonly ServicesSettings _servicesSettings;
 
-        public ConverterService(IQueueFactory queueFactory, ITelegramBotClient bot, ILogger<ConverterService> logger,
-            IOptions<ServicesSettings> servicesSettings)
+        public ConverterService(ITelegramBotClient bot, ILogger<ConverterService> logger,
+            IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient)
         {
             _bot = bot;
             _logger = logger;
-            _converterQueue = queueFactory.GetQueue(Queue.Converter);
-            _uploaderQueue = queueFactory.GetQueue(Queue.Uploader);
-            _cleanerQueue = queueFactory.GetQueue(Queue.Cleaner);
+            _sqsClient = sqsClient;
             _servicesSettings = servicesSettings.Value;
         }
 
@@ -55,8 +51,8 @@ namespace Bot.Services
 
         private async Task RunAsync(CancellationToken stoppingToken)
         {
-            var response = await _converterQueue.ReceiveMessageAsync(cancellationToken: stoppingToken);
-            var queueMessage = response.Value;
+            var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.ConverterQueueUrl, stoppingToken);
+            var queueMessage = response.Messages.FirstOrDefault();
 
             if (queueMessage is null) return;
 
@@ -117,11 +113,6 @@ namespace Bot.Services
                     $"{linkOrFilename}\nError during file conversion",
                     cancellationToken: stoppingToken);
 
-                await _converterQueue.DeleteMessageAsync(
-                    queueMessage.MessageId,
-                    queueMessage.PopReceipt,
-                    stoppingToken);
-                
                 await SendCleanerMessageAsync(inputFilePath);
 
                 throw;
@@ -152,11 +143,6 @@ namespace Bot.Services
                     $"{linkOrFilename}\nError during file conversion",
                     cancellationToken: stoppingToken);
 
-                await _converterQueue.DeleteMessageAsync(
-                    queueMessage.MessageId,
-                    queueMessage.PopReceipt,
-                    stoppingToken);
-                
                 await SendCleanerMessageAsync(inputFilePath, outputFilePath);
 
                 throw;
@@ -164,9 +150,9 @@ namespace Bot.Services
 
             await SendMessageAsync(receivedMessage, sentMessage, inputFilePath, outputFilePath, thumbnailFilePath, linkOrFilename);
 
-            await _converterQueue.DeleteMessageAsync(
-                queueMessage.MessageId,
-                queueMessage.PopReceipt,
+            await _sqsClient.DeleteMessageAsync(
+                _servicesSettings.ConverterQueueUrl,
+                queueMessage.ReceiptHandle,
                 stoppingToken);
 
             await _bot.EditMessageTextAsync(
@@ -187,7 +173,7 @@ namespace Bot.Services
                 thumbnailFilePath,
                 linkOrFileName);
 
-            await _uploaderQueue.SendMessageAsync(JsonSerializer.Serialize(uploaderMessage));
+            await _sqsClient.SendMessageAsync(_servicesSettings.UploaderQueueUrl, JsonSerializer.Serialize(uploaderMessage));
         }
 
         private async Task SendCleanerMessageAsync(string inputFilePath, string outputFilePath = null,
@@ -195,7 +181,7 @@ namespace Bot.Services
         {
             var cleanerMessage = new CleanerMessage(inputFilePath, outputFilePath, thumbnailFilePath);
 
-            await _cleanerQueue.SendMessageAsync(JsonSerializer.Serialize(cleanerMessage));
+            await _sqsClient.SendMessageAsync(_servicesSettings.CleanerQueueUrl, JsonSerializer.Serialize(cleanerMessage));
         }
     }
 }

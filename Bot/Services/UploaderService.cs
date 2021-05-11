@@ -1,8 +1,9 @@
 ﻿using System;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Storage.Queues;
+using Amazon.SQS;
 using Bot.Models;
 using Bot.Settings;
 using Microsoft.Extensions.Hosting;
@@ -17,19 +18,17 @@ namespace Bot.Services
     public class UploaderService : BackgroundService
     {
         private readonly ITelegramBotClient _bot;
-        private readonly QueueClient _uploaderQueue;
-        private readonly QueueClient _cleanerQueue;
+        private readonly IAmazonSQS _sqsClient;
         private readonly ILogger<UploaderService> _logger;
         private readonly ServicesSettings _servicesSettings;
 
-        public UploaderService(ITelegramBotClient bot, IQueueFactory queueFactory, ILogger<UploaderService> logger,
-            IOptions<ServicesSettings> servicesSettings)
+        public UploaderService(ITelegramBotClient bot, ILogger<UploaderService> logger,
+            IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient)
         {
             _bot = bot;
             _logger = logger;
+            _sqsClient = sqsClient;
             _servicesSettings = servicesSettings.Value;
-            _uploaderQueue = queueFactory.GetQueue(Queue.Uploader);
-            _cleanerQueue = queueFactory.GetQueue(Queue.Cleaner);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -51,8 +50,8 @@ namespace Bot.Services
 
         private async Task RunAsync(CancellationToken stoppingToken)
         {
-            var response = await _uploaderQueue.ReceiveMessageAsync(cancellationToken: stoppingToken);
-            var queueMessage = response.Value;
+            var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.UploaderQueueUrl, stoppingToken);
+            var queueMessage = response.Messages.FirstOrDefault();
 
             if (queueMessage is null) return;
 
@@ -106,7 +105,7 @@ namespace Bot.Services
 
             await SendCleanerMessageAsync(inputFilePath, outputFilePath, thumbnailFilePath);
 
-            await _uploaderQueue.DeleteMessageAsync(queueMessage.MessageId, queueMessage.PopReceipt, stoppingToken);
+            await _sqsClient.DeleteMessageAsync(_servicesSettings.UploaderQueueUrl, queueMessage.ReceiptHandle, stoppingToken);
 
             await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
         }
@@ -115,7 +114,7 @@ namespace Bot.Services
         {
             var cleanerMessage = new CleanerMessage(inputFilePath, outputFilePath, thumbnailFilePath);
 
-            await _cleanerQueue.SendMessageAsync(JsonSerializer.Serialize(cleanerMessage));
+            await _sqsClient.SendMessageAsync(_servicesSettings.CleanerQueueUrl, JsonSerializer.Serialize(cleanerMessage));
         }
     }
 }
