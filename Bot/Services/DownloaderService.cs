@@ -61,18 +61,11 @@ namespace Bot.Services
             
             var (receivedMessage, sentMessage, linkOrFileName) = JsonSerializer.Deserialize<DownloaderMessage>(queueMessage.Body)!;
 
-            try
-            {
-                await _bot.EditMessageTextAsync(
-                    new(sentMessage.Chat.Id),
-                    sentMessage.MessageId,
-                    $"{linkOrFileName}\nDownloading file 🚀",
-                    cancellationToken: stoppingToken);
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Error during updating message:");
-            }
+            await _bot.EditMessageTextAsync(
+                new(sentMessage.Chat.Id),
+                sentMessage.MessageId,
+                $"{linkOrFileName}\nDownloading file 🚀",
+                cancellationToken: stoppingToken);
             
             var inputFilePath = $"{Path.GetTempPath()}{Guid.NewGuid()}.webm";
             
@@ -84,21 +77,14 @@ namespace Bot.Services
             {
                 await HandleLinkAsync(receivedMessage, sentMessage, linkOrFileName, inputFilePath);
             }
+
+            await _bot.EditMessageTextAsync(
+                new(sentMessage.Chat.Id),
+                sentMessage.MessageId,
+                $"{linkOrFileName}\nYour file is waiting to be converted 🕒",
+                cancellationToken: stoppingToken);
             
             await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle, stoppingToken);
-
-            try
-            {
-                await _bot.EditMessageTextAsync(
-                    new(sentMessage.Chat.Id),
-                    sentMessage.MessageId,
-                    $"{linkOrFileName}\nYour file is waiting to be converted 🕒",
-                    cancellationToken: stoppingToken);
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Error during updating message:");
-            }
         }
 
         private async Task HandleLinkAsync(Message receivedMessage, Message sentMessage, string linkOrFileName, string inputFilePath)

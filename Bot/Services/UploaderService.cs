@@ -106,8 +106,6 @@ namespace Bot.Services
             await SendCleanerMessageAsync(inputFilePath, outputFilePath, thumbnailFilePath);
 
             await _sqsClient.DeleteMessageAsync(_servicesSettings.UploaderQueueUrl, queueMessage.ReceiptHandle, stoppingToken);
-
-            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
         }
 
         private async Task SendCleanerMessageAsync(string inputFilePath, string outputFilePath = null, string thumbnailFilePath = null)

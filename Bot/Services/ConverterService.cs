@@ -84,6 +84,10 @@ namespace Bot.Services
                     $"{linkOrFilename}\nVideo doesn't have video stream inside",
                     cancellationToken: stoppingToken);
 
+                await SendCleanerMessageAsync(inputFilePath);
+
+                await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl, queueMessage.ReceiptHandle, stoppingToken);
+
                 return;
             }
 
@@ -118,11 +122,18 @@ namespace Bot.Services
                 throw;
             }
 
-            await _bot.EditMessageTextAsync(
-                new(sentMessage.Chat.Id),
-                sentMessage.MessageId,
-                $"{linkOrFilename}\nGenerating thumbnail 🖼️",
-                cancellationToken: stoppingToken);
+            try
+            {
+                await _bot.EditMessageTextAsync(
+                    new(sentMessage.Chat.Id),
+                    sentMessage.MessageId,
+                    $"{linkOrFilename}\nGenerating thumbnail 🖼️",
+                    cancellationToken: stoppingToken);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error during updating message:");
+            }
 
             var thumbnailFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.jpg");
 
@@ -140,7 +151,7 @@ namespace Bot.Services
                 await _bot.EditMessageTextAsync(
                     new(sentMessage.Chat.Id),
                     sentMessage.MessageId,
-                    $"{linkOrFilename}\nError during file conversion",
+                    $"{linkOrFilename}\nError during thumbnail generation",
                     cancellationToken: stoppingToken);
 
                 await SendCleanerMessageAsync(inputFilePath, outputFilePath);
@@ -150,16 +161,23 @@ namespace Bot.Services
 
             await SendMessageAsync(receivedMessage, sentMessage, inputFilePath, outputFilePath, thumbnailFilePath, linkOrFilename);
 
+            try
+            {
+                await _bot.EditMessageTextAsync(
+                    new(sentMessage.Chat.Id),
+                    sentMessage.MessageId,
+                    $"{linkOrFilename}\nYour file is waiting to be uploaded 🕒",
+                    cancellationToken: stoppingToken);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error during updating message:");
+            }
+            
             await _sqsClient.DeleteMessageAsync(
                 _servicesSettings.ConverterQueueUrl,
                 queueMessage.ReceiptHandle,
                 stoppingToken);
-
-            await _bot.EditMessageTextAsync(
-                new(sentMessage.Chat.Id),
-                sentMessage.MessageId,
-                $"{linkOrFilename}\nYour file is waiting to be uploaded 🕒",
-                cancellationToken: stoppingToken);
         }
 
         private async Task SendMessageAsync(Message receivedMessage, Message sentMessage, string inputFilePath,
