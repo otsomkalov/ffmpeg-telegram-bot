@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Amazon.SQS;
+using Bot.Constants;
 using Bot.Models;
 using Bot.Settings;
 using Microsoft.Extensions.Hosting;
@@ -150,7 +151,9 @@ namespace Bot.Services
         {
             var converterMessage = new ConverterMessage(receivedMessage, sentMessage, inputFilePath, linkOrFilename);
 
-            await _sqsClient.SendMessageAsync(_servicesSettings.ConverterQueueUrl, JsonSerializer.Serialize(converterMessage));
+            await _sqsClient.SendMessageAsync(
+                _servicesSettings.ConverterQueueUrl,
+                JsonSerializer.Serialize(converterMessage, JsonSerializerConstants.SerializerOptions));
         }
     }
 }

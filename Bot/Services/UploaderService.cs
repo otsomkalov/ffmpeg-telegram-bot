@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Amazon.SQS;
+using Bot.Constants;
 using Bot.Models;
 using Bot.Settings;
 using Microsoft.Extensions.Hosting;
@@ -112,7 +113,9 @@ namespace Bot.Services
         {
             var cleanerMessage = new CleanerMessage(inputFilePath, outputFilePath, thumbnailFilePath);
 
-            await _sqsClient.SendMessageAsync(_servicesSettings.CleanerQueueUrl, JsonSerializer.Serialize(cleanerMessage));
+            await _sqsClient.SendMessageAsync(
+                _servicesSettings.CleanerQueueUrl,
+                JsonSerializer.Serialize(cleanerMessage, JsonSerializerConstants.SerializerOptions));
         }
     }
 }

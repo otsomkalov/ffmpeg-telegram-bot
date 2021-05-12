@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Amazon.SQS;
+using Bot.Constants;
 using Bot.Models;
 using Bot.Settings;
 using Microsoft.Extensions.Options;
@@ -103,7 +104,9 @@ namespace Bot.Services
 
             var downloaderMessage = new DownloaderMessage(receivedMessage, sentMessage, linkOrFileName);
 
-            await _sqsClient.SendMessageAsync(_servicesSettings.DownloaderQueueUrl, JsonSerializer.Serialize(downloaderMessage));
+            await _sqsClient.SendMessageAsync(
+                _servicesSettings.DownloaderQueueUrl,
+                JsonSerializer.Serialize(downloaderMessage, JsonSerializerConstants.SerializerOptions));
         }
     }
 }
