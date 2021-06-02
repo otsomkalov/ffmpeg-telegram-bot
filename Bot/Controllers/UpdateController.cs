@@ -27,7 +27,7 @@ namespace Bot.Controllers
 
             if (update.Type == UpdateType.ChannelPost)
             {
-                await _messageService.HandleAsync(update.Message);
+                await _messageService.HandleAsync(update.ChannelPost);
             }
 
             return Ok();
