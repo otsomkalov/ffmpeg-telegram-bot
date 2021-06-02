@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -13,7 +12,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using Xabe.FFmpeg;
 
 namespace Bot.Services
 {
@@ -23,13 +21,15 @@ namespace Bot.Services
         private readonly ITelegramBotClient _bot;
         private readonly ILogger<ConverterService> _logger;
         private readonly ServicesSettings _servicesSettings;
+        private readonly FFMpegService _ffMpegService;
 
         public ConverterService(ITelegramBotClient bot, ILogger<ConverterService> logger,
-            IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient)
+            IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient, FFMpegService ffMpegService)
         {
             _bot = bot;
             _logger = logger;
             _sqsClient = sqsClient;
+            _ffMpegService = ffMpegService;
             _servicesSettings = servicesSettings.Value;
         }
 
@@ -62,8 +62,7 @@ namespace Bot.Services
 
             try
             {
-                await _bot.EditMessageTextAsync(
-                    new(sentMessage.Chat.Id),
+                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                     sentMessage.MessageId,
                     $"{linkOrFilename}\nConversion in progress 🚀",
                     cancellationToken: stoppingToken);
@@ -73,47 +72,15 @@ namespace Bot.Services
                 _logger.LogError(e, "Error during updating message:");
             }
 
-            var mediaInfo = await FFmpeg.GetMediaInfo(inputFilePath, stoppingToken);
-
-            var videoStream = mediaInfo.VideoStreams.FirstOrDefault();
-
-            if (videoStream == null)
-            {
-                await _bot.EditMessageTextAsync(
-                    new(sentMessage.Chat.Id),
-                    sentMessage.MessageId,
-                    $"{linkOrFilename}\nVideo doesn't have video stream inside",
-                    cancellationToken: stoppingToken);
-
-                await SendCleanerMessageAsync(inputFilePath);
-
-                await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl, queueMessage.ReceiptHandle, stoppingToken);
-
-                return;
-            }
-
-            var width = videoStream.Width % 2 == 0 ? videoStream.Width : videoStream.Width - 1;
-            var height = videoStream.Height % 2 == 0 ? videoStream.Height : videoStream.Height - 1;
-
-            videoStream = videoStream
-                .SetCodec(VideoCodec.h264)
-                .SetSize(width, height);
-
-            var audioStream = mediaInfo.AudioStreams.FirstOrDefault()?.SetCodec(AudioCodec.aac);
-
-            var outputFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.mp4");
+            string outputFilePath;
 
             try
             {
-                await FFmpeg.Conversions.New()
-                    .AddStream<IStream>(videoStream, audioStream)
-                    .SetOutput(outputFilePath)
-                    .Start(stoppingToken);
+                outputFilePath = await _ffMpegService.ConvertAsync(inputFilePath);
             }
             catch (Exception)
             {
-                await _bot.EditMessageTextAsync(
-                    new(sentMessage.Chat.Id),
+                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                     sentMessage.MessageId,
                     $"{linkOrFilename}\nError during file conversion",
                     cancellationToken: stoppingToken);
@@ -125,8 +92,7 @@ namespace Bot.Services
 
             try
             {
-                await _bot.EditMessageTextAsync(
-                    new(sentMessage.Chat.Id),
+                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                     sentMessage.MessageId,
                     $"{linkOrFilename}\nGenerating thumbnail 🖼️",
                     cancellationToken: stoppingToken);
@@ -136,21 +102,15 @@ namespace Bot.Services
                 _logger.LogError(e, "Error during updating message:");
             }
 
-            var thumbnailFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.jpg");
-
-            var thumbnailConversion = await FFmpeg.Conversions.FromSnippet.Snapshot(
-                outputFilePath,
-                thumbnailFilePath,
-                TimeSpan.Zero);
+            string thumbnailFilePath;
 
             try
             {
-                await thumbnailConversion.Start(stoppingToken);
+                thumbnailFilePath = await _ffMpegService.GetThumbnailAsync(outputFilePath);
             }
             catch (Exception)
             {
-                await _bot.EditMessageTextAsync(
-                    new(sentMessage.Chat.Id),
+                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                     sentMessage.MessageId,
                     $"{linkOrFilename}\nError during thumbnail generation",
                     cancellationToken: stoppingToken);
@@ -164,8 +124,7 @@ namespace Bot.Services
 
             try
             {
-                await _bot.EditMessageTextAsync(
-                    new(sentMessage.Chat.Id),
+                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                     sentMessage.MessageId,
                     $"{linkOrFilename}\nYour file is waiting to be uploaded 🕒",
                     cancellationToken: stoppingToken);
@@ -174,9 +133,8 @@ namespace Bot.Services
             {
                 _logger.LogError(e, "Error during updating message:");
             }
-            
-            await _sqsClient.DeleteMessageAsync(
-                _servicesSettings.ConverterQueueUrl,
+
+            await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl,
                 queueMessage.ReceiptHandle,
                 stoppingToken);
         }
@@ -192,8 +150,7 @@ namespace Bot.Services
                 thumbnailFilePath,
                 linkOrFileName);
 
-            await _sqsClient.SendMessageAsync(
-                _servicesSettings.UploaderQueueUrl,
+            await _sqsClient.SendMessageAsync(_servicesSettings.UploaderQueueUrl,
                 JsonSerializer.Serialize(uploaderMessage, JsonSerializerConstants.SerializerOptions));
         }
 
@@ -202,8 +159,7 @@ namespace Bot.Services
         {
             var cleanerMessage = new CleanerMessage(inputFilePath, outputFilePath, thumbnailFilePath);
 
-            await _sqsClient.SendMessageAsync(
-                _servicesSettings.CleanerQueueUrl,
+            await _sqsClient.SendMessageAsync(_servicesSettings.CleanerQueueUrl,
                 JsonSerializer.Serialize(cleanerMessage, JsonSerializerConstants.SerializerOptions));
         }
     }

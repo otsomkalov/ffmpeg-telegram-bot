@@ -8,17 +8,11 @@ using Bot.Models;
 using Bot.Settings;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
-using Telegram.Bot.Types;
 using Message = Telegram.Bot.Types.Message;
 
 namespace Bot.Services
 {
-    public interface IMessageService
-    {
-        Task HandleAsync(Message message);
-    }
-    
-    public class MessageService : IMessageService
+    public class MessageService
     {
         private readonly ITelegramBotClient _bot;
         private readonly IAmazonSQS _sqsClient;

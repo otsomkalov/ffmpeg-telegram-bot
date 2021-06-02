@@ -8,10 +8,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
-using Xabe.FFmpeg;
 
 namespace Bot
 {
@@ -33,10 +31,12 @@ namespace Bot
                     return new TelegramBotClient(telegramSettings.Token);
                 })
                 .AddSingleton<IAmazonSQS>(_ => new AmazonSQSClient(new EnvironmentVariablesAWSCredentials(), RegionEndpoint.EUCentral1))
-                .AddTransient<IMessageService, MessageService>();
+                .AddSingleton<FFMpegService>()
+                .AddSingleton<MessageService>();
 
             services.Configure<ServicesSettings>(_configuration.GetSection(ServicesSettings.SectionName))
-                .Configure<TelegramSettings>(_configuration.GetSection(TelegramSettings.SectionName));
+                .Configure<TelegramSettings>(_configuration.GetSection(TelegramSettings.SectionName))
+                .Configure<FFMpegSettings>(_configuration.GetSection(FFMpegSettings.SectionName));
 
             services.AddHealthChecks();
 
@@ -44,16 +44,11 @@ namespace Bot
 
             services.AddControllers()
                 .AddNewtonsoftJson();
-            
 
             services.AddHostedService<DownloaderService>();
             services.AddHostedService<ConverterService>();
             services.AddHostedService<UploaderService>();
             services.AddHostedService<CleanerService>();
-
-            var ffmpegSettings = _configuration.GetSection(FFMpegSettings.SectionName).Get<FFMpegSettings>();
-            
-            FFmpeg.SetExecutablesPath(ffmpegSettings.Path);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline

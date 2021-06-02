@@ -1,5 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Bot.Services;
 using Microsoft.AspNetCore.Mvc;
 using Telegram.Bot.Types;
@@ -11,9 +10,9 @@ namespace Bot.Controllers
     [Route("update")]
     public class UpdateController : ControllerBase
     {
-        private readonly IMessageService _messageService;
+        private readonly MessageService _messageService;
 
-        public UpdateController(IMessageService messageService)
+        public UpdateController(MessageService messageService)
         {
             _messageService = messageService;
         }
@@ -21,32 +20,14 @@ namespace Bot.Controllers
         [HttpPost]
         public async Task<IActionResult> ProcessUpdateAsync(Update update)
         {
-            switch (update.Type)
+            if (update.Type == UpdateType.Message)
             {
-                case UpdateType.Message:
+                await _messageService.HandleAsync(update.Message);
+            }
 
-                    await _messageService.HandleAsync(update.Message);
-
-                    break;
-                
-                case UpdateType.ChannelPost:
-
-                    await _messageService.HandleAsync(update.ChannelPost);
-
-                    break;
-                case UpdateType.Unknown:
-                case UpdateType.InlineQuery:
-                case UpdateType.ChosenInlineResult:
-                case UpdateType.CallbackQuery:
-                case UpdateType.EditedMessage:
-                case UpdateType.EditedChannelPost:
-                case UpdateType.ShippingQuery:
-                case UpdateType.PreCheckoutQuery:
-                case UpdateType.Poll:
-                case UpdateType.PollAnswer:
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(update.Type));
+            if (update.Type == UpdateType.ChannelPost)
+            {
+                await _messageService.HandleAsync(update.Message);
             }
 
             return Ok();
