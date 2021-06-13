@@ -3,9 +3,9 @@
         <TargetFramework>net5.0</TargetFramework>
     </PropertyGroup>
     <ItemGroup>
+        <PackageReference Include="AWSSDK.SQS" Version="3.7.0.20" />
         <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.16.0" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="3.1.9" />
         <PackageReference Include="Telegram.Bot" Version="15.7.1" />
-        <PackageReference Include="xFFmpeg.NET" Version="3.4.0" />
     </ItemGroup>
 </Project>

@@ -1,11 +1,14 @@
-﻿using Bot.Services;
+﻿using Amazon;
+using Amazon.Runtime;
+using Amazon.SQS;
+using Bot.Services;
 using Bot.Settings;
-using FFmpeg.NET;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Telegram.Bot;
 
 namespace Bot
@@ -21,20 +24,31 @@ namespace Bot
 
         public void ConfigureServices(IServiceCollection services)
         {
-            var settings = _configuration.Get<AppSettings>();
+            services.AddSingleton<ITelegramBotClient>(provider =>
+                {
+                    var telegramSettings = provider.GetService<IOptions<TelegramSettings>>().Value;
 
-            services
-                .AddSingleton<ITelegramBotClient>(new TelegramBotClient(settings.Telegram.Token))
-                .AddSingleton(new Engine(settings.FFMpeg.Path))
-                .AddSingleton(settings)
-                .AddTransient<IMessageService, MessageService>();
+                    return new TelegramBotClient(telegramSettings.Token);
+                })
+                .AddSingleton<IAmazonSQS>(_ => new AmazonSQSClient(new EnvironmentVariablesAWSCredentials(), RegionEndpoint.EUCentral1))
+                .AddSingleton<FFMpegService>()
+                .AddSingleton<MessageService>();
+
+            services.Configure<ServicesSettings>(_configuration.GetSection(ServicesSettings.SectionName))
+                .Configure<TelegramSettings>(_configuration.GetSection(TelegramSettings.SectionName))
+                .Configure<FFMpegSettings>(_configuration.GetSection(FFMpegSettings.SectionName));
 
             services.AddHealthChecks();
-            
+
             services.AddApplicationInsightsTelemetry();
-            
+
             services.AddControllers()
                 .AddNewtonsoftJson();
+
+            services.AddHostedService<DownloaderService>();
+            services.AddHostedService<ConverterService>();
+            services.AddHostedService<UploaderService>();
+            services.AddHostedService<CleanerService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline
@@ -46,7 +60,7 @@ namespace Bot
             }
 
             app.UseStaticFiles("/telegram-bot-api-data");
-            
+
             app.UseRouting();
 
             app.UseHealthChecks("/health");

@@ -7,12 +7,12 @@ using Telegram.Bot.Types.Enums;
 namespace Bot.Controllers
 {
     [ApiController]
-    [Route("api/update")]
+    [Route("update")]
     public class UpdateController : ControllerBase
     {
-        private readonly IMessageService _messageService;
+        private readonly MessageService _messageService;
 
-        public UpdateController(IMessageService messageService)
+        public UpdateController(MessageService messageService)
         {
             _messageService = messageService;
         }
@@ -20,19 +20,14 @@ namespace Bot.Controllers
         [HttpPost]
         public async Task<IActionResult> ProcessUpdateAsync(Update update)
         {
-            switch (update.Type)
+            if (update.Type == UpdateType.Message)
             {
-                case UpdateType.Message:
+                await _messageService.HandleAsync(update.Message);
+            }
 
-                    await _messageService.HandleAsync(update.Message);
-
-                    break;
-                
-                case UpdateType.ChannelPost:
-
-                    await _messageService.HandleAsync(update.ChannelPost);
-
-                    break;
+            if (update.Type == UpdateType.ChannelPost)
+            {
+                await _messageService.HandleAsync(update.ChannelPost);
             }
 
             return Ok();
