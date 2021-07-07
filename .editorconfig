@@ -3,8 +3,8 @@ charset=utf-8
 end_of_line=crlf
 trim_trailing_whitespace=true
 indent_style=space
-insert_final_newline = true
-max_line_length = 140
+insert_final_newline=false
+max_line_length=140
 
 [*.{json,xml,csproj}]
 indent_size=2
@@ -152,9 +152,9 @@ csharp_prefer_simple_using_statement=true:warning
 
 # private
 
-dotnet_naming_rule.private.severity = warning
-dotnet_naming_rule.private.symbols = private
-dotnet_naming_rule.private.style = private
+dotnet_naming_rule.private.severity=warning
+dotnet_naming_rule.private.symbols=private
+dotnet_naming_rule.private.style=private
 dotnet_naming_symbols.private.applicable_accessibilities=private
 dotnet_naming_symbols.private.applicable_kinds=field
 dotnet_naming_style.private.capitalization=camel_case
@@ -162,9 +162,9 @@ dotnet_naming_style.private.required_prefix=_
 
 # private readonly
 
-dotnet_naming_rule.private_readonly.severity = warning
-dotnet_naming_rule.private_readonly.symbols = private_readonly
-dotnet_naming_rule.private_readonly.style = private_readonly
+dotnet_naming_rule.private_readonly.severity=warning
+dotnet_naming_rule.private_readonly.symbols=private_readonly
+dotnet_naming_rule.private_readonly.style=private_readonly
 dotnet_naming_symbols.private_readonly.applicable_accessibilities=private
 dotnet_naming_symbols.private_readonly.applicable_kinds=field
 dotnet_naming_symbols.private_readonly.required_modifiers=readonly
@@ -173,9 +173,9 @@ dotnet_naming_style.private_readonly.required_prefix=_
 
 # private const
 
-dotnet_naming_rule.private_const.severity = warning
-dotnet_naming_rule.private_const.symbols = private_const
-dotnet_naming_rule.private_const.style = private_const
+dotnet_naming_rule.private_const.severity=warning
+dotnet_naming_rule.private_const.symbols=private_const
+dotnet_naming_rule.private_const.style=private_const
 dotnet_naming_symbols.private_const.applicable_accessibilities=private
 dotnet_naming_symbols.private_const.applicable_kinds=field
 dotnet_naming_symbols.private_const.required_modifiers=const
@@ -183,18 +183,18 @@ dotnet_naming_style.private_const.capitalization=pascal_case
 
 # protected
 
-dotnet_naming_rule.protected.severity = warning
-dotnet_naming_rule.protected.symbols = protected
-dotnet_naming_rule.protected.style = protected
+dotnet_naming_rule.protected.severity=warning
+dotnet_naming_rule.protected.symbols=protected
+dotnet_naming_rule.protected.style=protected
 dotnet_naming_symbols.protected.applicable_accessibilities=protected
 dotnet_naming_symbols.protected.applicable_kinds=field
 dotnet_naming_style.protected.capitalization=pascal_case
 
 # protected readonly
 
-dotnet_naming_rule.protected_readonly.severity = warning
-dotnet_naming_rule.protected_readonly.symbols = protected_readonly
-dotnet_naming_rule.protected_readonly.style = protected_readonly
+dotnet_naming_rule.protected_readonly.severity=warning
+dotnet_naming_rule.protected_readonly.symbols=protected_readonly
+dotnet_naming_rule.protected_readonly.style=protected_readonly
 dotnet_naming_symbols.protected_readonly.applicable_accessibilities=protected
 dotnet_naming_symbols.protected_readonly.applicable_kinds=field
 dotnet_naming_symbols.protected_readonly.required_modifiers=readonly
@@ -202,18 +202,18 @@ dotnet_naming_style.protected_readonly.capitalization=pascal_case
 
 # public static
 
-dotnet_naming_rule.public.severity = warning
-dotnet_naming_rule.public.symbols = public
-dotnet_naming_rule.public.style = public
+dotnet_naming_rule.public.severity=warning
+dotnet_naming_rule.public.symbols=public
+dotnet_naming_rule.public.style=public
 dotnet_naming_symbols.public.applicable_accessibilities=public
 dotnet_naming_symbols.public.applicable_kinds=field
 dotnet_naming_style.public.capitalization=pascal_case
 
 # public static
 
-dotnet_naming_rule.public_static.severity = warning
-dotnet_naming_rule.public_static.symbols = public_static
-dotnet_naming_rule.public_static.style = public_static
+dotnet_naming_rule.public_static.severity=warning
+dotnet_naming_rule.public_static.symbols=public_static
+dotnet_naming_rule.public_static.style=public_static
 dotnet_naming_symbols.public_static.applicable_accessibilities=public
 dotnet_naming_symbols.public_static.applicable_kinds=field
 dotnet_naming_symbols.public_static.required_modifiers=static
@@ -221,9 +221,9 @@ dotnet_naming_style.public_static.capitalization=pascal_case
 
 # public static readonly
 
-dotnet_naming_rule.public_static_readonly.severity = warning
-dotnet_naming_rule.public_static_readonly.symbols = public_static_readonly
-dotnet_naming_rule.public_static_readonly.style = public_static_readonly
+dotnet_naming_rule.public_static_readonly.severity=warning
+dotnet_naming_rule.public_static_readonly.symbols=public_static_readonly
+dotnet_naming_rule.public_static_readonly.style=public_static_readonly
 dotnet_naming_symbols.public_static_readonly.applicable_accessibilities=private
 dotnet_naming_symbols.public_static_readonly.applicable_kinds=field
 dotnet_naming_symbols.public_static_readonly.required_modifiers=static,readonly
@@ -231,9 +231,9 @@ dotnet_naming_style.public_static_readonly.capitalization=pascal_case
 
 # locals
 
-dotnet_naming_rule.locals.severity = warning
-dotnet_naming_rule.locals.symbols = locals
-dotnet_naming_rule.locals.style = locals
+dotnet_naming_rule.locals.severity=warning
+dotnet_naming_rule.locals.symbols=locals
+dotnet_naming_rule.locals.style=locals
 dotnet_naming_symbols.locals.applicable_accessibilities=local
 dotnet_naming_symbols.locals.applicable_kinds=local
 dotnet_naming_style.locals.capitalization=camel_case
