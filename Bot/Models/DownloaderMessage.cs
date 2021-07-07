@@ -2,7 +2,7 @@
 
 namespace Bot.Models
 {
-    public record DownloaderMessage(Message ReceivedMessage, Message SentMessage, string LinkOrFileName)
+    public record DownloaderMessage(Message ReceivedMessage, Message SentMessage, string Link)
     {
     }
 }

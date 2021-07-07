@@ -13,7 +13,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
-using Telegram.Bot.Types;
 using File = System.IO.File;
 using Message = Telegram.Bot.Types.Message;
 
@@ -39,53 +38,53 @@ namespace Bot.Services
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                try
+                var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.DownloaderQueueUrl, stoppingToken);
+
+                var queueMessage = response.Messages.FirstOrDefault();
+
+                if (queueMessage != null)
                 {
-                    await RunAsync(stoppingToken);
+                    var (receivedMessage, sentMessage, link) = JsonSerializer.Deserialize<DownloaderMessage>(queueMessage.Body)!;
+
+                    try
+                    {
+                        await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                            sentMessage.MessageId,
+                            "Downloading file 🚀",
+                            cancellationToken: stoppingToken);
+
+                        var inputFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.webm");
+
+                        if (string.IsNullOrEmpty(link))
+                        {
+                            await HandleDocumentAsync(receivedMessage, sentMessage, inputFilePath);
+                        }
+                        else
+                        {
+                            await HandleLinkAsync(receivedMessage, sentMessage, link, inputFilePath);
+                        }
+
+                        await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                            sentMessage.MessageId,
+                            "Your file is waiting to be converted 🕒",
+                            cancellationToken: stoppingToken);
+
+                        await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle,
+                            stoppingToken);
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, "Error during Downloader execution:");
+
+                        await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                            sentMessage.MessageId,
+                            "Error during file download!",
+                            cancellationToken: stoppingToken);
+                    }
                 }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, "Error during Downloader execution:");
-                }
-                
+
                 await Task.Delay(_servicesSettings.ProcessingDelay, stoppingToken);
             }
-        }
-
-        private async Task RunAsync(CancellationToken stoppingToken)
-        {
-            var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.DownloaderQueueUrl, stoppingToken);
-
-            var queueMessage = response.Messages.FirstOrDefault();
-            
-            if (queueMessage is null) return;
-            
-            var (receivedMessage, sentMessage, linkOrFileName) = JsonSerializer.Deserialize<DownloaderMessage>(queueMessage.Body)!;
-
-            await _bot.EditMessageTextAsync(
-                new(sentMessage.Chat.Id),
-                sentMessage.MessageId,
-                $"{linkOrFileName}\nDownloading file 🚀",
-                cancellationToken: stoppingToken);
-            
-            var inputFilePath = $"{Path.GetTempPath()}{Guid.NewGuid()}.webm";
-            
-            if (string.IsNullOrEmpty(linkOrFileName))
-            {
-                await HandleDocumentAsync(receivedMessage, sentMessage, inputFilePath);
-            }
-            else
-            {
-                await HandleLinkAsync(receivedMessage, sentMessage, linkOrFileName, inputFilePath);
-            }
-
-            await _bot.EditMessageTextAsync(
-                new(sentMessage.Chat.Id),
-                sentMessage.MessageId,
-                $"{linkOrFileName}\nYour file is waiting to be converted 🕒",
-                cancellationToken: stoppingToken);
-            
-            await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle, stoppingToken);
         }
 
         private async Task HandleLinkAsync(Message receivedMessage, Message sentMessage, string linkOrFileName, string inputFilePath)
@@ -96,8 +95,7 @@ namespace Bot.Services
             {
                 await webClient.DownloadFileTaskAsync(linkOrFileName, inputFilePath);
 
-                await SendMessageAsync(receivedMessage, sentMessage, inputFilePath,
-                    linkOrFileName);
+                await SendMessageAsync(receivedMessage, sentMessage, inputFilePath);
             }
             catch (WebException webException)
             {
@@ -107,8 +105,7 @@ namespace Bot.Services
                     {
                         case HttpStatusCode.Unauthorized:
 
-                            await _bot.EditMessageTextAsync(
-                                new(sentMessage.Chat.Id),
+                            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                                 sentMessage.MessageId,
                                 $"{linkOrFileName}\nI am not authorized to download video from this source 🚫");
 
@@ -116,8 +113,7 @@ namespace Bot.Services
 
                         case HttpStatusCode.NotFound:
 
-                            await _bot.EditMessageTextAsync(
-                                new(sentMessage.Chat.Id),
+                            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                                 sentMessage.MessageId,
                                 $"{linkOrFileName}\nVideo not found ⚠️");
 
@@ -125,8 +121,7 @@ namespace Bot.Services
 
                         case HttpStatusCode.InternalServerError:
 
-                            await _bot.EditMessageTextAsync(
-                                new(sentMessage.Chat.Id),
+                            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                                 sentMessage.MessageId,
                                 $"{linkOrFileName}\nServer error 🛑");
 
@@ -143,16 +138,14 @@ namespace Bot.Services
                 await _bot.GetInfoAndDownloadFileAsync(receivedMessage.Document.FileId, fileStream);
             }
 
-            await SendMessageAsync(receivedMessage, sentMessage, inputFileName, receivedMessage.Document.FileName);
+            await SendMessageAsync(receivedMessage, sentMessage, inputFileName);
         }
 
-        private async Task SendMessageAsync(Message receivedMessage, Message sentMessage, string inputFilePath,
-            string linkOrFilename)
+        private async Task SendMessageAsync(Message receivedMessage, Message sentMessage, string inputFilePath)
         {
-            var converterMessage = new ConverterMessage(receivedMessage, sentMessage, inputFilePath, linkOrFilename);
+            var converterMessage = new ConverterMessage(receivedMessage, sentMessage, inputFilePath);
 
-            await _sqsClient.SendMessageAsync(
-                _servicesSettings.ConverterQueueUrl,
+            await _sqsClient.SendMessageAsync(_servicesSettings.ConverterQueueUrl,
                 JsonSerializer.Serialize(converterMessage, JsonSerializerConstants.SerializerOptions));
         }
     }

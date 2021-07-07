@@ -46,6 +46,11 @@ namespace Bot.Services
 
             await process.WaitForExitAsync();
 
+            if (process.ExitCode == 0)
+            {
+                return outputFilePath;
+            }
+
             var error = await process.StandardError.ReadToEndAsync();
 
             if (!string.IsNullOrEmpty(error))

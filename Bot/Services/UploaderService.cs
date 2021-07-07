@@ -36,86 +36,56 @@ namespace Bot.Services
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                try
+                var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.UploaderQueueUrl, stoppingToken);
+                var queueMessage = response.Messages.FirstOrDefault();
+
+                if (queueMessage != null)
                 {
-                    await RunAsync(stoppingToken);
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, "Error during Uploader execution:");
+                    var (receivedMessage, sentMessage, inputFilePath, outputFilePath, thumbnailFilePath) =
+                        JsonSerializer.Deserialize<UploaderMessage>(queueMessage.Body)!;
+
+                    try
+                    {
+                        await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                            sentMessage.MessageId,
+                            "Your file is uploading 🚀",
+                            cancellationToken: stoppingToken);
+
+                        await using var videoStream = File.OpenRead(outputFilePath);
+                        await using var imageStream = File.OpenRead(thumbnailFilePath);
+
+                        await _bot.DeleteMessageAsync(new(sentMessage.Chat.Id),
+                            sentMessage.MessageId,
+                            stoppingToken);
+
+                        await _bot.SendVideoAsync(new(sentMessage.Chat.Id),
+                            new InputMedia(videoStream, outputFilePath),
+                            replyToMessageId: receivedMessage.MessageId,
+                            thumb: new(imageStream, thumbnailFilePath),
+                            disableNotification: true,
+                            cancellationToken: stoppingToken);
+
+                        var cleanerMessage = new CleanerMessage(inputFilePath, outputFilePath, thumbnailFilePath);
+
+                        await _sqsClient.SendMessageAsync(_servicesSettings.CleanerQueueUrl,
+                            JsonSerializer.Serialize(cleanerMessage, JsonSerializerConstants.SerializerOptions),
+                            stoppingToken);
+
+                        await _sqsClient.DeleteMessageAsync(_servicesSettings.UploaderQueueUrl, queueMessage.ReceiptHandle, stoppingToken);
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, "Error during Uploader execution:");
+
+                        await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                            sentMessage.MessageId,
+                            "Error during file upload",
+                            cancellationToken: stoppingToken);
+                    }
                 }
 
                 await Task.Delay(_servicesSettings.ProcessingDelay, stoppingToken);
             }
-        }
-
-        private async Task RunAsync(CancellationToken stoppingToken)
-        {
-            var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.UploaderQueueUrl, stoppingToken);
-            var queueMessage = response.Messages.FirstOrDefault();
-
-            if (queueMessage is null) return;
-
-            var (receivedMessage, sentMessage, inputFilePath, outputFilePath, thumbnailFilePath, linkOrFileName) =
-                JsonSerializer.Deserialize<UploaderMessage>(queueMessage.Body)!;
-
-            try
-            {
-                await _bot.EditMessageTextAsync(
-                    new(sentMessage.Chat.Id),
-                    sentMessage.MessageId,
-                    $"{linkOrFileName}\nYour file is uploading 🚀",
-                    cancellationToken: stoppingToken);
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Error during updating message:");
-            }
-
-            try
-            {
-                await using var videoStream = File.OpenRead(outputFilePath);
-                await using var imageStream = File.OpenRead(thumbnailFilePath);
-
-                await _bot.DeleteMessageAsync(
-                    new(sentMessage.Chat.Id),
-                    sentMessage.MessageId,
-                    stoppingToken);
-
-                await _bot.SendVideoAsync(
-                    new(sentMessage.Chat.Id),
-                    new InputMedia(videoStream, outputFilePath),
-                    replyToMessageId: receivedMessage.MessageId,
-                    thumb: new(imageStream, thumbnailFilePath),
-                    caption: linkOrFileName,
-                    disableNotification: true,
-                    cancellationToken: stoppingToken);
-            }
-            catch (Exception)
-            {
-                await _bot.EditMessageTextAsync(
-                    new(sentMessage.Chat.Id),
-                    sentMessage.MessageId,
-                    $"{linkOrFileName}\nError during file upload",
-                    cancellationToken: stoppingToken);
-
-                await SendCleanerMessageAsync(inputFilePath, outputFilePath, thumbnailFilePath);
-
-                throw;
-            }
-
-            await SendCleanerMessageAsync(inputFilePath, outputFilePath, thumbnailFilePath);
-
-            await _sqsClient.DeleteMessageAsync(_servicesSettings.UploaderQueueUrl, queueMessage.ReceiptHandle, stoppingToken);
-        }
-
-        private async Task SendCleanerMessageAsync(string inputFilePath, string outputFilePath = null, string thumbnailFilePath = null)
-        {
-            var cleanerMessage = new CleanerMessage(inputFilePath, outputFilePath, thumbnailFilePath);
-
-            await _sqsClient.SendMessageAsync(
-                _servicesSettings.CleanerQueueUrl,
-                JsonSerializer.Serialize(cleanerMessage, JsonSerializerConstants.SerializerOptions));
         }
     }
 }
