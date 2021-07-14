@@ -1,6 +1,8 @@
 ﻿using Amazon;
 using Amazon.Runtime;
 using Amazon.SQS;
+using Bot.Extensions;
+using Bot.Jobs;
 using Bot.Services;
 using Bot.Settings;
 using Microsoft.AspNetCore.Builder;
@@ -9,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Quartz;
 using Telegram.Bot;
 
 namespace Bot
@@ -38,17 +41,30 @@ namespace Bot
                 .Configure<TelegramSettings>(_configuration.GetSection(TelegramSettings.SectionName))
                 .Configure<FFMpegSettings>(_configuration.GetSection(FFMpegSettings.SectionName));
 
+            services.AddQuartz(q =>
+            {
+                // base quartz scheduler, job and trigger configuration
+                q.UseMicrosoftDependencyInjectionScopedJobFactory();
+
+                q.AddCronJob<DownloaderJob>(_configuration)
+                    .AddCronJob<ConverterJob>(_configuration)
+                    .AddCronJob<UploaderJob>(_configuration)
+                    .AddCronJob<CleanerJob>(_configuration);
+            });
+
+            // ASP.NET Core hosting
+            services.AddQuartzServer(options =>
+            {
+                // when shutting down we want jobs to complete gracefully
+                options.WaitForJobsToComplete = true;
+            });
+
             services.AddHealthChecks();
 
             services.AddApplicationInsightsTelemetry();
 
             services.AddControllers()
                 .AddNewtonsoftJson();
-
-            services.AddHostedService<DownloaderService>();
-            services.AddHostedService<ConverterService>();
-            services.AddHostedService<UploaderService>();
-            services.AddHostedService<CleanerService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline

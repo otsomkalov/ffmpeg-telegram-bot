@@ -54,6 +54,11 @@ namespace Bot.Services
                 await SendMessageAsync(message);
             }
 
+            if (message.Entities == null)
+            {
+                return;
+            }
+
             foreach (var messageEntity in message.Entities.Where(e => e.Type == MessageEntityType.Url))
             {
                 if (WebmLinkRegex.IsMatch(messageEntity.Url))
