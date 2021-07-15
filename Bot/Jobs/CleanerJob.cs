@@ -22,8 +22,18 @@ namespace Bot.Jobs
             _servicesSettings = servicesSettings.Value;
         }
 
-        private static void CleanupFiles(string inputFilePath, string outputFilePath, string thumbnailFilePath)
+        public async Task Execute(IJobExecutionContext context)
         {
+            var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.CleanerQueueUrl);
+            var queueMessage = response.Messages.FirstOrDefault();
+
+            if (queueMessage is null)
+            {
+                return;
+            }
+
+            var (inputFilePath, outputFilePath, thumbnailFilePath) = JsonSerializer.Deserialize<CleanerMessage>(queueMessage.Body)!;
+
             if (File.Exists(inputFilePath))
             {
                 File.Delete(inputFilePath);
@@ -38,21 +48,6 @@ namespace Bot.Jobs
             {
                 File.Delete(thumbnailFilePath);
             }
-        }
-
-        public async Task Execute(IJobExecutionContext context)
-        {
-            var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.CleanerQueueUrl);
-            var queueMessage = response.Messages.FirstOrDefault();
-
-            if (queueMessage is null)
-            {
-                return;
-            }
-
-            var (inputFilePath, outputFilePath, thumbnailFilePath) = JsonSerializer.Deserialize<CleanerMessage>(queueMessage.Body)!;
-
-            CleanupFiles(inputFilePath, outputFilePath, thumbnailFilePath);
 
             await _sqsClient.DeleteMessageAsync(_servicesSettings.CleanerQueueUrl, queueMessage.ReceiptHandle);
         }
