@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Bot.Settings
+﻿namespace Bot.Settings
 {
     public class ServicesSettings
     {
@@ -13,7 +11,5 @@ namespace Bot.Settings
         public string UploaderQueueUrl { get; set; }
 
         public string CleanerQueueUrl { get; set; }
-
-        public TimeSpan ProcessingDelay { get; set; }
     }
 }

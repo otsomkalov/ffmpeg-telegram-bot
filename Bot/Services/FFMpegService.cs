@@ -44,11 +44,11 @@ namespace Bot.Services
 
             var process = Process.Start(processStartInfo);
 
-            await process.WaitForExitAsync();
-
             var error = await process.StandardError.ReadToEndAsync();
 
-            if (!string.IsNullOrEmpty(error))
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode != 0)
             {
                 _logger.LogError(error);
             }
@@ -72,6 +72,13 @@ namespace Bot.Services
             var process = Process.Start(processStartInfo);
 
             await process.WaitForExitAsync();
+
+            var error = await process.StandardError.ReadToEndAsync();
+
+            if (process.ExitCode != 0)
+            {
+                _logger.LogError(error);
+            }
 
             return thumbnailFilePath;
         }
