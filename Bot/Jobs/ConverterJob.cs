@@ -73,10 +73,6 @@ namespace Bot.Jobs
                 catch (Exception e)
                 {
                     _logger.LogError(e, "Error during Converter execution:");
-
-                    await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                        sentMessage.MessageId,
-                        "Error during conversion!");
                 }
             }
         }
