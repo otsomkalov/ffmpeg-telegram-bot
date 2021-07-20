@@ -69,10 +69,6 @@ namespace Bot.Jobs
                 catch (Exception e)
                 {
                     _logger.LogError(e, "Error during Downloader execution:");
-
-                    await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                        sentMessage.MessageId,
-                        "Error during file download!");
                 }
             }
         }

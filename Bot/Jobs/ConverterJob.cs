@@ -11,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Quartz;
 using Telegram.Bot;
-using Telegram.Bot.Types;
 
 namespace Bot.Jobs
 {
