@@ -72,7 +72,7 @@ namespace Bot.Jobs
                 }
                 catch (ApiRequestException telegramException)
                 {
-                    _logger.LogError(telegramException, "Error during Downloader execution:");
+                    _logger.LogError(telegramException, "Telegram error during Converter execution:");
                     await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle);
                 }
                 catch (Exception e)
