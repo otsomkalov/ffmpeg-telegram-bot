@@ -46,7 +46,7 @@ namespace Bot.Jobs
 
                 try
                 {
-                    if (sentMessage.Date > DateTime.UtcNow.AddDays(-2))
+                    if (sentMessage.Date < DateTime.UtcNow.AddDays(-2))
                     {
                         sentMessage = await _bot.SendTextMessageAsync(new(receivedMessage.Chat.Id),
                             "Downloading file 🚀",
