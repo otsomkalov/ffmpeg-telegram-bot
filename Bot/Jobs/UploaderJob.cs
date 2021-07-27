@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Quartz;
 using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using File = System.IO.File;
 
@@ -66,6 +67,11 @@ namespace Bot.Jobs
                         JsonSerializer.Serialize(cleanerMessage, JsonSerializerConstants.SerializerOptions));
 
                     await _sqsClient.DeleteMessageAsync(_servicesSettings.UploaderQueueUrl, queueMessage.ReceiptHandle);
+                }
+                catch (ApiRequestException telegramException)
+                {
+                    _logger.LogError(telegramException, "Telegram error during Uploader execution:");
+                    await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle);
                 }
                 catch (Exception e)
                 {
