@@ -8,6 +8,7 @@ using Amazon.SQS;
 using Bot.Constants;
 using Bot.Models;
 using Bot.Settings;
+using Telegram.Bot.Exceptions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Quartz;
@@ -45,9 +46,19 @@ namespace Bot.Jobs
 
                 try
                 {
-                    await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                        sentMessage.MessageId,
-                        "Downloading file 🚀");
+                    if (sentMessage.Date > DateTime.UtcNow.AddDays(-2))
+                    {
+                        sentMessage = await _bot.SendTextMessageAsync(new(receivedMessage.Chat.Id),
+                            "Downloading file 🚀",
+                            replyToMessageId: receivedMessage.MessageId,
+                            disableNotification: true);
+                    }
+                    else
+                    {
+                        await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                            sentMessage.MessageId,
+                            "Downloading file 🚀");
+                    }
 
                     var inputFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.webm");
 
@@ -64,6 +75,11 @@ namespace Bot.Jobs
                         sentMessage.MessageId,
                         "Your file is waiting to be converted 🕒");
 
+                    await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle);
+                }
+                catch (ApiRequestException telegramException)
+                {
+                    _logger.LogError(telegramException, "Error during Downloader execution:");
                     await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle);
                 }
                 catch (Exception e)

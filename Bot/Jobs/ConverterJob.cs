@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Quartz;
 using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 
 namespace Bot.Jobs
 {
@@ -68,6 +69,11 @@ namespace Bot.Jobs
 
                     await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl,
                         queueMessage.ReceiptHandle);
+                }
+                catch (ApiRequestException telegramException)
+                {
+                    _logger.LogError(telegramException, "Error during Downloader execution:");
+                    await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle);
                 }
                 catch (Exception e)
                 {
