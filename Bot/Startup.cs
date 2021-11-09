@@ -29,7 +29,7 @@ namespace Bot
         {
             services.AddSingleton<ITelegramBotClient>(provider =>
                 {
-                    var telegramSettings = provider.GetService<IOptions<TelegramSettings>>().Value;
+                    var telegramSettings = provider.GetRequiredService<IOptions<TelegramSettings>>().Value;
 
                     return new TelegramBotClient(telegramSettings.Token);
                 })
@@ -44,7 +44,7 @@ namespace Bot
             services.AddQuartz(q =>
             {
                 // base quartz scheduler, job and trigger configuration
-                q.UseMicrosoftDependencyInjectionScopedJobFactory();
+                q.UseMicrosoftDependencyInjectionJobFactory();
 
                 q.AddCronJob<DownloaderJob>(_configuration)
                     .AddCronJob<ConverterJob>(_configuration)
@@ -60,6 +60,8 @@ namespace Bot
             });
 
             services.AddHealthChecks();
+
+            services.AddHttpClient();
 
             services.AddApplicationInsightsTelemetry();
 

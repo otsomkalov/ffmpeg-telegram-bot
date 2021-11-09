@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Bot.Constants
 {
@@ -6,7 +7,7 @@ namespace Bot.Constants
     {
         public static readonly JsonSerializerOptions SerializerOptions = new()
         {
-            IgnoreNullValues = true
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
     }
 }
