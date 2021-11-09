@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Amazon.SQS;
@@ -25,13 +26,15 @@ namespace Bot.Jobs
         private readonly ITelegramBotClient _bot;
         private readonly ILogger<DownloaderJob> _logger;
         private readonly ServicesSettings _servicesSettings;
+        private readonly IHttpClientFactory _clientFactory;
 
         public DownloaderJob(ITelegramBotClient bot, ILogger<DownloaderJob> logger,
-            IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient)
+            IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient, IHttpClientFactory clientFactory)
         {
             _bot = bot;
             _logger = logger;
             _sqsClient = sqsClient;
+            _clientFactory = clientFactory;
             _servicesSettings = servicesSettings.Value;
         }
 
@@ -91,46 +94,41 @@ namespace Bot.Jobs
 
         private async Task HandleLinkAsync(Message receivedMessage, Message sentMessage, string linkOrFileName, string inputFilePath)
         {
-            using var webClient = new WebClient();
+            using var client = _clientFactory.CreateClient();
+            await using var fileStream = File.Create(inputFilePath);
 
-            try
+            using var response = await client.GetAsync(linkOrFileName);
+
+            switch (response.StatusCode)
             {
-                await webClient.DownloadFileTaskAsync(linkOrFileName, inputFilePath);
+                case HttpStatusCode.Unauthorized:
 
-                await SendMessageAsync(receivedMessage, sentMessage, inputFilePath);
+                    await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                        sentMessage.MessageId,
+                        $"{linkOrFileName}\nI am not authorized to download video from this source 🚫");
+
+                    return;
+
+                case HttpStatusCode.NotFound:
+
+                    await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                        sentMessage.MessageId,
+                        $"{linkOrFileName}\nVideo not found ⚠️");
+
+                    return;
+
+                case HttpStatusCode.InternalServerError:
+
+                    await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                        sentMessage.MessageId,
+                        $"{linkOrFileName}\nServer error 🛑");
+
+                    return;
             }
-            catch (WebException webException)
-            {
-                if (webException.Response is HttpWebResponse response)
-                {
-                    switch (response.StatusCode)
-                    {
-                        case HttpStatusCode.Unauthorized:
 
-                            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                                sentMessage.MessageId,
-                                $"{linkOrFileName}\nI am not authorized to download video from this source 🚫");
+            await response.Content.CopyToAsync(fileStream);
 
-                            return;
-
-                        case HttpStatusCode.NotFound:
-
-                            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                                sentMessage.MessageId,
-                                $"{linkOrFileName}\nVideo not found ⚠️");
-
-                            return;
-
-                        case HttpStatusCode.InternalServerError:
-
-                            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                                sentMessage.MessageId,
-                                $"{linkOrFileName}\nServer error 🛑");
-
-                            return;
-                    }
-                }
-            }
+            await SendMessageAsync(receivedMessage, sentMessage, inputFilePath);
         }
 
         private async Task HandleDocumentAsync(Message receivedMessage, Message sentMessage, string inputFileName)
