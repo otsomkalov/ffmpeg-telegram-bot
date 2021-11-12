@@ -55,7 +55,7 @@ namespace Bot.Services
         {
             if (!string.IsNullOrEmpty(text))
             {
-                if (text.StartsWith("!nsfw", StringComparison.InvariantCultureIgnoreCase))
+                if (text.Contains("!nsfw", StringComparison.InvariantCultureIgnoreCase))
                 {
                     return;
                 }
