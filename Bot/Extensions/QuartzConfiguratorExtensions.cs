@@ -1,24 +1,19 @@
-using Bot.Settings;
-using Microsoft.Extensions.Configuration;
-using Quartz;
+namespace Bot.Extensions;
 
-namespace Bot.Extensions
+public static class QuartzConfiguratorExtensions
 {
-    public static class QuartzConfiguratorExtensions
+    public static IServiceCollectionQuartzConfigurator AddCronJob<TJob>(this IServiceCollectionQuartzConfigurator quartzConfigurator, IConfiguration configuration) where TJob : IJob
     {
-        public static IServiceCollectionQuartzConfigurator AddCronJob<TJob>(this IServiceCollectionQuartzConfigurator quartzConfigurator, IConfiguration configuration) where TJob : IJob
-        {
-            var jobType = typeof(TJob);
-            var jobKey = new JobKey(jobType.Name);
+        var jobType = typeof(TJob);
+        var jobKey = new JobKey(jobType.Name);
 
-            quartzConfigurator.AddJob<TJob>(jobKey);
+        quartzConfigurator.AddJob<TJob>(jobKey);
 
-            quartzConfigurator
-                .AddTrigger(triggerConfigurator => triggerConfigurator.ForJob(jobKey)
+        quartzConfigurator
+            .AddTrigger(triggerConfigurator => triggerConfigurator.ForJob(jobKey)
                 .WithIdentity(jobType.Name)
                 .WithCronSchedule(configuration[$"{QuartzSettings.SectionName}:{jobType.Name}"]));
 
-            return quartzConfigurator;
-        }
+        return quartzConfigurator;
     }
 }

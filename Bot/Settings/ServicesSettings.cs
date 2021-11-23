@@ -1,15 +1,14 @@
-﻿namespace Bot.Settings
+﻿namespace Bot.Settings;
+
+public class ServicesSettings
 {
-    public class ServicesSettings
-    {
-        public const string SectionName = "Services";
+    public const string SectionName = "Services";
 
-        public string DownloaderQueueUrl { get; set; }
+    public string DownloaderQueueUrl { get; set; }
 
-        public string ConverterQueueUrl { get; set; }
+    public string ConverterQueueUrl { get; set; }
 
-        public string UploaderQueueUrl { get; set; }
+    public string UploaderQueueUrl { get; set; }
 
-        public string CleanerQueueUrl { get; set; }
-    }
+    public string CleanerQueueUrl { get; set; }
 }
