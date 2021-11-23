@@ -71,9 +71,9 @@ namespace Bot.Services
 
             var process = Process.Start(processStartInfo);
 
-            await process.WaitForExitAsync();
-
             var error = await process.StandardError.ReadToEndAsync();
+
+            await process.WaitForExitAsync();
 
             if (process.ExitCode != 0)
             {
