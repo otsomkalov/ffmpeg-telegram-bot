@@ -1,9 +1,8 @@
-﻿namespace Bot.Settings
+﻿namespace Bot.Settings;
+
+public class FFMpegSettings
 {
-    public class FFMpegSettings
-    {
-        public const string SectionName = "FFMpeg";
+    public const string SectionName = "FFMpeg";
         
-        public string Path { get; set; }
-    }
+    public string Path { get; set; }
 }

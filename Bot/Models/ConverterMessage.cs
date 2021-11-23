@@ -1,8 +1,3 @@
-﻿using Telegram.Bot.Types;
+﻿namespace Bot.Models;
 
-namespace Bot.Models
-{
-    public record ConverterMessage(Message ReceivedMessage, Message SentMessage, string InputFilePath)
-    {
-    }
-}
+public record ConverterMessage(Message ReceivedMessage, Message SentMessage, string InputFilePath);
