@@ -1,36 +1,32 @@
-﻿using System.Threading.Tasks;
-using Bot.Services;
-using Microsoft.AspNetCore.Mvc;
-using Telegram.Bot.Types;
+﻿using Microsoft.AspNetCore.Mvc;
 using Telegram.Bot.Types.Enums;
 
-namespace Bot.Controllers
+namespace Bot.Controllers;
+
+[ApiController]
+[Route("update")]
+public class UpdateController : ControllerBase
 {
-    [ApiController]
-    [Route("update")]
-    public class UpdateController : ControllerBase
+    private readonly MessageService _messageService;
+
+    public UpdateController(MessageService messageService)
     {
-        private readonly MessageService _messageService;
+        _messageService = messageService;
+    }
 
-        public UpdateController(MessageService messageService)
+    [HttpPost]
+    public async Task<IActionResult> ProcessUpdateAsync(Update update)
+    {
+        if (update.Type == UpdateType.Message)
         {
-            _messageService = messageService;
+            await _messageService.HandleAsync(update.Message);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> ProcessUpdateAsync(Update update)
+        if (update.Type == UpdateType.ChannelPost)
         {
-            if (update.Type == UpdateType.Message)
-            {
-                await _messageService.HandleAsync(update.Message);
-            }
-
-            if (update.Type == UpdateType.ChannelPost)
-            {
-                await _messageService.HandleAsync(update.ChannelPost);
-            }
-
-            return Ok();
+            await _messageService.HandleAsync(update.ChannelPost);
         }
+
+        return Ok();
     }
 }

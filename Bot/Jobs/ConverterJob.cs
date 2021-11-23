@@ -1,84 +1,72 @@
-using System;
-using System.Linq;
-using System.Text.Json;
-using System.Threading.Tasks;
-using Amazon.SQS;
 using Bot.Constants;
-using Bot.Models;
-using Bot.Services;
-using Bot.Settings;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Quartz;
-using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 
-namespace Bot.Jobs
+namespace Bot.Jobs;
+
+[DisallowConcurrentExecution]
+public class ConverterJob : IJob
 {
-    [DisallowConcurrentExecution]
-    public class ConverterJob : IJob
+    private readonly IAmazonSQS _sqsClient;
+    private readonly ITelegramBotClient _bot;
+    private readonly ILogger<ConverterJob> _logger;
+    private readonly ServicesSettings _servicesSettings;
+    private readonly FFMpegService _ffMpegService;
+
+    public ConverterJob(ITelegramBotClient bot, ILogger<ConverterJob> logger, IOptions<ServicesSettings> servicesSettings,
+        IAmazonSQS sqsClient, FFMpegService ffMpegService)
     {
-        private readonly IAmazonSQS _sqsClient;
-        private readonly ITelegramBotClient _bot;
-        private readonly ILogger<ConverterJob> _logger;
-        private readonly ServicesSettings _servicesSettings;
-        private readonly FFMpegService _ffMpegService;
+        _bot = bot;
+        _logger = logger;
+        _sqsClient = sqsClient;
+        _ffMpegService = ffMpegService;
+        _servicesSettings = servicesSettings.Value;
+    }
 
-        public ConverterJob(ITelegramBotClient bot, ILogger<ConverterJob> logger, IOptions<ServicesSettings> servicesSettings,
-            IAmazonSQS sqsClient, FFMpegService ffMpegService)
+    public async Task Execute(IJobExecutionContext context)
+    {
+        var receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(_servicesSettings.ConverterQueueUrl);
+        var queueMessage = receiveMessageResponse.Messages.FirstOrDefault();
+
+        if (queueMessage != null)
         {
-            _bot = bot;
-            _logger = logger;
-            _sqsClient = sqsClient;
-            _ffMpegService = ffMpegService;
-            _servicesSettings = servicesSettings.Value;
-        }
+            var (receivedMessage, sentMessage, inputFilePath) = JsonSerializer.Deserialize<ConverterMessage>(queueMessage.Body)!;
 
-        public async Task Execute(IJobExecutionContext context)
-        {
-            var receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(_servicesSettings.ConverterQueueUrl);
-            var queueMessage = receiveMessageResponse.Messages.FirstOrDefault();
-
-            if (queueMessage != null)
+            try
             {
-                var (receivedMessage, sentMessage, inputFilePath) = JsonSerializer.Deserialize<ConverterMessage>(queueMessage.Body)!;
+                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                    sentMessage.MessageId,
+                    "Conversion in progress 🚀");
 
-                try
-                {
-                    await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                        sentMessage.MessageId,
-                        "Conversion in progress 🚀");
+                var outputFilePath = await _ffMpegService.ConvertAsync(inputFilePath);
 
-                    var outputFilePath = await _ffMpegService.ConvertAsync(inputFilePath);
+                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                    sentMessage.MessageId,
+                    "Generating thumbnail 🖼️");
 
-                    await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                        sentMessage.MessageId,
-                        "Generating thumbnail 🖼️");
+                var thumbnailFilePath = await _ffMpegService.GetThumbnailAsync(outputFilePath);
 
-                    var thumbnailFilePath = await _ffMpegService.GetThumbnailAsync(outputFilePath);
+                var uploaderMessage = new UploaderMessage(receivedMessage, sentMessage, inputFilePath, outputFilePath,
+                    thumbnailFilePath);
 
-                    var uploaderMessage = new UploaderMessage(receivedMessage, sentMessage, inputFilePath, outputFilePath,
-                        thumbnailFilePath);
+                await _sqsClient.SendMessageAsync(_servicesSettings.UploaderQueueUrl,
+                    JsonSerializer.Serialize(uploaderMessage, JsonSerializerConstants.SerializerOptions));
 
-                    await _sqsClient.SendMessageAsync(_servicesSettings.UploaderQueueUrl,
-                        JsonSerializer.Serialize(uploaderMessage, JsonSerializerConstants.SerializerOptions));
+                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                    sentMessage.MessageId,
+                    "Your file is waiting to be uploaded 🕒");
 
-                    await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                        sentMessage.MessageId,
-                        "Your file is waiting to be uploaded 🕒");
-
-                    await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl,
-                        queueMessage.ReceiptHandle);
-                }
-                catch (ApiRequestException telegramException)
-                {
-                    _logger.LogError(telegramException, "Telegram error during Converter execution:");
-                    await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl, queueMessage.ReceiptHandle);
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, "Error during Converter execution:");
-                }
+                await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl,
+                    queueMessage.ReceiptHandle);
+            }
+            catch (ApiRequestException telegramException)
+            {
+                _logger.LogError(telegramException, "Telegram error during Converter execution:");
+                await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl, queueMessage.ReceiptHandle);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error during Converter execution:");
             }
         }
     }

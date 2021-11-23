@@ -1,9 +1,4 @@
-﻿using Telegram.Bot.Types;
+﻿namespace Bot.Models;
 
-namespace Bot.Models
-{
-    public record UploaderMessage(Message ReceivedMessage, Message SentMessage, string InputFilePath, string OutputFilePath,
-        string ThumbnailFilePath)
-    {
-    }
-}
+public record UploaderMessage(Message ReceivedMessage, Message SentMessage, string InputFilePath, string OutputFilePath,
+    string ThumbnailFilePath);
