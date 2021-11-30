@@ -9,7 +9,7 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  ImageName: 'infinitu1327/webmtomp4bot'
+  ImageName: 'infinitu1327/webmtomp4bot:dev'
 
 stages:
 - stage: Build
@@ -26,7 +26,6 @@ stages:
         command: 'Build an image'
         dockerFile: '**/Dockerfile'
         imageName: '$(ImageName)'
-        includeLatestTag: true
         useDefaultContext: false
         buildContext: '.'
     - task: Docker@1
