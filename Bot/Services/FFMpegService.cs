@@ -65,14 +65,14 @@ public class FFMpegService
 
         var process = Process.Start(processStartInfo);
 
+            var error = await process.StandardError.ReadToEndAsync();
+
         await process.WaitForExitAsync();
 
-        var error = await process.StandardError.ReadToEndAsync();
-
-        if (process.ExitCode != 0)
-        {
-            _logger.LogError(error);
-        }
+            if (process.ExitCode != 0)
+            {
+                _logger.LogError(error);
+            }
 
         return thumbnailFilePath;
     }
