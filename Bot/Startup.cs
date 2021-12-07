@@ -20,7 +20,9 @@ public class Startup
             {
                 var settings = provider.GetRequiredService<IOptions<TelegramSettings>>().Value;
 
-                return new TelegramBotClient(settings.Token, baseUrl: settings.ApiUrl);
+                var apiUrl = string.IsNullOrEmpty(settings.ApiUrl) ? null : settings.ApiUrl;
+
+                return new TelegramBotClient(settings.Token, baseUrl: apiUrl);
             })
             .AddSingleton<IAmazonSQS>(_ => new AmazonSQSClient(new EnvironmentVariablesAWSCredentials(), RegionEndpoint.EUCentral1))
             .AddSingleton<FFMpegService>()
