@@ -8,25 +8,33 @@ namespace Bot.Controllers;
 public class UpdateController : ControllerBase
 {
     private readonly MessageService _messageService;
+    private readonly ILogger<UpdateController> _logger;
 
-    public UpdateController(MessageService messageService)
+    public UpdateController(MessageService messageService, ILogger<UpdateController> logger)
     {
         _messageService = messageService;
+        _logger = logger;
     }
 
     [HttpPost]
-    public async Task<IActionResult> ProcessUpdateAsync(Update update)
+    public async Task ProcessUpdateAsync(Update update)
     {
-        if (update.Type == UpdateType.Message)
+        var handleUpdateTask = update.Type switch
         {
-            await _messageService.HandleAsync(update.Message);
-        }
+            UpdateType.Message => _messageService.HandleAsync(update.Message),
+            UpdateType.ChannelPost => _messageService.HandleAsync(update.ChannelPost),
+            _ => Task.CompletedTask
+        };
 
-        if (update.Type == UpdateType.ChannelPost)
+        try
         {
-            await _messageService.HandleAsync(update.ChannelPost);
+            await handleUpdateTask;
         }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
 
-        return Ok();
+            _logger.LogError(e, "Error during processing update");
+        }
     }
 }
