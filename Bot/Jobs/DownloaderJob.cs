@@ -14,15 +14,15 @@ public class DownloaderJob : IJob
     private readonly ITelegramBotClient _bot;
     private readonly ILogger<DownloaderJob> _logger;
     private readonly ServicesSettings _servicesSettings;
-    private readonly IHttpClientFactory _clientFactory;
+    private readonly HttpClient _client;
 
     public DownloaderJob(ITelegramBotClient bot, ILogger<DownloaderJob> logger,
-        IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient, IHttpClientFactory clientFactory)
+        IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient, HttpClient client)
     {
         _bot = bot;
         _logger = logger;
         _sqsClient = sqsClient;
-        _clientFactory = clientFactory;
+        _client = client;
         _servicesSettings = servicesSettings.Value;
     }
 
@@ -80,12 +80,11 @@ public class DownloaderJob : IJob
 
     private async Task HandleLinkAsync(Message receivedMessage, Message sentMessage, string linkOrFileName, string inputFilePath)
     {
-        using var client = _clientFactory.CreateClient();
         await using var fileStream = File.Create(inputFilePath);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, linkOrFileName);
 
-        using var response = await client.SendAsync(request);
+        using var response = await _client.SendAsync(request);
 
         var message = response.StatusCode switch
         {
