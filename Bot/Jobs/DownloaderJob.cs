@@ -83,7 +83,9 @@ public class DownloaderJob : IJob
         using var client = _clientFactory.CreateClient();
         await using var fileStream = File.Create(inputFilePath);
 
-        using var response = await client.GetAsync(linkOrFileName);
+        using var request = new HttpRequestMessage(HttpMethod.Get, linkOrFileName);
+
+        using var response = await client.SendAsync(request);
 
         var message = response.StatusCode switch
         {
