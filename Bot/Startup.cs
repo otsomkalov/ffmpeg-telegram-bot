@@ -1,5 +1,6 @@
 ﻿using Amazon;
 using Amazon.Runtime;
+using Bot.Constants;
 using Bot.Extensions;
 using Microsoft.Extensions.Options;
 
@@ -50,7 +51,10 @@ public class Startup
 
         services.AddHealthChecks();
 
-        services.AddHttpClient();
+        services.AddHttpClient<DownloaderJob>(client =>
+        {
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(HttpClientConstants.ChromeUserAgent);
+        });
 
         services.AddApplicationInsightsTelemetry();
 
