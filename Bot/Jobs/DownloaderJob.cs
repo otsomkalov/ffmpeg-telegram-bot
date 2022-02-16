@@ -31,52 +31,50 @@ public class DownloaderJob : IJob
         var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.DownloaderQueueUrl);
         var queueMessage = response.Messages.FirstOrDefault();
 
-        if (queueMessage != null)
+        if (queueMessage == null)
         {
-            var (receivedMessage, sentMessage, link) = JsonSerializer.Deserialize<DownloaderMessage>(queueMessage.Body)!;
+            return;
+        }
 
-            try
+        var (receivedMessage, sentMessage, link) = JsonSerializer.Deserialize<DownloaderMessage>(queueMessage.Body)!;
+
+        try
+        {
+            if (sentMessage.Date < DateTime.UtcNow.AddDays(-2))
             {
-                if (sentMessage.Date < DateTime.UtcNow.AddDays(-2))
-                {
-                    sentMessage = await _bot.SendTextMessageAsync(new(receivedMessage.Chat.Id),
-                        "Downloading file 🚀",
-                        replyToMessageId: receivedMessage.MessageId,
-                        disableNotification: true);
-                }
-                else
-                {
-                    await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                        sentMessage.MessageId,
-                        "Downloading file 🚀");
-                }
-
-                var inputFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.webm");
-
-                if (string.IsNullOrEmpty(link))
-                {
-                    await HandleDocumentAsync(receivedMessage, sentMessage, inputFilePath);
-                }
-                else
-                {
-                    await HandleLinkAsync(receivedMessage, sentMessage, link, inputFilePath);
-                }
-
+                sentMessage = await _bot.SendTextMessageAsync(new(receivedMessage.Chat.Id),
+                    "Downloading file 🚀",
+                    replyToMessageId: receivedMessage.MessageId,
+                    disableNotification: true);
+            }
+            else
+            {
                 await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                     sentMessage.MessageId,
-                    "Your file is waiting to be converted 🕒");
+                    "Downloading file 🚀");
+            }
 
-                await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle);
-            }
-            catch (ApiRequestException telegramException)
+            var inputFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.webm");
+
+            if (string.IsNullOrEmpty(link))
             {
-                _logger.LogError(telegramException, "Telegram error during Uploader execution:");
-                await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle);
+                await HandleDocumentAsync(receivedMessage, sentMessage, inputFilePath);
             }
-            catch (Exception e)
+            else
             {
-                _logger.LogError(e, "Error during Downloader execution:");
+                await HandleLinkAsync(receivedMessage, sentMessage, link, inputFilePath);
             }
+
+            await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle);
+        }
+        catch (ApiRequestException telegramException)
+        {
+            _logger.LogError(telegramException, "Telegram error during Uploader execution:");
+            await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Error during Downloader execution:");
         }
     }
 
@@ -87,31 +85,22 @@ public class DownloaderJob : IJob
 
         using var response = await client.GetAsync(linkOrFileName);
 
-        switch (response.StatusCode)
+        var message = response.StatusCode switch
         {
-            case HttpStatusCode.Unauthorized:
+            HttpStatusCode.Unauthorized => $"{linkOrFileName}\nI am not authorized to download video from this source 🚫",
+            HttpStatusCode.Forbidden => $"{linkOrFileName}\nMy access to this video is forbidden 🚫",
+            HttpStatusCode.NotFound => $"{linkOrFileName}\nVideo not found ⚠️",
+            HttpStatusCode.InternalServerError => $"{linkOrFileName}\nServer error 🛑",
+            _ => null
+        };
 
-                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                    sentMessage.MessageId,
-                    $"{linkOrFileName}\nI am not authorized to download video from this source 🚫");
+        if (message != null)
+        {
+            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                sentMessage.MessageId,
+                message);
 
-                return;
-
-            case HttpStatusCode.NotFound:
-
-                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                    sentMessage.MessageId,
-                    $"{linkOrFileName}\nVideo not found ⚠️");
-
-                return;
-
-            case HttpStatusCode.InternalServerError:
-
-                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                    sentMessage.MessageId,
-                    $"{linkOrFileName}\nServer error 🛑");
-
-                return;
+            return;
         }
 
         await response.Content.CopyToAsync(fileStream);
@@ -135,5 +124,9 @@ public class DownloaderJob : IJob
 
         await _sqsClient.SendMessageAsync(_servicesSettings.ConverterQueueUrl,
             JsonSerializer.Serialize(converterMessage, JsonSerializerConstants.SerializerOptions));
+
+        await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+            sentMessage.MessageId,
+            "Your file is waiting to be converted 🕒");
     }
 }

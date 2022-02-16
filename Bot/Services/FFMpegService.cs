@@ -22,6 +22,7 @@ public class FFMpegService
         {
             $"-i {filePath}",
             "-filter:v scale='trunc(iw/2)*2:trunc(ih/2)*2'",
+            "-c:v h264",
             "-c:a aac",
             "-max_muxing_queue_size 1024",
             outputFilePath
@@ -44,7 +45,7 @@ public class FFMpegService
 
         if (process.ExitCode != 0)
         {
-            _logger.LogError(error);
+            _logger.LogError("FFMpeg error occured: {Error}", error);
         }
 
         return outputFilePath;
@@ -71,7 +72,7 @@ public class FFMpegService
 
             if (process.ExitCode != 0)
             {
-                _logger.LogError(error);
+                _logger.LogError("FFMpeg error occured: {Error}", error);
             }
 
         return thumbnailFilePath;
