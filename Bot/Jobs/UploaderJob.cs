@@ -49,6 +49,7 @@ public class UploaderJob : IJob
 
             await _bot.SendVideoAsync(new(sentMessage.Chat.Id),
                 new InputMedia(videoStream, outputFilePath),
+                caption: "🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/",
                 replyToMessageId: receivedMessage.MessageId,
                 thumb: new(imageStream, thumbnailFilePath),
                 disableNotification: true);

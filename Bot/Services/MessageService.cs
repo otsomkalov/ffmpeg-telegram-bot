@@ -24,7 +24,7 @@ public class MessageService
         if (message.Text?.StartsWith("/start") == true)
         {
             await _bot.SendTextMessageAsync(new(message.Chat.Id),
-                "Send me a video or link to WebM or add bot to group.");
+                "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/");
         }
         else
         {
