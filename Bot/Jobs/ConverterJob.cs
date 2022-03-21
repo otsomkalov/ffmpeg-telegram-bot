@@ -28,46 +28,48 @@ public class ConverterJob : IJob
         var receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(_servicesSettings.ConverterQueueUrl);
         var queueMessage = receiveMessageResponse.Messages.FirstOrDefault();
 
-        if (queueMessage != null)
+        if (queueMessage == null)
         {
-            var (receivedMessage, sentMessage, inputFilePath) = JsonSerializer.Deserialize<ConverterMessage>(queueMessage.Body)!;
+            return;
+        }
 
-            try
-            {
-                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                    sentMessage.MessageId,
-                    "Conversion in progress 🚀");
+        var (receivedMessage, sentMessage, inputFilePath) = JsonSerializer.Deserialize<ConverterMessage>(queueMessage.Body)!;
 
-                var outputFilePath = await _ffMpegService.ConvertAsync(inputFilePath);
+        try
+        {
+            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                sentMessage.MessageId,
+                "Conversion in progress 🚀");
 
-                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                    sentMessage.MessageId,
-                    "Generating thumbnail 🖼️");
+            var outputFilePath = await _ffMpegService.ConvertAsync(inputFilePath);
 
-                var thumbnailFilePath = await _ffMpegService.GetThumbnailAsync(outputFilePath);
+            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                sentMessage.MessageId,
+                "Generating thumbnail 🖼️");
 
-                var uploaderMessage = new UploaderMessage(receivedMessage, sentMessage, inputFilePath, outputFilePath,
-                    thumbnailFilePath);
+            var thumbnailFilePath = await _ffMpegService.GetThumbnailAsync(outputFilePath);
 
-                await _sqsClient.SendMessageAsync(_servicesSettings.UploaderQueueUrl,
-                    JsonSerializer.Serialize(uploaderMessage, JsonSerializerConstants.SerializerOptions));
+            var uploaderMessage = new UploaderMessage(receivedMessage, sentMessage, inputFilePath, outputFilePath,
+                thumbnailFilePath);
 
-                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                    sentMessage.MessageId,
-                    "Your file is waiting to be uploaded 🕒");
+            await _sqsClient.SendMessageAsync(_servicesSettings.UploaderQueueUrl,
+                JsonSerializer.Serialize(uploaderMessage, JsonSerializerConstants.SerializerOptions));
 
-                await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl,
-                    queueMessage.ReceiptHandle);
-            }
-            catch (ApiRequestException telegramException)
-            {
-                _logger.LogError(telegramException, "Telegram error during Converter execution:");
-                await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl, queueMessage.ReceiptHandle);
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Error during Converter execution:");
-            }
+            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                sentMessage.MessageId,
+                "Your file is waiting to be uploaded 🕒");
+
+            await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl,
+                queueMessage.ReceiptHandle);
+        }
+        catch (ApiRequestException telegramException)
+        {
+            _logger.LogError(telegramException, "Telegram error during Converter execution:");
+            await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl, queueMessage.ReceiptHandle);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Error during Converter execution:");
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Amazon;
 using Amazon.Runtime;
+using Bot.Constants;
 using Bot.Extensions;
 using Microsoft.Extensions.Options;
 
@@ -20,9 +21,7 @@ public class Startup
             {
                 var settings = provider.GetRequiredService<IOptions<TelegramSettings>>().Value;
 
-                Console.WriteLine(settings.ApiUrl);
-
-                return new TelegramBotClient(settings.Token, baseUrl: settings.ApiUrl);
+                return new TelegramBotClient(settings.Token);
             })
             .AddSingleton<IAmazonSQS>(_ => new AmazonSQSClient(new EnvironmentVariablesAWSCredentials(), RegionEndpoint.EUCentral1))
             .AddSingleton<FFMpegService>()
@@ -52,7 +51,10 @@ public class Startup
 
         services.AddHealthChecks();
 
-        services.AddHttpClient();
+        services.AddHttpClient<DownloaderJob>(client =>
+        {
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(HttpClientConstants.ChromeUserAgent);
+        });
 
         services.AddApplicationInsightsTelemetry();
 

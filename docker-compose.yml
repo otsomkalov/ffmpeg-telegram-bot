@@ -1,16 +1,32 @@
-version: '3.4'
+version: '3.1'
 
 services:
-  webmtomp4telegrambot:
-    image: ${DOCKER_REGISTRY-}webmtomp4bot
-    build:
-      context: .
-      dockerfile: Bot/Dockerfile
+  webm-to-mp4-telegram-bot:
+    container_name: webm-to-mp4-telegram-bot
+    image: infinitu1327/webmtomp4bot
+    depends_on:
+      - telegram-bot-api
     ports:
-      - "8083:80"
-    volumes:
-      - /var/log/bots:/app/log
-  telegramapi:
-    image: julyighor/telegram-bot-api
+      - "65501:80"
+    environment:
+      Telegram:Token:
+      Services:CleanerQueueUrl:
+      Services:ConverterQueueUrl:
+      Services:DownloaderQueueUrl:
+      Services:UploaderQueueUrl:
+      ApplicationInsights:InstrumentationKey:
+      FFMpeg:Path:
+      Quartz:CleanerJob: '*/15 * * * * ?'
+      Quartz:ConverterJob: '*/15 * * * * ?'
+      Quartz:DownloaderJob: '*/15 * * * * ?'
+      Quartz:UploaderJob: '*/15 * * * * ?'
+      AWS_ACCESS_KEY_ID:
+      AWS_SECRET_ACCESS_KEY:
+  telegram-bot-api:
+    image: aiogram/telegram-bot-api:latest
     ports:
-      - "8081:8081" 
+      - "65500:8081"
+    environment:
+      TELEGRAM_API_ID:
+      TELEGRAM_API_HASH:
+      TELEGRAM_LOCAL: 'true'
