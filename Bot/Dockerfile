@@ -15,5 +15,7 @@ RUN dotnet publish "Bot.csproj" -c Release -o /app/publish
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-COPY --from=mwader/static-ffmpeg /ffmpeg /ffprobe /usr/local/bin/
+RUN apt update -y
+RUN apt upgrade -y
+RUN apt install ffmpeg -y
 ENTRYPOINT ["dotnet", "Bot.dll"]
