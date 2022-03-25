@@ -2,7 +2,6 @@
 using Amazon.Runtime;
 using Bot.BackgroundServices;
 using Bot.Constants;
-using Bot.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace Bot;
@@ -56,11 +55,7 @@ public class Startup
             app.UseDeveloperExceptionPage();
         }
 
-        app.UseStaticFiles("/telegram-bot-api-data");
-
         app.UseRouting();
-
-        app.UseHealthChecks("/health");
 
         app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
     }
