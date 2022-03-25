@@ -1,16 +1,20 @@
 ﻿using System.Text.RegularExpressions;
 using Bot.Constants;
+using Bot.Extensions;
 using Microsoft.Extensions.Options;
+using Message = Telegram.Bot.Types.Message;
 
 namespace Bot.Services;
 
 public class MessageService
 {
+    private const string WebmMimeType = "video/webm";
+
+    private static readonly Regex WebmLinkRegex = new("https?[^ ]*.webm");
+
     private readonly ITelegramBotClient _bot;
     private readonly IAmazonSQS _sqsClient;
     private readonly ServicesSettings _servicesSettings;
-    private static readonly Regex WebmRegex = new("[^ ]*.webm");
-    private static readonly Regex WebmLinkRegex = new("https?[^ ]*.webm");
 
     public MessageService(ITelegramBotClient bot, IAmazonSQS sqsClient, IOptions<ServicesSettings> servicesSettings)
     {
@@ -21,41 +25,32 @@ public class MessageService
 
     public async Task HandleAsync(Message message)
     {
+        if (message.From?.IsBot == true)
+        {
+            return;
+        }
+
         if (message.Text?.StartsWith("/start") == true)
         {
             await _bot.SendTextMessageAsync(new(message.Chat.Id),
                 "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/");
+
+            return;
         }
-        else
+
+        if (message.Text?.Contains("!nsfw", StringComparison.InvariantCultureIgnoreCase) == false)
         {
-            await ProcessMessageAsync(message);
-        }
-    }
-
-    private async Task ProcessMessageAsync(Message message)
-    {
-        await ExtractLinksFromTextAsync(message, message.Text);
-        await ExtractLinksFromTextAsync(message, message.Caption);
-
-        if (!string.IsNullOrEmpty(message.Document?.FileName) && WebmRegex.IsMatch(message.Document.FileName))
-        {
-            await SendMessageAsync(message);
-        }
-    }
-
-    private async Task ExtractLinksFromTextAsync(Message message, string text)
-    {
-        if (!string.IsNullOrEmpty(text))
-        {
-            if (text.Contains("!nsfw", StringComparison.InvariantCultureIgnoreCase))
-            {
-                return;
-            }
-
-            foreach (Match match in WebmLinkRegex.Matches(text))
+            foreach (Match match in WebmLinkRegex.Matches(message.Text))
             {
                 await SendMessageAsync(message, match.Value);
             }
+
+            return;
+        }
+
+        if (message.Document?.MimeType?.EqualsCI(WebmMimeType) == true)
+        {
+            await SendMessageAsync(message);
         }
     }
 
@@ -68,7 +63,10 @@ public class MessageService
 
         var downloaderMessage = new DownloaderMessage(receivedMessage, sentMessage, link);
 
-        await _sqsClient.SendMessageAsync(_servicesSettings.DownloaderQueueUrl,
-            JsonSerializer.Serialize(downloaderMessage, JsonSerializerConstants.SerializerOptions));
+        await _sqsClient.SendMessageAsync(new()
+        {
+            QueueUrl = _servicesSettings.DownloaderQueueUrl,
+            MessageBody = JsonSerializer.Serialize(downloaderMessage, JsonSerializerConstants.SerializerOptions)
+        });
     }
 }

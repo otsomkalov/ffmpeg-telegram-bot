@@ -22,7 +22,7 @@ public class FFMpegService
         {
             $"-i {filePath}",
             "-filter:v scale='trunc(iw/2)*2:trunc(ih/2)*2'",
-            "-c:v h264",
+            "-c:v hevc",
             "-c:a aac",
             "-max_muxing_queue_size 1024",
             outputFilePath
