@@ -1,5 +1,6 @@
 ﻿using Amazon;
 using Amazon.Runtime;
+using Bot.BackgroundServices;
 using Bot.Constants;
 using Bot.Extensions;
 using Microsoft.Extensions.Options;
@@ -27,31 +28,16 @@ public class Startup
             .AddSingleton<FFMpegService>()
             .AddSingleton<MessageService>();
 
+        services.AddHostedService<Cleaner>()
+            .AddHostedService<Converter>()
+            .AddHostedService<Downloader>()
+            .AddHostedService<Uploader>();
+
         services.Configure<ServicesSettings>(_configuration.GetSection(ServicesSettings.SectionName))
             .Configure<TelegramSettings>(_configuration.GetSection(TelegramSettings.SectionName))
             .Configure<FFMpegSettings>(_configuration.GetSection(FFMpegSettings.SectionName));
 
-        services.AddQuartz(q =>
-        {
-            // base quartz scheduler, job and trigger configuration
-            q.UseMicrosoftDependencyInjectionJobFactory();
-
-            q.AddCronJob<DownloaderJob>(_configuration)
-                .AddCronJob<ConverterJob>(_configuration)
-                .AddCronJob<UploaderJob>(_configuration)
-                .AddCronJob<CleanerJob>(_configuration);
-        });
-
-        // ASP.NET Core hosting
-        services.AddQuartzServer(options =>
-        {
-            // when shutting down we want jobs to complete gracefully
-            options.WaitForJobsToComplete = true;
-        });
-
-        services.AddHealthChecks();
-
-        services.AddHttpClient<DownloaderJob>(client =>
+        services.AddHttpClient<Downloader>(client =>
         {
             client.DefaultRequestHeaders.UserAgent.ParseAdd(HttpClientConstants.ChromeUserAgent);
         });

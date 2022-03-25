@@ -3,17 +3,16 @@ using Microsoft.Extensions.Options;
 using Telegram.Bot.Exceptions;
 using File = System.IO.File;
 
-namespace Bot.Jobs;
+namespace Bot.BackgroundServices;
 
-[DisallowConcurrentExecution]
-public class UploaderJob : IJob
+public class Uploader : BackgroundService
 {
     private readonly ITelegramBotClient _bot;
     private readonly IAmazonSQS _sqsClient;
-    private readonly ILogger<UploaderJob> _logger;
+    private readonly ILogger<Uploader> _logger;
     private readonly ServicesSettings _servicesSettings;
 
-    public UploaderJob(ITelegramBotClient bot, ILogger<UploaderJob> logger,
+    public Uploader(ITelegramBotClient bot, ILogger<Uploader> logger,
         IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient)
     {
         _bot = bot;
@@ -22,9 +21,24 @@ public class UploaderJob : IJob
         _servicesSettings = servicesSettings.Value;
     }
 
-    public async Task Execute(IJobExecutionContext context)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.UploaderQueueUrl);
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await RunAsync(stoppingToken);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error during Uploader execution:");
+            }
+        }
+    }
+
+    public async Task RunAsync(CancellationToken cancellationToken)
+    {
+        var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.UploaderQueueUrl, cancellationToken);
         var queueMessage = response.Messages.FirstOrDefault();
 
         if (queueMessage == null)

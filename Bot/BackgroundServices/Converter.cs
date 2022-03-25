@@ -2,18 +2,17 @@ using Bot.Constants;
 using Microsoft.Extensions.Options;
 using Telegram.Bot.Exceptions;
 
-namespace Bot.Jobs;
+namespace Bot.BackgroundServices;
 
-[DisallowConcurrentExecution]
-public class ConverterJob : IJob
+public class Converter : BackgroundService
 {
     private readonly IAmazonSQS _sqsClient;
     private readonly ITelegramBotClient _bot;
-    private readonly ILogger<ConverterJob> _logger;
+    private readonly ILogger<Converter> _logger;
     private readonly ServicesSettings _servicesSettings;
     private readonly FFMpegService _ffMpegService;
 
-    public ConverterJob(ITelegramBotClient bot, ILogger<ConverterJob> logger, IOptions<ServicesSettings> servicesSettings,
+    public Converter(ITelegramBotClient bot, ILogger<Converter> logger, IOptions<ServicesSettings> servicesSettings,
         IAmazonSQS sqsClient, FFMpegService ffMpegService)
     {
         _bot = bot;
@@ -23,9 +22,24 @@ public class ConverterJob : IJob
         _servicesSettings = servicesSettings.Value;
     }
 
-    public async Task Execute(IJobExecutionContext context)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(_servicesSettings.ConverterQueueUrl);
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await RunAsync(stoppingToken);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error during Converter execution:");
+            }
+        }
+    }
+
+    private async Task RunAsync(CancellationToken cancellationToken)
+    {
+        var receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(_servicesSettings.ConverterQueueUrl, cancellationToken);
         var queueMessage = receiveMessageResponse.Messages.FirstOrDefault();
 
         if (queueMessage == null)
@@ -39,13 +53,13 @@ public class ConverterJob : IJob
         {
             await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                 sentMessage.MessageId,
-                "Conversion in progress 🚀");
+                "Conversion in progress 🚀", cancellationToken: cancellationToken);
 
             var outputFilePath = await _ffMpegService.ConvertAsync(inputFilePath);
 
             await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                 sentMessage.MessageId,
-                "Generating thumbnail 🖼️");
+                "Generating thumbnail 🖼️", cancellationToken: cancellationToken);
 
             var thumbnailFilePath = await _ffMpegService.GetThumbnailAsync(outputFilePath);
 
@@ -53,19 +67,19 @@ public class ConverterJob : IJob
                 thumbnailFilePath);
 
             await _sqsClient.SendMessageAsync(_servicesSettings.UploaderQueueUrl,
-                JsonSerializer.Serialize(uploaderMessage, JsonSerializerConstants.SerializerOptions));
+                JsonSerializer.Serialize(uploaderMessage, JsonSerializerConstants.SerializerOptions), cancellationToken);
 
             await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                 sentMessage.MessageId,
-                "Your file is waiting to be uploaded 🕒");
+                "Your file is waiting to be uploaded 🕒", cancellationToken: cancellationToken);
 
             await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl,
-                queueMessage.ReceiptHandle);
+                queueMessage.ReceiptHandle, cancellationToken);
         }
         catch (ApiRequestException telegramException)
         {
             _logger.LogError(telegramException, "Telegram error during Converter execution:");
-            await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl, queueMessage.ReceiptHandle);
+            await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl, queueMessage.ReceiptHandle, cancellationToken);
         }
         catch (Exception e)
         {

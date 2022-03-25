@@ -32,9 +32,7 @@ public class UpdateController : ControllerBase
         }
         catch (Exception e)
         {
-            Console.WriteLine(e);
-
-            _logger.LogError(e, "Error during processing update");
+            _logger.LogError(e, "Error during processing update:");
         }
     }
 }
