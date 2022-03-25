@@ -11,4 +11,6 @@ public class ServicesSettings
     public string UploaderQueueUrl { get; set; }
 
     public string CleanerQueueUrl { get; set; }
+
+    public TimeSpan Delay { get; init; }
 }

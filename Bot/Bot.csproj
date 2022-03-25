@@ -9,19 +9,16 @@
     <PackageReference Include="AWSSDK.SQS" Version="3.7.1.36" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.19.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.0" />
-    <PackageReference Include="Quartz.AspNetCore" Version="3.3.3" />
     <PackageReference Include="Telegram.Bot" Version="16.0.2" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Amazon.SQS" />
-    <Using Include="Bot.Jobs" />
     <Using Include="Bot.Models" />
     <Using Include="Bot.Services" />
     <Using Include="Bot.Settings" />
     <Using Include="Telegram.Bot" />
     <Using Include="Telegram.Bot.Types" />
-    <Using Include="Quartz" />
     <Using Include="System.Text.Json" />
   </ItemGroup>
 </Project>

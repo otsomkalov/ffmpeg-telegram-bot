@@ -3,17 +3,16 @@ using Microsoft.Extensions.Options;
 using Telegram.Bot.Exceptions;
 using File = System.IO.File;
 
-namespace Bot.Jobs;
+namespace Bot.BackgroundServices;
 
-[DisallowConcurrentExecution]
-public class UploaderJob : IJob
+public class Uploader : BackgroundService
 {
     private readonly ITelegramBotClient _bot;
     private readonly IAmazonSQS _sqsClient;
-    private readonly ILogger<UploaderJob> _logger;
+    private readonly ILogger<Uploader> _logger;
     private readonly ServicesSettings _servicesSettings;
 
-    public UploaderJob(ITelegramBotClient bot, ILogger<UploaderJob> logger,
+    public Uploader(ITelegramBotClient bot, ILogger<Uploader> logger,
         IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient)
     {
         _bot = bot;
@@ -22,9 +21,26 @@ public class UploaderJob : IJob
         _servicesSettings = servicesSettings.Value;
     }
 
-    public async Task Execute(IJobExecutionContext context)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.UploaderQueueUrl);
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await RunAsync(stoppingToken);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error during Uploader execution:");
+            }
+
+            await Task.Delay(_servicesSettings.Delay, stoppingToken);
+        }
+    }
+
+    public async Task RunAsync(CancellationToken cancellationToken)
+    {
+        var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.UploaderQueueUrl, cancellationToken);
         var queueMessage = response.Messages.FirstOrDefault();
 
         if (queueMessage == null)
@@ -39,32 +55,32 @@ public class UploaderJob : IJob
         {
             await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                 sentMessage.MessageId,
-                "Your file is uploading 🚀");
+                "Your file is uploading 🚀", cancellationToken: cancellationToken);
 
             await using var videoStream = File.OpenRead(outputFilePath);
             await using var imageStream = File.OpenRead(thumbnailFilePath);
 
             await _bot.DeleteMessageAsync(new(sentMessage.Chat.Id),
-                sentMessage.MessageId);
+                sentMessage.MessageId, cancellationToken);
 
             await _bot.SendVideoAsync(new(sentMessage.Chat.Id),
                 new InputMedia(videoStream, outputFilePath),
                 caption: "🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/",
                 replyToMessageId: receivedMessage.MessageId,
                 thumb: new(imageStream, thumbnailFilePath),
-                disableNotification: true);
+                disableNotification: true, cancellationToken: cancellationToken);
 
             var cleanerMessage = new CleanerMessage(inputFilePath, outputFilePath, thumbnailFilePath);
 
             await _sqsClient.SendMessageAsync(_servicesSettings.CleanerQueueUrl,
-                JsonSerializer.Serialize(cleanerMessage, JsonSerializerConstants.SerializerOptions));
+                JsonSerializer.Serialize(cleanerMessage, JsonSerializerConstants.SerializerOptions), cancellationToken);
 
-            await _sqsClient.DeleteMessageAsync(_servicesSettings.UploaderQueueUrl, queueMessage.ReceiptHandle);
+            await _sqsClient.DeleteMessageAsync(_servicesSettings.UploaderQueueUrl, queueMessage.ReceiptHandle, cancellationToken);
         }
         catch (ApiRequestException telegramException)
         {
             _logger.LogError(telegramException, "Telegram error during Uploader execution:");
-            await _sqsClient.DeleteMessageAsync(_servicesSettings.UploaderQueueUrl, queueMessage.ReceiptHandle);
+            await _sqsClient.DeleteMessageAsync(_servicesSettings.UploaderQueueUrl, queueMessage.ReceiptHandle, cancellationToken);
         }
         catch (Exception e)
         {

@@ -4,18 +4,17 @@ using Microsoft.Extensions.Options;
 using Telegram.Bot.Exceptions;
 using File = System.IO.File;
 
-namespace Bot.Jobs;
+namespace Bot.BackgroundServices;
 
-[DisallowConcurrentExecution]
-public class DownloaderJob : IJob
+public class Downloader : BackgroundService
 {
     private readonly IAmazonSQS _sqsClient;
     private readonly ITelegramBotClient _bot;
-    private readonly ILogger<DownloaderJob> _logger;
+    private readonly ILogger<Downloader> _logger;
     private readonly ServicesSettings _servicesSettings;
     private readonly HttpClient _client;
 
-    public DownloaderJob(ITelegramBotClient bot, ILogger<DownloaderJob> logger,
+    public Downloader(ITelegramBotClient bot, ILogger<Downloader> logger,
         IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient, HttpClient client)
     {
         _bot = bot;
@@ -25,9 +24,26 @@ public class DownloaderJob : IJob
         _servicesSettings = servicesSettings.Value;
     }
 
-    public async Task Execute(IJobExecutionContext context)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.DownloaderQueueUrl);
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await RunAsync(stoppingToken);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error during Downloader execution:");
+            }
+
+            await Task.Delay(_servicesSettings.Delay, stoppingToken);
+        }
+    }
+
+    private async Task RunAsync(CancellationToken cancellationToken)
+    {
+        var response = await _sqsClient.ReceiveMessageAsync(_servicesSettings.DownloaderQueueUrl, cancellationToken);
         var queueMessage = response.Messages.FirstOrDefault();
 
         if (queueMessage == null)
@@ -44,32 +60,34 @@ public class DownloaderJob : IJob
                 sentMessage = await _bot.SendTextMessageAsync(new(receivedMessage.Chat.Id),
                     "Downloading file 🚀",
                     replyToMessageId: receivedMessage.MessageId,
-                    disableNotification: true);
+                    disableNotification: true, cancellationToken: cancellationToken);
             }
             else
             {
                 await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                     sentMessage.MessageId,
-                    "Downloading file 🚀");
+                    "Downloading file 🚀", cancellationToken: cancellationToken);
             }
 
             var inputFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.webm");
 
             var handleMessageTask = downloaderMessageType switch
             {
-                DownloaderMessageType.Link => HandleLinkAsync(receivedMessage, sentMessage, link, inputFilePath),
-                DownloaderMessageType.Video => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath, receivedMessage.Video.FileId),
-                DownloaderMessageType.Document => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath, receivedMessage.Document.FileId),
+                DownloaderMessageType.Link => HandleLinkAsync(receivedMessage, sentMessage, link, inputFilePath, cancellationToken),
+                DownloaderMessageType.Video => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath,
+                    receivedMessage.Video.FileId, cancellationToken),
+                DownloaderMessageType.Document => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath,
+                    receivedMessage.Document.FileId, cancellationToken),
             };
 
             await handleMessageTask;
 
-            await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle);
+            await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle, cancellationToken);
         }
         catch (ApiRequestException telegramException)
         {
             _logger.LogError(telegramException, "Telegram error during Uploader execution:");
-            await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle);
+            await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle, cancellationToken);
         }
         catch (Exception e)
         {
@@ -77,11 +95,12 @@ public class DownloaderJob : IJob
         }
     }
 
-    private async Task HandleLinkAsync(Message receivedMessage, Message sentMessage, string linkOrFileName, string inputFilePath)
+    private async Task HandleLinkAsync(Message receivedMessage, Message sentMessage, string linkOrFileName, string inputFilePath,
+        CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, linkOrFileName);
 
-        using var response = await _client.SendAsync(request);
+        using var response = await _client.SendAsync(request, cancellationToken);
 
         var message = response.StatusCode switch
         {
@@ -96,38 +115,39 @@ public class DownloaderJob : IJob
         {
             await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                 sentMessage.MessageId,
-                message);
+                message, cancellationToken: cancellationToken);
 
             return;
         }
 
         await using var fileStream = File.Create(inputFilePath);
 
-        await response.Content.CopyToAsync(fileStream);
+        await response.Content.CopyToAsync(fileStream, cancellationToken);
 
-        await SendMessageAsync(receivedMessage, sentMessage, inputFilePath);
+        await SendMessageAsync(receivedMessage, sentMessage, inputFilePath, cancellationToken);
     }
 
     private async Task HandleFileBaseAsync(Message receivedMessage, Message sentMessage, string inputFileName,
-        string fileId)
+        string fileId, CancellationToken cancellationToken)
     {
         await using (var fileStream = File.Create(inputFileName))
         {
-            await _bot.GetInfoAndDownloadFileAsync(fileId, fileStream);
+            await _bot.GetInfoAndDownloadFileAsync(fileId, fileStream, cancellationToken);
         }
 
-        await SendMessageAsync(receivedMessage, sentMessage, inputFileName);
+        await SendMessageAsync(receivedMessage, sentMessage, inputFileName, cancellationToken);
     }
 
-    private async Task SendMessageAsync(Message receivedMessage, Message sentMessage, string inputFilePath)
+    private async Task SendMessageAsync(Message receivedMessage, Message sentMessage, string inputFilePath,
+        CancellationToken cancellationToken)
     {
         var converterMessage = new ConverterMessage(receivedMessage, sentMessage, inputFilePath);
 
         await _sqsClient.SendMessageAsync(_servicesSettings.ConverterQueueUrl,
-            JsonSerializer.Serialize(converterMessage, JsonSerializerConstants.SerializerOptions));
+            JsonSerializer.Serialize(converterMessage, JsonSerializerConstants.SerializerOptions), cancellationToken);
 
         await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
             sentMessage.MessageId,
-            "Your file is waiting to be converted 🕒");
+            "Your file is waiting to be converted 🕒", cancellationToken: cancellationToken);
     }
 }

@@ -341,6 +341,3 @@ healthchecksdb
 
 **/appsettings.Development.json
 **/appsettings.Production.json
-
-**/azure-pipelines.dev.yml
-**/azure-pipelines.dev.yaml
