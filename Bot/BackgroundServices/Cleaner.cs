@@ -28,6 +28,8 @@ public class Cleaner : BackgroundService
             {
                 _logger.LogError(e, "Error during Cleaner execution:");
             }
+
+            await Task.Delay(_servicesSettings.Delay, stoppingToken);
         }
     }
 

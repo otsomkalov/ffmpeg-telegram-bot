@@ -36,6 +36,8 @@ public class Downloader : BackgroundService
             {
                 _logger.LogError(e, "Error during Downloader execution:");
             }
+
+            await Task.Delay(_servicesSettings.Delay, stoppingToken);
         }
     }
 
@@ -72,8 +74,10 @@ public class Downloader : BackgroundService
             var handleMessageTask = downloaderMessageType switch
             {
                 DownloaderMessageType.Link => HandleLinkAsync(receivedMessage, sentMessage, link, inputFilePath, cancellationToken),
-                DownloaderMessageType.Video => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath, receivedMessage.Video.FileId, cancellationToken),
-                DownloaderMessageType.Document => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath, receivedMessage.Document.FileId ,cancellationToken),
+                DownloaderMessageType.Video => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath,
+                    receivedMessage.Video.FileId, cancellationToken),
+                DownloaderMessageType.Document => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath,
+                    receivedMessage.Document.FileId, cancellationToken),
             };
 
             await handleMessageTask;
@@ -96,7 +100,7 @@ public class Downloader : BackgroundService
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, linkOrFileName);
 
-        using var response = await _client.SendAsync(request);
+        using var response = await _client.SendAsync(request, cancellationToken);
 
         var message = response.StatusCode switch
         {
@@ -111,14 +115,14 @@ public class Downloader : BackgroundService
         {
             await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                 sentMessage.MessageId,
-                message);
+                message, cancellationToken: cancellationToken);
 
             return;
         }
 
         await using var fileStream = File.Create(inputFilePath);
 
-        await response.Content.CopyToAsync(fileStream);
+        await response.Content.CopyToAsync(fileStream, cancellationToken);
 
         await SendMessageAsync(receivedMessage, sentMessage, inputFilePath, cancellationToken);
     }
@@ -134,7 +138,8 @@ public class Downloader : BackgroundService
         await SendMessageAsync(receivedMessage, sentMessage, inputFileName, cancellationToken);
     }
 
-    private async Task SendMessageAsync(Message receivedMessage, Message sentMessage, string inputFilePath, CancellationToken cancellationToken)
+    private async Task SendMessageAsync(Message receivedMessage, Message sentMessage, string inputFilePath,
+        CancellationToken cancellationToken)
     {
         var converterMessage = new ConverterMessage(receivedMessage, sentMessage, inputFilePath);
 

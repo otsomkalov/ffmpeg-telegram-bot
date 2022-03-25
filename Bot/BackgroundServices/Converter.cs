@@ -34,6 +34,8 @@ public class Converter : BackgroundService
             {
                 _logger.LogError(e, "Error during Converter execution:");
             }
+
+            await Task.Delay(_servicesSettings.Delay, stoppingToken);
         }
     }
 
