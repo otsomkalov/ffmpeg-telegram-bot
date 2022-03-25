@@ -58,8 +58,8 @@ public class DownloaderJob : IJob
             var handleMessageTask = downloaderMessageType switch
             {
                 DownloaderMessageType.Link => HandleLinkAsync(receivedMessage, sentMessage, link, inputFilePath),
-                DownloaderMessageType.Video => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath, downloaderMessageType),
-                DownloaderMessageType.Document => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath, downloaderMessageType),
+                DownloaderMessageType.Video => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath, receivedMessage.Video.FileId),
+                DownloaderMessageType.Document => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath, receivedMessage.Document.FileId),
             };
 
             await handleMessageTask;
@@ -109,16 +109,10 @@ public class DownloaderJob : IJob
     }
 
     private async Task HandleFileBaseAsync(Message receivedMessage, Message sentMessage, string inputFileName,
-        DownloaderMessageType downloaderMessageType)
+        string fileId)
     {
         await using (var fileStream = File.Create(inputFileName))
         {
-            var fileId = downloaderMessageType switch
-            {
-                DownloaderMessageType.Video => receivedMessage.Video.FileName,
-                DownloaderMessageType.Document => receivedMessage.Document.FileId
-            };
-
             await _bot.GetInfoAndDownloadFileAsync(fileId, fileStream);
         }
 
