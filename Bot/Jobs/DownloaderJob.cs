@@ -1,9 +1,8 @@
 using System.Net;
 using Bot.Constants;
-using Telegram.Bot.Exceptions;
 using Microsoft.Extensions.Options;
+using Telegram.Bot.Exceptions;
 using File = System.IO.File;
-using Message = Telegram.Bot.Types.Message;
 
 namespace Bot.Jobs;
 
@@ -36,7 +35,7 @@ public class DownloaderJob : IJob
             return;
         }
 
-        var (receivedMessage, sentMessage, link) = JsonSerializer.Deserialize<DownloaderMessage>(queueMessage.Body)!;
+        var (receivedMessage, sentMessage, link, downloaderMessageType) = JsonSerializer.Deserialize<DownloaderMessage>(queueMessage.Body)!;
 
         try
         {
@@ -56,14 +55,14 @@ public class DownloaderJob : IJob
 
             var inputFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.webm");
 
-            if (string.IsNullOrEmpty(link))
+            var handleMessageTask = downloaderMessageType switch
             {
-                await HandleDocumentAsync(receivedMessage, sentMessage, inputFilePath);
-            }
-            else
-            {
-                await HandleLinkAsync(receivedMessage, sentMessage, link, inputFilePath);
-            }
+                DownloaderMessageType.Link => HandleLinkAsync(receivedMessage, sentMessage, link, inputFilePath),
+                DownloaderMessageType.Video => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath, downloaderMessageType),
+                DownloaderMessageType.Document => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath, downloaderMessageType),
+            };
+
+            await handleMessageTask;
 
             await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle);
         }
@@ -80,8 +79,6 @@ public class DownloaderJob : IJob
 
     private async Task HandleLinkAsync(Message receivedMessage, Message sentMessage, string linkOrFileName, string inputFilePath)
     {
-        await using var fileStream = File.Create(inputFilePath);
-
         using var request = new HttpRequestMessage(HttpMethod.Get, linkOrFileName);
 
         using var response = await _client.SendAsync(request);
@@ -104,16 +101,25 @@ public class DownloaderJob : IJob
             return;
         }
 
+        await using var fileStream = File.Create(inputFilePath);
+
         await response.Content.CopyToAsync(fileStream);
 
         await SendMessageAsync(receivedMessage, sentMessage, inputFilePath);
     }
 
-    private async Task HandleDocumentAsync(Message receivedMessage, Message sentMessage, string inputFileName)
+    private async Task HandleFileBaseAsync(Message receivedMessage, Message sentMessage, string inputFileName,
+        DownloaderMessageType downloaderMessageType)
     {
         await using (var fileStream = File.Create(inputFileName))
         {
-            await _bot.GetInfoAndDownloadFileAsync(receivedMessage.Document.FileId, fileStream);
+            var fileId = downloaderMessageType switch
+            {
+                DownloaderMessageType.Video => receivedMessage.Video.FileName,
+                DownloaderMessageType.Document => receivedMessage.Document.FileId
+            };
+
+            await _bot.GetInfoAndDownloadFileAsync(fileId, fileStream);
         }
 
         await SendMessageAsync(receivedMessage, sentMessage, inputFileName);
