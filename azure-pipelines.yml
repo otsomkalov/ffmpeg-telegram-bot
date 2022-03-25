@@ -1,4 +1,4 @@
-trigger:
+﻿trigger:
   branches:
     include:
       - main
@@ -7,9 +7,6 @@ pr: none
 
 pool:
   vmImage: 'ubuntu-latest'
-
-variables:
-  ImageName: 'infinitu1327/webmtomp4bot'
 
 stages:
   - stage: Build

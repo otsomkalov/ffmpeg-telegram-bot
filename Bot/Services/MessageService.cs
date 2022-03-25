@@ -42,7 +42,7 @@ public class MessageService
         {
             foreach (Match match in WebmLinkRegex.Matches(message.Text))
             {
-                await SendMessageAsync(message, match.Value);
+                await SendMessageAsync(message, DownloaderMessageType.Link, match.Value);
             }
 
             return;
@@ -50,18 +50,25 @@ public class MessageService
 
         if (message.Document?.MimeType?.EqualsCI(WebmMimeType) == true)
         {
-            await SendMessageAsync(message);
+            await SendMessageAsync(message, DownloaderMessageType.Document);
+
+            return;
+        }
+
+        if (message.Video?.MimeType?.EqualsCI(WebmMimeType) == true)
+        {
+            await SendMessageAsync(message, DownloaderMessageType.Video);
         }
     }
 
-    private async Task SendMessageAsync(Message receivedMessage, string link = null)
+    private async Task SendMessageAsync(Message receivedMessage, DownloaderMessageType downloaderMessageType, string link = null)
     {
         var sentMessage = await _bot.SendTextMessageAsync(new(receivedMessage.Chat.Id),
             "File is waiting to be downloaded 🕒",
             replyToMessageId: receivedMessage.MessageId,
             disableNotification: true);
 
-        var downloaderMessage = new DownloaderMessage(receivedMessage, sentMessage, link);
+        var downloaderMessage = new DownloaderMessage(receivedMessage, sentMessage, link, downloaderMessageType);
 
         await _sqsClient.SendMessageAsync(new()
         {
