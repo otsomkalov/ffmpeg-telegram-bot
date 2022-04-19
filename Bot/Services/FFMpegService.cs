@@ -26,6 +26,7 @@ public class FFMpegService
             "-c:a aac",
             "-max_muxing_queue_size 1024",
             "-map 0:v:0",
+            "-map 0:a:0",
             outputFilePath
         };
 
