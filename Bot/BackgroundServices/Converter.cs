@@ -59,6 +59,14 @@ public class Converter : BackgroundService
 
             var outputFilePath = await _ffMpegService.ConvertAsync(inputFilePath);
 
+            if (outputFilePath == null)
+            {
+                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id), sentMessage.MessageId, "Conversion failed 😱",
+                    cancellationToken: cancellationToken);
+
+                return;
+            }
+
             await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                 sentMessage.MessageId,
                 "Generating thumbnail 🖼️", cancellationToken: cancellationToken);

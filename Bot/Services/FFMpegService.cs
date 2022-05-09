@@ -26,7 +26,7 @@ public class FFMpegService
             "-c:a aac",
             "-max_muxing_queue_size 1024",
             "-map 0:v:0",
-            "-map 0:a:0",
+            "-map 0:a?",
             outputFilePath
         };
 
@@ -45,12 +45,14 @@ public class FFMpegService
 
         await process.WaitForExitAsync();
 
-        if (process.ExitCode != 0)
+        if (process.ExitCode == 0)
         {
-            _logger.LogError("FFMpeg error occured: {Error}", error);
+            return outputFilePath;
         }
 
-        return outputFilePath;
+        _logger.LogError("FFMpeg error occured: {Error}", error);
+
+        return null;
     }
 
     public async Task<string> GetThumbnailAsync(string filePath)
@@ -68,14 +70,14 @@ public class FFMpegService
 
         var process = Process.Start(processStartInfo);
 
-            var error = await process.StandardError.ReadToEndAsync();
+        var error = await process.StandardError.ReadToEndAsync();
 
         await process.WaitForExitAsync();
 
-            if (process.ExitCode != 0)
-            {
-                _logger.LogError("FFMpeg error occured: {Error}", error);
-            }
+        if (process.ExitCode != 0)
+        {
+            _logger.LogError("FFMpeg error occured: {Error}", error);
+        }
 
         return thumbnailFilePath;
     }
