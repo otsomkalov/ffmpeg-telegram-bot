@@ -3,7 +3,7 @@ version: '3.1'
 services:
   webm-to-mp4-telegram-bot:
     container_name: webm-to-mp4-telegram-bot
-    image: infinitu1327/webm-to-mp4-telegram-bot:latest
+    image: webm-to-mp4-telegram-bot:latest
     restart: always
     build:
       context: .
