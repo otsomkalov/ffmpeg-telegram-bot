@@ -6,12 +6,13 @@ services:
     image: webm-to-mp4-telegram-bot:dev
     restart: always
     build:
-      context: .
+      context: ./src/
       dockerfile: ./src/Bot/Dockerfile
     depends_on:
       - nginx-telegram-bot-api
     environment:
       Telegram:Token:
+      Telegram:ApiUrl: "http://nginx-telegram-bot-api"
       Services:CleanerQueueUrl:
       Services:ConverterQueueUrl:
       Services:DownloaderQueueUrl:
