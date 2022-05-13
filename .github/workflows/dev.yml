@@ -3,25 +3,24 @@
 on:
   push:
     branches:
+      - dev
+  pull_request:
+    branches:
       - main
 
 jobs:
 
   build:
-
     runs-on: self-hosted
-
     steps:
       - uses: actions/checkout@v3
       - name: Build the Docker image
-        run: docker-compose -f ./docker-compose.yml build --force-rm
+        run: docker-compose -f ./docker-compose.dev.yml build --force-rm
 
   up-container:
-
+    environment: Development
     runs-on: self-hosted
-
     needs: build
-
     steps:
       - name: Run docker container
-        run: docker-compose -p bots -f ./docker-compose.yml -f /root/webm-to-mp4-telegram-bot.yml up -d
+        run: docker-compose -p bots -f ./docker-compose.dev.yml -f /root/webm-to-mp4-telegram-bot.dev.yml up -d
