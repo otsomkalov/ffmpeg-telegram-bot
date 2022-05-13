@@ -2,8 +2,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bot", "Bot\Bot.csproj", "{FF077ED3-78C9-45FE-8FC9-77F7012C49C6}"
 EndProject
-Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-compose.dcproj", "{23D3632F-2537-4498-BEE7-7DAA15E54470}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9325722B-8F26-4705-AFAB-10298EFD2646}"
 	ProjectSection(SolutionItems) = preProject
 		README.MD = README.MD

@@ -1,4 +1,4 @@
-﻿name: Docker Image CI
+﻿name: Build & Deploy Production
 
 on:
   push:
@@ -15,6 +15,7 @@ jobs:
         run: docker-compose -f ./docker-compose.prod.yml build --force-rm
 
   up-container:
+    environment: Production
     runs-on: self-hosted
     needs: build
     steps:

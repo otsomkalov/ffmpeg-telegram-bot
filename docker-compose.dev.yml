@@ -6,12 +6,13 @@ services:
     image: webm-to-mp4-telegram-bot:dev
     restart: always
     build:
-      context: .
+      context: ./src/
       dockerfile: ./Bot/Dockerfile
     depends_on:
-      - telegram-bot-api
+      - nginx-telegram-bot-api
     environment:
       Telegram:Token:
+      Telegram:ApiUrl: "http://nginx-telegram-bot-api"
       Services:CleanerQueueUrl:
       Services:ConverterQueueUrl:
       Services:DownloaderQueueUrl:
@@ -21,12 +22,20 @@ services:
       FFMpeg:Path: /usr/bin/ffmpeg
       AWS_ACCESS_KEY_ID:
       AWS_SECRET_ACCESS_KEY:
+  nginx-telegram-bot-api:
+    image: nginx:alpine
+    restart: always
+    depends_on:
+      - telegram-bot-api
+    volumes:
+      - /telegram-bot-api-data:/var/lib/telegram-bot-api
+      - ./config/nginx:/etc/nginx/conf.d/
+    ports:
+      - "65500:80"
   telegram-bot-api:
     container_name: telegram-bot-api
     image: aiogram/telegram-bot-api:latest
     restart: always
-    ports:
-      - "65500:8081"
     volumes:
       - /telegram-bot-api-data:/var/lib/telegram-bot-api
     environment:
