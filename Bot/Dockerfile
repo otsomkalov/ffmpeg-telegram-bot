@@ -20,4 +20,4 @@ WORKDIR /app
 COPY --from=publish /app/publish .
 RUN apk -U upgrade
 RUN apk add ffmpeg
-ENTRYPOINT ["dotnet", "Bot.dll"]
+ENTRYPOINT ["./Bot"]
