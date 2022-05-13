@@ -7,7 +7,7 @@ services:
     restart: always
     build:
       context: ./src/
-      dockerfile: ./src/Bot/Dockerfile
+      dockerfile: ./Bot/Dockerfile
     depends_on:
       - nginx-telegram-bot-api
     environment:
