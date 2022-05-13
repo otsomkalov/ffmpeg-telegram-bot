@@ -18,7 +18,6 @@ RUN dotnet publish "Bot.csproj" -c Release -o /app/publish \
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-RUN apt update -y
-RUN apt upgrade -y
-RUN apt install ffmpeg -y
+RUN apk -U upgrade
+RUN apk add ffmpeg
 ENTRYPOINT ["dotnet", "Bot.dll"]
