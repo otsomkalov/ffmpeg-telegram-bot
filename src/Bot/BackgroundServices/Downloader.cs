@@ -32,6 +32,10 @@ public class Downloader : BackgroundService
             {
                 await RunAsync(stoppingToken);
             }
+            catch (ApiRequestException telegramException)
+            {
+                _logger.LogError(telegramException, "Telegram error during Downloader execution:");
+            }
             catch (Exception e)
             {
                 _logger.LogError(e, "Error during Downloader execution:");
@@ -53,46 +57,34 @@ public class Downloader : BackgroundService
 
         var (receivedMessage, sentMessage, link, downloaderMessageType) = JsonSerializer.Deserialize<DownloaderMessage>(queueMessage.Body)!;
 
-        try
+        if (sentMessage.Date < DateTime.UtcNow.AddDays(-2))
         {
-            if (sentMessage.Date < DateTime.UtcNow.AddDays(-2))
-            {
-                sentMessage = await _bot.SendTextMessageAsync(new(receivedMessage.Chat.Id),
-                    "Downloading file 🚀",
-                    replyToMessageId: receivedMessage.MessageId,
-                    disableNotification: true, cancellationToken: cancellationToken);
-            }
-            else
-            {
-                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                    sentMessage.MessageId,
-                    "Downloading file 🚀", cancellationToken: cancellationToken);
-            }
-
-            var inputFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.webm");
-
-            var handleMessageTask = downloaderMessageType switch
-            {
-                DownloaderMessageType.Link => HandleLinkAsync(receivedMessage, sentMessage, link, inputFilePath, cancellationToken),
-                DownloaderMessageType.Video => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath,
-                    receivedMessage.Video.FileId, cancellationToken),
-                DownloaderMessageType.Document => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath,
-                    receivedMessage.Document.FileId, cancellationToken),
-            };
-
-            await handleMessageTask;
-
-            await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle, cancellationToken);
+            sentMessage = await _bot.SendTextMessageAsync(new(receivedMessage.Chat.Id),
+                "Downloading file 🚀",
+                replyToMessageId: receivedMessage.MessageId,
+                disableNotification: true, cancellationToken: cancellationToken);
         }
-        catch (ApiRequestException telegramException)
+        else
         {
-            _logger.LogError(telegramException, "Telegram error during Uploader execution:");
-            await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle, cancellationToken);
+            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+                sentMessage.MessageId,
+                "Downloading file 🚀", cancellationToken: cancellationToken);
         }
-        catch (Exception e)
+
+        var inputFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.webm");
+
+        var handleMessageTask = downloaderMessageType switch
         {
-            _logger.LogError(e, "Error during Downloader execution:");
-        }
+            DownloaderMessageType.Link => HandleLinkAsync(receivedMessage, sentMessage, link, inputFilePath, cancellationToken),
+            DownloaderMessageType.Video => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath,
+                receivedMessage.Video.FileId, cancellationToken),
+            DownloaderMessageType.Document => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath,
+                receivedMessage.Document.FileId, cancellationToken),
+        };
+
+        await handleMessageTask;
+
+        await _sqsClient.DeleteMessageAsync(_servicesSettings.DownloaderQueueUrl, queueMessage.ReceiptHandle, cancellationToken);
     }
 
     private async Task HandleLinkAsync(Message receivedMessage, Message sentMessage, string linkOrFileName, string inputFilePath,

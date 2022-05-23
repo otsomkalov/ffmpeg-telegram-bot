@@ -29,6 +29,10 @@ public class Uploader : BackgroundService
             {
                 await RunAsync(stoppingToken);
             }
+            catch (ApiRequestException telegramException)
+            {
+                _logger.LogError(telegramException, "Telegram error during Uploader execution:");
+            }
             catch (Exception e)
             {
                 _logger.LogError(e, "Error during Uploader execution:");
@@ -51,40 +55,28 @@ public class Uploader : BackgroundService
         var (receivedMessage, sentMessage, inputFilePath, outputFilePath, thumbnailFilePath) =
             JsonSerializer.Deserialize<UploaderMessage>(queueMessage.Body)!;
 
-        try
-        {
-            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                sentMessage.MessageId,
-                "Your file is uploading 🚀", cancellationToken: cancellationToken);
+        await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+            sentMessage.MessageId,
+            "Your file is uploading 🚀", cancellationToken: cancellationToken);
 
-            await using var videoStream = File.OpenRead(outputFilePath);
-            await using var imageStream = File.OpenRead(thumbnailFilePath);
+        await using var videoStream = File.OpenRead(outputFilePath);
+        await using var imageStream = File.OpenRead(thumbnailFilePath);
 
-            await _bot.DeleteMessageAsync(new(sentMessage.Chat.Id),
-                sentMessage.MessageId, cancellationToken);
+        await _bot.DeleteMessageAsync(new(sentMessage.Chat.Id),
+            sentMessage.MessageId, cancellationToken);
 
-            await _bot.SendVideoAsync(new(sentMessage.Chat.Id),
-                new InputMedia(videoStream, outputFilePath),
-                caption: "🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/",
-                replyToMessageId: receivedMessage.MessageId,
-                thumb: new(imageStream, thumbnailFilePath),
-                disableNotification: true, cancellationToken: cancellationToken);
+        await _bot.SendVideoAsync(new(sentMessage.Chat.Id),
+            new InputMedia(videoStream, outputFilePath),
+            caption: "🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/",
+            replyToMessageId: receivedMessage.MessageId,
+            thumb: new(imageStream, thumbnailFilePath),
+            disableNotification: true, cancellationToken: cancellationToken);
 
-            var cleanerMessage = new CleanerMessage(inputFilePath, outputFilePath, thumbnailFilePath);
+        var cleanerMessage = new CleanerMessage(inputFilePath, outputFilePath, thumbnailFilePath);
 
-            await _sqsClient.SendMessageAsync(_servicesSettings.CleanerQueueUrl,
-                JsonSerializer.Serialize(cleanerMessage, JsonSerializerConstants.SerializerOptions), cancellationToken);
+        await _sqsClient.SendMessageAsync(_servicesSettings.CleanerQueueUrl,
+            JsonSerializer.Serialize(cleanerMessage, JsonSerializerConstants.SerializerOptions), cancellationToken);
 
-            await _sqsClient.DeleteMessageAsync(_servicesSettings.UploaderQueueUrl, queueMessage.ReceiptHandle, cancellationToken);
-        }
-        catch (ApiRequestException telegramException)
-        {
-            _logger.LogError(telegramException, "Telegram error during Uploader execution:");
-            await _sqsClient.DeleteMessageAsync(_servicesSettings.UploaderQueueUrl, queueMessage.ReceiptHandle, cancellationToken);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Error during Uploader execution:");
-        }
+        await _sqsClient.DeleteMessageAsync(_servicesSettings.UploaderQueueUrl, queueMessage.ReceiptHandle, cancellationToken);
     }
 }

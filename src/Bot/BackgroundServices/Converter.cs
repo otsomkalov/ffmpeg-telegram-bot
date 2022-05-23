@@ -30,6 +30,10 @@ public class Converter : BackgroundService
             {
                 await RunAsync(stoppingToken);
             }
+            catch (ApiRequestException telegramException)
+            {
+                _logger.LogError(telegramException, "Telegram error during Converter execution:");
+            }
             catch (Exception e)
             {
                 _logger.LogError(e, "Error during Converter execution:");
@@ -51,49 +55,37 @@ public class Converter : BackgroundService
 
         var (receivedMessage, sentMessage, inputFilePath) = JsonSerializer.Deserialize<ConverterMessage>(queueMessage.Body)!;
 
-        try
+        await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+            sentMessage.MessageId,
+            "Conversion in progress 🚀", cancellationToken: cancellationToken);
+
+        var outputFilePath = await _ffMpegService.ConvertAsync(inputFilePath);
+
+        if (outputFilePath == null)
         {
-            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                sentMessage.MessageId,
-                "Conversion in progress 🚀", cancellationToken: cancellationToken);
+            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id), sentMessage.MessageId, "Conversion failed 😱",
+                cancellationToken: cancellationToken);
 
-            var outputFilePath = await _ffMpegService.ConvertAsync(inputFilePath);
-
-            if (outputFilePath == null)
-            {
-                await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id), sentMessage.MessageId, "Conversion failed 😱",
-                    cancellationToken: cancellationToken);
-
-                return;
-            }
-
-            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                sentMessage.MessageId,
-                "Generating thumbnail 🖼️", cancellationToken: cancellationToken);
-
-            var thumbnailFilePath = await _ffMpegService.GetThumbnailAsync(outputFilePath);
-
-            var uploaderMessage = new UploaderMessage(receivedMessage, sentMessage, inputFilePath, outputFilePath,
-                thumbnailFilePath);
-
-            await _sqsClient.SendMessageAsync(_servicesSettings.UploaderQueueUrl,
-                JsonSerializer.Serialize(uploaderMessage, JsonSerializerConstants.SerializerOptions), cancellationToken);
-
-            await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
-                sentMessage.MessageId,
-                "Your file is waiting to be uploaded 🕒", cancellationToken: cancellationToken);
-
-            await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl,
-                queueMessage.ReceiptHandle, cancellationToken);
+            return;
         }
-        catch (ApiRequestException telegramException)
-        {
-            _logger.LogError(telegramException, "Telegram error during Converter execution:");
-            await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl, queueMessage.ReceiptHandle, cancellationToken);
-        }
-        catch (Exception e)
-        {
-            _logger.LogError(e, "Error during Converter execution:");
-        }
+
+        await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+            sentMessage.MessageId,
+            "Generating thumbnail 🖼️", cancellationToken: cancellationToken);
+
+        var thumbnailFilePath = await _ffMpegService.GetThumbnailAsync(outputFilePath);
+
+        var uploaderMessage = new UploaderMessage(receivedMessage, sentMessage, inputFilePath, outputFilePath,
+            thumbnailFilePath);
+
+        await _sqsClient.SendMessageAsync(_servicesSettings.UploaderQueueUrl,
+            JsonSerializer.Serialize(uploaderMessage, JsonSerializerConstants.SerializerOptions), cancellationToken);
+
+        await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
+            sentMessage.MessageId,
+            "Your file is waiting to be uploaded 🕒", cancellationToken: cancellationToken);
+
+        await _sqsClient.DeleteMessageAsync(_servicesSettings.ConverterQueueUrl,
+            queueMessage.ReceiptHandle, cancellationToken);
     }
 }

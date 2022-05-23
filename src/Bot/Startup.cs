@@ -41,8 +41,7 @@ public class Startup
             client.DefaultRequestHeaders.UserAgent.ParseAdd(HttpClientConstants.ChromeUserAgent);
         });
 
-        services.AddApplicationInsightsTelemetry()
-            .AddApplicationInsightsTelemetryWorkerService();
+        services.AddApplicationInsightsTelemetry();
 
         services.AddControllers()
             .AddNewtonsoftJson();
