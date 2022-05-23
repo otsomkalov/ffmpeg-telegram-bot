@@ -38,7 +38,7 @@ public class Startup
 
         services.AddHttpClient<Downloader>(client =>
         {
-            client.DefaultRequestHeaders.UserAgent.ParseAdd(HttpClientConstants.ChromeUserAgent);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(HttpClientConstants.CurlUserAgent);
         });
 
         services.AddApplicationInsightsTelemetry();

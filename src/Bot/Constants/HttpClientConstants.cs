@@ -2,5 +2,5 @@
 
 public static class HttpClientConstants
 {
-    public const string ChromeUserAgent = "Chrome";
+    public const string CurlUserAgent = "curl";
 }
