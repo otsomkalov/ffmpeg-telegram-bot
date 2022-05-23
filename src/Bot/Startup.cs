@@ -36,9 +36,9 @@ public class Startup
             .Configure<TelegramSettings>(_configuration.GetSection(TelegramSettings.SectionName))
             .Configure<FFMpegSettings>(_configuration.GetSection(FFMpegSettings.SectionName));
 
-        services.AddHttpClient<Downloader>(client =>
+        services.AddHttpClient(nameof(Downloader), client =>
         {
-            client.DefaultRequestHeaders.UserAgent.ParseAdd(HttpClientConstants.CurlUserAgent);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(HttpClientConstants.ChromeUserAgent);
         });
 
         services.AddApplicationInsightsTelemetry();

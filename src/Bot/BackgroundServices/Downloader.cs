@@ -12,15 +12,15 @@ public class Downloader : BackgroundService
     private readonly ITelegramBotClient _bot;
     private readonly ILogger<Downloader> _logger;
     private readonly ServicesSettings _servicesSettings;
-    private readonly HttpClient _client;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     public Downloader(ITelegramBotClient bot, ILogger<Downloader> logger,
-        IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient, HttpClient client)
+        IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient, IHttpClientFactory httpClientFactory)
     {
         _bot = bot;
         _logger = logger;
         _sqsClient = sqsClient;
-        _client = client;
+        _httpClientFactory = httpClientFactory;
         _servicesSettings = servicesSettings.Value;
     }
 
@@ -90,9 +90,9 @@ public class Downloader : BackgroundService
     private async Task HandleLinkAsync(Message receivedMessage, Message sentMessage, string linkOrFileName, string inputFilePath,
         CancellationToken cancellationToken)
     {
+        using var client = _httpClientFactory.CreateClient(nameof(Downloader));
         using var request = new HttpRequestMessage(HttpMethod.Get, linkOrFileName);
-
-        using var response = await _client.SendAsync(request, cancellationToken);
+        using var response = await client.SendAsync(request, cancellationToken);
 
         var message = response.StatusCode switch
         {
