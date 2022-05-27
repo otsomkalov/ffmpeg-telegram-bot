@@ -108,7 +108,6 @@ public class Downloader : BackgroundService
             var responseString = await response.Content.ReadAsStringAsync(cancellationToken);
 
             _logger.LogInformation("Response data: {ResponseData}", responseString);
-            _logger.LogWarning("Response data: {ResponseData}", responseString);
 
             await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                 sentMessage.MessageId,
