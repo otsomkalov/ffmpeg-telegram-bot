@@ -23,4 +23,4 @@ jobs:
     needs: build
     steps:
       - name: Run docker container
-        run: docker-compose -p bots -f ./docker-compose.dev.yml -f /root/webm-to-mp4-telegram-bot.dev.yml up -d
+        run: docker-compose -p bots -f ./docker-compose.dev.yml -f /root/webm-to-mp4-telegram-bot.dev.yml up -d --force-recreate
