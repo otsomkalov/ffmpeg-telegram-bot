@@ -12,15 +12,15 @@ public class Downloader : BackgroundService
     private readonly ITelegramBotClient _bot;
     private readonly ILogger<Downloader> _logger;
     private readonly ServicesSettings _servicesSettings;
-    private readonly HttpClient _client;
+    private readonly IHttpClientFactory _clientFactory;
 
     public Downloader(ITelegramBotClient bot, ILogger<Downloader> logger,
-        IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient, HttpClient client)
+        IOptions<ServicesSettings> servicesSettings, IAmazonSQS sqsClient, IHttpClientFactory clientFactory)
     {
         _bot = bot;
         _logger = logger;
         _sqsClient = sqsClient;
-        _client = client;
+        _clientFactory = clientFactory;
         _servicesSettings = servicesSettings.Value;
     }
 
@@ -75,9 +75,9 @@ public class Downloader : BackgroundService
             {
                 DownloaderMessageType.Link => HandleLinkAsync(receivedMessage, sentMessage, link, inputFilePath, cancellationToken),
                 DownloaderMessageType.Video => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath,
-                    receivedMessage.Video.FileId, cancellationToken),
+                    receivedMessage.Video!.FileId, cancellationToken),
                 DownloaderMessageType.Document => HandleFileBaseAsync(receivedMessage, sentMessage, inputFilePath,
-                    receivedMessage.Document.FileId, cancellationToken),
+                    receivedMessage.Document!.FileId, cancellationToken),
             };
 
             await handleMessageTask;
@@ -100,19 +100,21 @@ public class Downloader : BackgroundService
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, linkOrFileName);
 
-        using var response = await _client.SendAsync(request, cancellationToken);
+        using var client = _clientFactory.CreateClient(nameof(Downloader));
+        using var response = await client.SendAsync(request, cancellationToken);
 
-        var message = response.StatusCode switch
+        if (!response.IsSuccessStatusCode)
         {
-            HttpStatusCode.Unauthorized => $"{linkOrFileName}\nI am not authorized to download video from this source 🚫",
-            HttpStatusCode.Forbidden => $"{linkOrFileName}\nMy access to this video is forbidden 🚫",
-            HttpStatusCode.NotFound => $"{linkOrFileName}\nVideo not found ⚠️",
-            HttpStatusCode.InternalServerError => $"{linkOrFileName}\nServer error 🛑",
-            _ => null
-        };
+            var message = response.StatusCode switch
+            {
+                HttpStatusCode.Unauthorized => $"{linkOrFileName}\nI am not authorized to download video from this source 🚫",
+                HttpStatusCode.Forbidden => $"{linkOrFileName}\nMy access to this video is forbidden 🚫",
+                HttpStatusCode.NotFound => $"{linkOrFileName}\nVideo not found ⚠️",
+                HttpStatusCode.InternalServerError => $"{linkOrFileName}\nServer error 🛑",
+                HttpStatusCode.ServiceUnavailable => $"{linkOrFileName}\nService with file reported unavailability. Try to convert your video later.",
+                _ => $"{linkOrFileName}\nService responded with {response.StatusCode} status code to request to the file."
+            };
 
-        if (message != null)
-        {
             await _bot.EditMessageTextAsync(new(sentMessage.Chat.Id),
                 sentMessage.MessageId,
                 message, cancellationToken: cancellationToken);
