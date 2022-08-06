@@ -1,7 +1,7 @@
 ﻿using Amazon;
 using Amazon.Runtime;
 using Bot.BackgroundServices;
-using Bot.Constants;
+using Bot.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace Bot;
@@ -36,10 +36,7 @@ public class Startup
             .Configure<TelegramSettings>(_configuration.GetSection(TelegramSettings.SectionName))
             .Configure<FFMpegSettings>(_configuration.GetSection(FFMpegSettings.SectionName));
 
-        services.AddHttpClient<Downloader>(client =>
-        {
-            client.DefaultRequestHeaders.UserAgent.ParseAdd(HttpClientConstants.ChromeUserAgent);
-        });
+        services.RegisterHttpClients();
 
         services.AddApplicationInsightsTelemetry()
             .AddApplicationInsightsTelemetryWorkerService();
