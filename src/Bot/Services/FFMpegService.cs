@@ -39,7 +39,7 @@ public class FFMpegService
             Arguments = string.Join(' ', argumentsParts)
         };
 
-        var process = Process.Start(processStartInfo);
+        using var process = Process.Start(processStartInfo);
 
         var error = await process.StandardError.ReadToEndAsync();
 
@@ -68,7 +68,7 @@ public class FFMpegService
             Arguments = $"-i {filePath} -ss 1 -vframes 1 {thumbnailFilePath}"
         };
 
-        var process = Process.Start(processStartInfo);
+        using var process = Process.Start(processStartInfo);
 
         var error = await process.StandardError.ReadToEndAsync();
 
