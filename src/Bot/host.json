@@ -1,0 +1,15 @@
+{
+  "version": "2.0",
+  "logging": {
+    "logLevel": {
+      "default": "Information",
+      "Azure.Core": "Warning"
+    }
+  },
+  "extensions": {
+    "queues": {
+      "maxDequeueCount": 1,
+      "messageEncoding": "none"
+    }
+  }
+}

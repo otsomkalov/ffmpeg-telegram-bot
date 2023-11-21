@@ -1,0 +1,21 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "APPINSIGHTS_INSTRUMENTATIONKEY": "<Azure AppInsights key>",
+    "Workers__ConnectionString": "<Azure Storage connection string>",
+    "Workers__Downloader__Queue": "downloader",
+    "Workers__Converter__Input__Container": "converter-input",
+    "Workers__Converter__Input__Queue": "converter-input",
+    "Workers__Converter__Output__Container": "converter-output",
+    "Workers__Converter__Output__Queue": "converter-output",
+    "Workers__Thumbnailer__Input__Container": "thumbnailer-input",
+    "Workers__Thumbnailer__Input__Queue": "thumbnailer-input",
+    "Workers__Thumbnailer__Output__Container": "thumbnailer-output",
+    "Workers__Thumbnailer__Output__Queue": "thumbnailer-output",
+    "Database__ConnectionString": "<MongoDB connection string>",
+    "Database__Name": "<Database name>",
+    "Telegram__Token": "<Telegram bot token>"
+  }
+}

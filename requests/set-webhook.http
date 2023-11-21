@@ -1,0 +1,8 @@
+﻿POST https://api.telegram.org/bot{{token}}/setWebhook
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="url"
+Content-Type: text/plain
+
+{{url}}/api/telegram

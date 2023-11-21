@@ -6,7 +6,7 @@ indent_style=space
 insert_final_newline=false
 max_line_length=140
 
-[*.{json,xml,csproj}]
+[*.{json,xml,csproj,fsproj,fs,fsi}]
 indent_size=2
 
 [*.cs]
