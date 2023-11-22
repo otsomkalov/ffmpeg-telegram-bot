@@ -1,4 +1,4 @@
-﻿POST https://api.telegram.org/bot{{token}}/setWebhook
+﻿POST https://{{api}}/bot{{token}}/setWebhook
 Content-Type: multipart/form-data; boundary=WebAppBoundary
 
 --WebAppBoundary

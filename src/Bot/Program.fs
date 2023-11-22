@@ -126,7 +126,8 @@ module Settings =
 
   [<CLIMutable>]
   type TelegramSettings =
-    { Token: string }
+    { Token: string
+      ApiUrl: string }
 
     static member SectionName = "Telegram"
 
@@ -680,7 +681,9 @@ module Startup =
     let settings =
       serviceProvider.GetRequiredService<IOptions<Settings.TelegramSettings>>().Value
 
-    settings.Token |> TelegramBotClient :> ITelegramBotClient
+    let options = TelegramBotClientOptions(settings.Token, settings.ApiUrl)
+
+    options |> TelegramBotClient :> ITelegramBotClient
 
   let private retryPolicy =
     HttpPolicyExtensions
