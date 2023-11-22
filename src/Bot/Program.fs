@@ -1,6 +1,7 @@
 namespace Bot
 
 open System
+open System.IO
 open System.Net
 open System.Net.Http
 open System.Reflection
@@ -28,16 +29,25 @@ open Telegram.Bot.Types.Enums
 open shortid
 open MongoDB.ApplicationInsights.DependencyInjection
 open Polly
-open Polly.Extensions.Http
 
 module Helpers =
+  [<RequireQualifiedAccess>]
+  module String =
+    let compareCI input toCompare =
+      String.Equals(input, toCompare, StringComparison.InvariantCultureIgnoreCase)
+
   let private contains (substring: string) (str: string) =
     str.Contains(substring, StringComparison.InvariantCultureIgnoreCase)
 
   let (|Text|_|) (message: Message) =
-    message.Text
+    message.Text |> Option.ofObj |> Option.filter (String.IsNullOrEmpty >> not)
+
+  let (|Document|_|) (message: Message) =
+    message.Document
     |> Option.ofObj
-    |> Option.filter (String.IsNullOrEmpty >> not)
+    |> Option.filter (fun d ->
+      String.compareCI (Path.GetExtension(d.FileName)) ".webm"
+      && String.compareCI d.MimeType "video/webm")
 
   let (|StartsWith|_|) (substring: string) (str: string) =
     if str.StartsWith(substring, StringComparison.InvariantCultureIgnoreCase) then
@@ -122,11 +132,13 @@ module Settings =
 
 [<RequireQualifiedAccess>]
 module JSON =
-  let private options =
-    JsonFSharpOptions.Default().WithUnionUntagged().ToJsonSerializerOptions()
+  let options =
+    JsonFSharpOptions.Default().WithUnionUntagged().WithUnionUnwrapRecordCases()
+
+  let private options' = options.ToJsonSerializerOptions()
 
   let serialize value =
-    JsonSerializer.Serialize(value, options)
+    JsonSerializer.Serialize(value, options')
 
 [<RequireQualifiedAccess>]
 module Telegram =
@@ -203,10 +215,33 @@ module Telegram =
         do! thumbnailBlob.DeleteAsync() |> Task.map ignore
       }
 
+  type DownloadDocument = string -> string -> Task<string>
+
+  let downloadDocument (bot: ITelegramBotClient) (workersSettings: Settings.WorkersSettings) : DownloadDocument =
+    fun id name ->
+      task {
+        let blobServiceClient = BlobServiceClient(workersSettings.ConnectionString)
+
+        let containerClient =
+          blobServiceClient.GetBlobContainerClient(workersSettings.Converter.Input.Container)
+
+        let blobClient = containerClient.GetBlobClient(name)
+
+        use! blobStream = blobClient.OpenWriteAsync(true)
+
+        do! bot.GetInfoAndDownloadFileAsync(id, blobStream) |> Task.map ignore
+
+        return name
+      }
+
 [<RequireQualifiedAccess>]
 module Queue =
+  type File =
+    | Link of url: string
+    | Document of id: string * name: string
+
   [<CLIMutable>]
-  type DownloaderMessage = { ConversionId: string }
+  type DownloaderMessage = { ConversionId: string; File: File }
 
   let sendDownloaderMessage (workersSettings: Settings.WorkersSettings) =
     fun (message: DownloaderMessage) ->
@@ -269,7 +304,10 @@ module Storage =
       task {
         let! downloadedBlob = convertedFileBlob.DownloadStreamingAsync()
 
-        do! thumbnailerFileBlob.UploadAsync(downloadedBlob.Value.Content, true) |> Task.map ignore
+        do!
+          thumbnailerFileBlob.UploadAsync(downloadedBlob.Value.Content, true)
+          |> Task.map ignore
+
         ()
       }
 
@@ -280,8 +318,7 @@ module Entities =
     { Id: string
       ReceivedMessageId: int
       SentMessageId: int
-      UserId: int64
-      Link: string }
+      UserId: int64 }
 
   [<CLIMutable>]
   type PreparedConversion =
@@ -338,8 +375,7 @@ module Database =
     fun conversion ->
       task {
         let filter =
-          Builders<Entities.PreparedConversion>.Filter
-            .Eq((fun c -> c.Id), conversion.Id)
+          Builders<Entities.PreparedConversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
 
         do! collection.ReplaceOneAsync(filter, conversion) |> Task.map ignore
       }
@@ -422,9 +458,9 @@ type Functions
   let workersSettings = _workersOptions.Value
 
   [<Function("HandleUpdate")>]
-  member this.HandleUpdate([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>]update: Update) : Task<unit> =
+  member this.HandleUpdate([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update) : Task<unit> =
     let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
-    let webmRegex = Regex("https?[^ ]*.webm")
+    let webmLinkRegex = Regex("https?[^ ]*.webm")
 
     match update.Type with
     | UpdateType.Message ->
@@ -436,38 +472,74 @@ type Functions
       match update.Message with
       | Text messageText ->
         match messageText with
-        | StartsWith "/start" -> sendMessage "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/"
-        | Regex webmRegex matches ->
+        | StartsWith "/start" ->
+          sendMessage
+            "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/"
+        | Regex webmLinkRegex matches ->
 
-          let sendUrlToQueue url =
+          let sendUrlToQueue (url: string) =
             task {
               let! sentMessageId = replyToMessage $"File {url} is waiting to be downloaded 🕒"
 
               let newConversion: Entities.NewConversion =
                 { Id = ShortId.Generate()
-                  Link = url
                   UserId = userId
                   ReceivedMessageId = update.Message.MessageId
                   SentMessageId = sentMessageId }
 
               do! createConversion newConversion
 
-              let message: Queue.DownloaderMessage = { ConversionId = newConversion.Id }
+              let message: Queue.DownloaderMessage =
+                { ConversionId = newConversion.Id
+                  File = Queue.File.Link url }
 
               return! sendDownloaderMessage message
             }
 
           matches |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
-        | _ -> sendMessage "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/"
+        | _ ->
+          sendMessage
+            "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/"
+      | Document doc ->
+        let sendDocToQueue (doc: Document) =
+          task {
+            let! sentMessageId = replyToMessage $"File is waiting to be downloaded 🕒"
+
+            let newConversion: Entities.NewConversion =
+              { Id = ShortId.Generate()
+                UserId = userId
+                ReceivedMessageId = update.Message.MessageId
+                SentMessageId = sentMessageId }
+
+            do! createConversion newConversion
+
+            let message: Queue.DownloaderMessage =
+              { ConversionId = newConversion.Id
+                File = Queue.File.Document(doc.FileId, doc.FileName) }
+
+            return! sendDownloaderMessage message
+          }
+
+        doc |> sendDocToQueue
       | _ -> Task.FromResult()
     | _ -> Task.FromResult()
 
   [<Function("Downloader")>]
-  member this.DownloadFile([<QueueTrigger("%Workers:Downloader:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.DownloaderMessage, _: FunctionContext) : Task<unit> =
+  member this.DownloadFile
+    (
+      [<QueueTrigger("%Workers:Downloader:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.DownloaderMessage,
+      _: FunctionContext
+    ) : Task<unit> =
     let sendConverterMessage = Queue.sendConverterMessage workersSettings
     let loadNewConversion = Database.loadNewConversion _db
     let downloadLink = HTTP.downloadLink _httpClientFactory workersSettings
+    let downloadFile = Telegram.downloadDocument _bot workersSettings
     let savePreparedConversion = Database.savePreparedConversion _db
+
+    let downloadFile file =
+      match file with
+      | Queue.File.Document(id, name) -> downloadFile id name |> Task.map Ok
+      | Queue.File.Link link -> downloadLink link
 
     task {
       let! conversion = loadNewConversion message.ConversionId
@@ -476,39 +548,37 @@ type Functions
         Telegram.editMessage _bot conversion.UserId conversion.SentMessageId
 
       return!
-        try
-          task{
-            return!
-              conversion.Link
-              |> downloadLink
-              |> Task.bind (function
-                | Ok file ->
-                  task {
-                    let preparedConversion: Entities.PreparedConversion =
-                      { Id = message.ConversionId
-                        UserId = conversion.UserId
-                        ReceivedMessageId = conversion.ReceivedMessageId
-                        SentMessageId = conversion.SentMessageId
-                        InputFileName = file }
+        message.File
+        |> downloadFile
+        |> Task.bind (function
+          | Ok file ->
+            task {
+              let preparedConversion: Entities.PreparedConversion =
+                { Id = message.ConversionId
+                  UserId = conversion.UserId
+                  ReceivedMessageId = conversion.ReceivedMessageId
+                  SentMessageId = conversion.SentMessageId
+                  InputFileName = file }
 
-                    do! savePreparedConversion preparedConversion
+              do! savePreparedConversion preparedConversion
 
-                    let converterMessage: Queue.ConverterMessage = { Id = conversion.Id; Name = file }
+              let converterMessage: Queue.ConverterMessage = { Id = conversion.Id; Name = file }
 
-                    do! sendConverterMessage converterMessage
+              do! sendConverterMessage converterMessage
 
-                    do! editMessage "Conversion is in progress 🚀"
-                  }
-                | Error(HTTP.DownloadLinkError.Unauthorized) -> editMessage "I am not authorized to download video from this source 🚫"
-                | Error(HTTP.DownloadLinkError.NotFound) -> editMessage "Video not found ⚠️"
-                | Error(HTTP.DownloadLinkError.ServerError) -> editMessage "Server error 🛑")
-          }
-        with
-        | e -> Task.FromResult()
+              do! editMessage "Conversion is in progress 🚀"
+            }
+          | Error(HTTP.DownloadLinkError.Unauthorized) -> editMessage "I am not authorized to download video from this source 🚫"
+          | Error(HTTP.DownloadLinkError.NotFound) -> editMessage "Video not found ⚠️"
+          | Error(HTTP.DownloadLinkError.ServerError) -> editMessage "Server error 🛑")
     }
 
   [<Function("Thumbnailer")>]
-  member this.GenerateThumbnail([<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage, _: FunctionContext) : Task<unit> =
+  member this.GenerateThumbnail
+    (
+      [<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage,
+      _: FunctionContext
+    ) : Task<unit> =
     let loadConversion = Database.loadPreparedConversion _db
     let sendThumbnailerMessage = Queue.sendTumbnailerMessage workersSettings
     let prepareForThumbnailing = Storage.prepareForThumbnailing workersSettings
@@ -545,7 +615,11 @@ type Functions
     }
 
   [<Function("Uploader")>]
-  member this.Upload([<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage, _: FunctionContext) : Task =
+  member this.Upload
+    (
+      [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage,
+      _: FunctionContext
+    ) : Task =
     let loadConversion = Database.loadConvertedConversion _db
 
     task {
@@ -573,7 +647,7 @@ type Functions
 
 module Startup =
   let configureWebApp (builder: IFunctionsWorkerApplicationBuilder) =
-    builder.Services.Configure<JsonSerializerOptions>(fun opts -> JsonFSharpOptions.Default().WithUnionUntagged().AddToJsonSerializerOptions(opts))
+    builder.Services.Configure<JsonSerializerOptions>(fun opts -> JSON.options.AddToJsonSerializerOptions(opts))
 
     ()
 
@@ -611,7 +685,7 @@ module Startup =
   let private retryPolicy =
     HttpPolicyExtensions
       .HandleTransientHttpError()
-      .WaitAndRetryAsync(5, fun retryAttempt -> TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)))
+      .WaitAndRetryAsync(5, (fun retryAttempt -> TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))))
 
   let private configureServices (context: HostBuilderContext) (services: IServiceCollection) =
     services.AddApplicationInsightsTelemetryWorkerService()
@@ -634,8 +708,9 @@ module Startup =
 
     services.AddSingleton<ITelegramBotClient>(configureTelegramBotClient)
 
-    services.AddHttpClient(fun (client: HttpClient) -> client.DefaultRequestHeaders.UserAgent.ParseAdd(chromeUserAgent))
-      .AddPolicyHandler(retryPolicy);
+    services
+      .AddHttpClient(fun (client: HttpClient) -> client.DefaultRequestHeaders.UserAgent.ParseAdd(chromeUserAgent))
+      .AddPolicyHandler(retryPolicy)
 
     services.AddMvcCore().AddNewtonsoftJson()
 
