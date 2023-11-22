@@ -134,18 +134,22 @@ resource "azurerm_linux_function_app" "func-webm-to-mp4-tg-bot" {
   }
 
   app_settings = {
-    Telegram__Token                         = var.telegram-token
-    Database__ConnectionString              = var.database-connection-string
-    Database__Name                          = var.database-name
-    Workers__ConnectionString               = azurerm_storage_account.st-webm-to-mp4-tg-bot.primary_connection_string
-    Workers__Downloader__Queue              = azurerm_storage_queue.stq-downloader-webm-to-mp4-tg-bot.name
-    Workers__Converter__Input__Container    = azurerm_storage_container.stc-converter-input-webm-to-mp4-tg-bot.name
-    Workers__Converter__Input__Queue        = azurerm_storage_queue.stq-converter-input-webm-to-mp4-tg-bot.name
-    Workers__Converter__Output__Container   = azurerm_storage_container.stc-converter-output-webm-to-mp4-tg-bot.name
-    Workers__Converter__Output__Queue       = azurerm_storage_queue.stq-converter-output-webm-to-mp4-tg-bot.name
-    Workers__Thumbnailer__Input__Container  = azurerm_storage_container.stc-thumbnailer-input-webm-to-mp4-tg-bot.name
-    Workers__Thumbnailer__Input__Queue      = azurerm_storage_queue.stq-thumbnailer-output-webm-to-mp4-tg-bot.name
-    Workers__Thumbnailer__Output__Container = azurerm_storage_container.stc-thumbnailer-input-webm-to-mp4-tg-bot.name
+    Telegram__Token            = var.telegram-token
+    Database__ConnectionString = var.database-connection-string
+    Database__Name             = var.database-name
+    Workers__ConnectionString  = azurerm_storage_account.st-webm-to-mp4-tg-bot.primary_connection_string
+    Workers__Downloader__Queue = azurerm_storage_queue.stq-downloader-webm-to-mp4-tg-bot.name
+
+    Workers__Converter__Input__Container = azurerm_storage_container.stc-converter-input-webm-to-mp4-tg-bot.name
+    Workers__Converter__Input__Queue     = azurerm_storage_queue.stq-converter-input-webm-to-mp4-tg-bot.name
+
+    Workers__Converter__Output__Container = azurerm_storage_container.stc-converter-output-webm-to-mp4-tg-bot.name
+    Workers__Converter__Output__Queue     = azurerm_storage_queue.stq-converter-output-webm-to-mp4-tg-bot.name
+
+    Workers__Thumbnailer__Input__Container = azurerm_storage_container.stc-thumbnailer-input-webm-to-mp4-tg-bot.name
+    Workers__Thumbnailer__Input__Queue     = azurerm_storage_queue.stq-thumbnailer-input-webm-to-mp4-tg-bot.name
+
+    Workers__Thumbnailer__Output__Container = azurerm_storage_container.stc-thumbnailer-output-webm-to-mp4-tg-bot.name
     Workers__Thumbnailer__Output__Queue     = azurerm_storage_queue.stq-thumbnailer-output-webm-to-mp4-tg-bot.name
   }
 
