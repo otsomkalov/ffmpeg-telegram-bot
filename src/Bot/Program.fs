@@ -269,7 +269,7 @@ module Storage =
       task {
         let! downloadedBlob = convertedFileBlob.DownloadStreamingAsync()
 
-        do! thumbnailerFileBlob.UploadAsync(downloadedBlob.Value.Content) |> Task.map ignore
+        do! thumbnailerFileBlob.UploadAsync(downloadedBlob.Value.Content, true) |> Task.map ignore
         ()
       }
 
@@ -402,7 +402,9 @@ module HTTP =
               let containerClient =
                 blobServiceClient.GetBlobContainerClient(workersSettings.Converter.Input.Container)
 
-              do! containerClient.UploadBlobAsync(fileName, responseStream) |> Task.map ignore
+              let blobClient = containerClient.GetBlobClient(fileName)
+
+              do! blobClient.UploadAsync(responseStream, true) |> Task.map ignore
 
               return Ok(fileName)
             }
@@ -420,7 +422,7 @@ type Functions
   let workersSettings = _workersOptions.Value
 
   [<Function("HandleUpdate")>]
-  member this.HandleUpdate([<HttpTrigger(AuthorizationLevel.Anonymous, "POST", Route = "telegram")>] request: HttpRequest, [<FromBody>]update: Update) : Task<unit> =
+  member this.HandleUpdate([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>]update: Update) : Task<unit> =
     let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
     let webmRegex = Regex("https?[^ ]*.webm")
 
