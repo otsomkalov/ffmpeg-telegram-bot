@@ -36,15 +36,24 @@ module Helpers =
     let compareCI input toCompare =
       String.Equals(input, toCompare, StringComparison.InvariantCultureIgnoreCase)
 
+    let containsCI (input: string) (toSearch: string) =
+      input.Contains(toSearch, StringComparison.InvariantCultureIgnoreCase)
+
   let private contains (substring: string) (str: string) =
     str.Contains(substring, StringComparison.InvariantCultureIgnoreCase)
 
   let (|Text|_|) (message: Message) =
-    message.Text |> Option.ofObj |> Option.filter (String.IsNullOrEmpty >> not)
+    message
+    |> Option.ofObj
+    |> Option.bind (fun m -> m.Text |> Option.ofObj)
+    |> Option.filter (fun t -> String.containsCI t "!nsfw" |> not)
+    |> Option.filter (String.IsNullOrEmpty >> not)
 
   let (|Document|_|) (message: Message) =
-    message.Document
+    message
     |> Option.ofObj
+    |> Option.filter (fun m -> String.IsNullOrEmpty m.Caption || (String.containsCI m.Caption "!nsfw" |> not))
+    |> Option.bind (fun m -> m.Document |> Option.ofObj)
     |> Option.filter (fun d ->
       String.compareCI (Path.GetExtension(d.FileName)) ".webm"
       && String.compareCI d.MimeType "video/webm")
@@ -607,7 +616,7 @@ type Functions
         let converterMessage: Queue.ConverterMessage = { Id = conversion.Id; Name = file }
 
         do! sendThumbnailerMessage converterMessage
-        do! editMessage "Generating thumbnail"
+        do! editMessage "Generating thumbnail 🖼️"
       | Queue.Error error ->
 
         do! editMessage error
