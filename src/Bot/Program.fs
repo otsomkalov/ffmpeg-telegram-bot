@@ -19,7 +19,6 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.ApplicationInsights
-open Microsoft.Extensions.Options
 open MongoDB.ApplicationInsights
 open MongoDB.Driver
 open Polly.Extensions.Http
@@ -29,6 +28,7 @@ open Telegram.Bot.Types.Enums
 open shortid
 open MongoDB.ApplicationInsights.DependencyInjection
 open Polly
+open otsom.FSharp.Extensions.ServiceCollection
 
 module Helpers =
   [<RequireQualifiedAccess>]
@@ -321,6 +321,26 @@ module Storage =
         ()
       }
 
+  let deleteVideo (workersSettings: Settings.WorkersSettings) =
+    fun name ->
+      let blobService = BlobServiceClient(workersSettings.ConnectionString)
+
+      let convertedFilesContainer =
+        blobService.GetBlobContainerClient(workersSettings.Converter.Output.Container)
+
+      let convertedFileBlob = convertedFilesContainer.GetBlobClient(name)
+      convertedFileBlob.DeleteIfExistsAsync() |> Task.map ignore
+
+  let deleteThumbnail (workersSettings: Settings.WorkersSettings) =
+    fun name ->
+      let blobService = BlobServiceClient(workersSettings.ConnectionString)
+
+      let convertedFilesContainer =
+        blobService.GetBlobContainerClient(workersSettings.Thumbnailer.Output.Container)
+
+      let convertedFileBlob = convertedFilesContainer.GetBlobClient(name)
+      convertedFileBlob.DeleteIfExistsAsync() |> Task.map ignore
+
 [<RequireQualifiedAccess>]
 module Entities =
   [<CLIMutable>]
@@ -460,12 +480,11 @@ open Helpers
 
 type Functions
   (
-    _workersOptions: IOptions<Settings.WorkersSettings>,
+    workersSettings: Settings.WorkersSettings,
     _bot: ITelegramBotClient,
     _db: IMongoDatabase,
     _httpClientFactory: IHttpClientFactory
   ) =
-  let workersSettings = _workersOptions.Value
 
   [<Function("HandleUpdate")>]
   member this.HandleUpdate([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update) : Task<unit> =
@@ -644,6 +663,9 @@ type Functions
       let replyWithVideo =
         Telegram.replyWithVideo workersSettings _bot conversion.UserId conversion.ReceivedMessageId
 
+      let deleteVideo = Storage.deleteVideo workersSettings
+      let deleteThumbnail = Storage.deleteThumbnail workersSettings
+
       return!
         match message.Result with
         | Queue.Success file ->
@@ -651,9 +673,14 @@ type Functions
             do! deleteMessage ()
 
             do! replyWithVideo conversion.OutputFileName file
+
+            do! deleteVideo conversion.OutputFileName
+            do! deleteThumbnail file
           }
         | Queue.Error error -> task { do! editMessage error }
     }
+
+#nowarn "20"
 
 module Startup =
   let configureWebApp (builder: IFunctionsWorkerApplicationBuilder) =
@@ -672,27 +699,9 @@ module Startup =
 
     ()
 
-  let private configureMongoClient (options: IOptions<Settings.DatabaseSettings>) (factory: IMongoClientFactory) =
-    let settings = options.Value
-
-    factory.GetClient(settings.ConnectionString)
-
-  let private configureMongoDatabase (options: IOptions<Settings.DatabaseSettings>) (mongoClient: IMongoClient) =
-    let settings = options.Value
-
-    mongoClient.GetDatabase(settings.Name)
-
   [<Literal>]
   let chromeUserAgent =
     "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36"
-
-  let private configureTelegramBotClient (serviceProvider: IServiceProvider) =
-    let settings =
-      serviceProvider.GetRequiredService<IOptions<Settings.TelegramSettings>>().Value
-
-    let options = TelegramBotClientOptions(settings.Token, settings.ApiUrl)
-
-    options |> TelegramBotClient :> ITelegramBotClient
 
   let private retryPolicy =
     HttpPolicyExtensions
@@ -703,22 +712,28 @@ module Startup =
     services.AddApplicationInsightsTelemetryWorkerService()
     services.ConfigureFunctionsApplicationInsights()
 
-    let cfg = context.Configuration
+    services
+      .AddSingletonFunc<Settings.WorkersSettings, IConfiguration>(fun cfg ->
+        cfg
+          .GetSection(Settings.WorkersSettings.SectionName)
+          .Get<Settings.WorkersSettings>())
+      .AddSingletonFunc<Settings.TelegramSettings, IConfiguration>(fun cfg ->
+        cfg
+          .GetSection(Settings.TelegramSettings.SectionName)
+          .Get<Settings.TelegramSettings>())
+      .AddSingletonFunc<Settings.DatabaseSettings, IConfiguration>(fun cfg ->
+        cfg
+          .GetSection(Settings.DatabaseSettings.SectionName)
+          .Get<Settings.DatabaseSettings>())
 
     services.AddMongoClientFactory()
 
-    services.AddSingleton<IMongoClient>(fun (sp: IServiceProvider) ->
-      configureMongoClient (sp.GetRequiredService<IOptions<Settings.DatabaseSettings>>()) (sp.GetRequiredService<IMongoClientFactory>()))
-
-    services.AddSingleton<IMongoDatabase>(fun (sp: IServiceProvider) ->
-      configureMongoDatabase (sp.GetRequiredService<IOptions<Settings.DatabaseSettings>>()) (sp.GetRequiredService<IMongoClient>()))
-
-    services.Configure<Settings.WorkersSettings>(cfg.GetSection Settings.WorkersSettings.SectionName)
-
-    services.Configure<Settings.TelegramSettings>(cfg.GetSection(Settings.TelegramSettings.SectionName))
-    services.Configure<Settings.DatabaseSettings>(cfg.GetSection(Settings.DatabaseSettings.SectionName))
-
-    services.AddSingleton<ITelegramBotClient>(configureTelegramBotClient)
+    services
+      .AddSingletonFunc<IMongoClient, IMongoClientFactory, Settings.DatabaseSettings>(fun factory settings ->
+        factory.GetClient settings.ConnectionString)
+      .AddSingletonFunc<IMongoDatabase, IMongoClient, Settings.DatabaseSettings>(fun client settings -> client.GetDatabase settings.Name)
+      .AddSingletonFunc<ITelegramBotClient, Settings.TelegramSettings>(fun settings ->
+        TelegramBotClientOptions(settings.Token, settings.ApiUrl) |> TelegramBotClient :> ITelegramBotClient)
 
     services
       .AddHttpClient(fun (client: HttpClient) -> client.DefaultRequestHeaders.UserAgent.ParseAdd(chromeUserAgent))
