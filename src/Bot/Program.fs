@@ -479,21 +479,15 @@ module HTTP =
 open Helpers
 
 type Functions
-  (
-    workersSettings: Settings.WorkersSettings,
-    _bot: ITelegramBotClient,
-    _db: IMongoDatabase,
-    _httpClientFactory: IHttpClientFactory
-  ) =
+  (workersSettings: Settings.WorkersSettings, _bot: ITelegramBotClient, _db: IMongoDatabase, _httpClientFactory: IHttpClientFactory) =
 
   [<Function("HandleUpdate")>]
   member this.HandleUpdate([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update) : Task<unit> =
     let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
     let webmLinkRegex = Regex("https?[^ ]*.webm")
 
-    match update.Type with
-    | UpdateType.Message ->
-      let userId = update.Message.From.Id
+    let processMessage (message: Message) =
+      let userId = message.From.Id
       let sendMessage = Telegram.sendMessage _bot userId
       let replyToMessage = Telegram.replyToMessage _bot userId update.Message.MessageId
       let createConversion = Database.saveNewConversion _db
@@ -532,7 +526,7 @@ type Functions
       | Document doc ->
         let sendDocToQueue (doc: Document) =
           task {
-            let! sentMessageId = replyToMessage $"File is waiting to be downloaded 🕒"
+            let! sentMessageId = replyToMessage "File is waiting to be downloaded 🕒"
 
             let newConversion: Entities.NewConversion =
               { Id = ShortId.Generate()
@@ -551,6 +545,10 @@ type Functions
 
         doc |> sendDocToQueue
       | _ -> Task.FromResult()
+
+    match update.Type with
+    | UpdateType.Message -> processMessage update.Message
+    | UpdateType.ChannelPost -> processMessage update.ChannelPost
     | _ -> Task.FromResult()
 
   [<Function("Downloader")>]
