@@ -485,7 +485,7 @@ type Functions
   let webmLinkRegex = Regex("https?[^ ]*.webm")
 
   let processMessage (message: Message) =
-    let userId = message.From.Id
+    let userId = message.Chat.Id
     let sendMessage = Telegram.sendMessage _bot userId
     let replyToMessage = Telegram.replyToMessage _bot userId message.MessageId
     let createConversion = Database.saveNewConversion _db
