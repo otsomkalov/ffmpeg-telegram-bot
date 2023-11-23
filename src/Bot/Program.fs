@@ -481,71 +481,71 @@ open Helpers
 type Functions
   (workersSettings: Settings.WorkersSettings, _bot: ITelegramBotClient, _db: IMongoDatabase, _httpClientFactory: IHttpClientFactory) =
 
-  [<Function("HandleUpdate")>]
-  member this.HandleUpdate([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update) : Task<unit> =
-    let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
-    let webmLinkRegex = Regex("https?[^ ]*.webm")
+  let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
+  let webmLinkRegex = Regex("https?[^ ]*.webm")
 
-    let processMessage (message: Message) =
-      let userId = message.From.Id
-      let sendMessage = Telegram.sendMessage _bot userId
-      let replyToMessage = Telegram.replyToMessage _bot userId update.Message.MessageId
-      let createConversion = Database.saveNewConversion _db
+  let processMessage (message: Message) =
+    let userId = message.From.Id
+    let sendMessage = Telegram.sendMessage _bot userId
+    let replyToMessage = Telegram.replyToMessage _bot userId message.MessageId
+    let createConversion = Database.saveNewConversion _db
 
-      match update.Message with
-      | Text messageText ->
-        match messageText with
-        | StartsWith "/start" ->
-          sendMessage
-            "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/"
-        | Regex webmLinkRegex matches ->
+    match message with
+    | Text messageText ->
+      match messageText with
+      | StartsWith "/start" ->
+        sendMessage
+          "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/"
+      | Regex webmLinkRegex matches ->
 
-          let sendUrlToQueue (url: string) =
-            task {
-              let! sentMessageId = replyToMessage $"File {url} is waiting to be downloaded 🕒"
-
-              let newConversion: Entities.NewConversion =
-                { Id = ShortId.Generate()
-                  UserId = userId
-                  ReceivedMessageId = update.Message.MessageId
-                  SentMessageId = sentMessageId }
-
-              do! createConversion newConversion
-
-              let message: Queue.DownloaderMessage =
-                { ConversionId = newConversion.Id
-                  File = Queue.File.Link url }
-
-              return! sendDownloaderMessage message
-            }
-
-          matches |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
-        | _ ->
-          sendMessage
-            "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/"
-      | Document doc ->
-        let sendDocToQueue (doc: Document) =
+        let sendUrlToQueue (url: string) =
           task {
-            let! sentMessageId = replyToMessage "File is waiting to be downloaded 🕒"
+            let! sentMessageId = replyToMessage $"File {url} is waiting to be downloaded 🕒"
 
             let newConversion: Entities.NewConversion =
               { Id = ShortId.Generate()
                 UserId = userId
-                ReceivedMessageId = update.Message.MessageId
+                ReceivedMessageId = message.MessageId
                 SentMessageId = sentMessageId }
 
             do! createConversion newConversion
 
             let message: Queue.DownloaderMessage =
               { ConversionId = newConversion.Id
-                File = Queue.File.Document(doc.FileId, doc.FileName) }
+                File = Queue.File.Link url }
 
             return! sendDownloaderMessage message
           }
 
-        doc |> sendDocToQueue
-      | _ -> Task.FromResult()
+        matches |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
+      | _ ->
+        sendMessage
+          "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/"
+    | Document doc ->
+      let sendDocToQueue (doc: Document) =
+        task {
+          let! sentMessageId = replyToMessage "File is waiting to be downloaded 🕒"
 
+          let newConversion: Entities.NewConversion =
+            { Id = ShortId.Generate()
+              UserId = userId
+              ReceivedMessageId = message.MessageId
+              SentMessageId = sentMessageId }
+
+          do! createConversion newConversion
+
+          let message: Queue.DownloaderMessage =
+            { ConversionId = newConversion.Id
+              File = Queue.File.Document(doc.FileId, doc.FileName) }
+
+          return! sendDownloaderMessage message
+        }
+
+      doc |> sendDocToQueue
+    | _ -> Task.FromResult()
+
+  [<Function("HandleUpdate")>]
+  member this.HandleUpdate([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update) : Task<unit> =
     match update.Type with
     | UpdateType.Message -> processMessage update.Message
     | UpdateType.ChannelPost -> processMessage update.ChannelPost
