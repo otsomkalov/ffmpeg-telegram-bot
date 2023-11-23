@@ -11,6 +11,7 @@ open System.Text.RegularExpressions
 open System.Threading.Tasks
 open Azure.Storage.Blobs
 open Azure.Storage.Queues
+open FSharp
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker.Http
 open Microsoft.Extensions.Configuration
@@ -88,20 +89,14 @@ module Task =
       return! mapping value
     }
 
-  let taskMap (mapping: 'a -> Task<'b>) task' =
+  let invokeSave task' =
     task {
-      let! value = task'
+      try
+        let! value = task' ()
 
-      return! mapping value
-    }
-
-  let taskTap (tap: 'a -> Task<unit>) task' =
-    task {
-      let! value = task'
-
-      do! tap value
-
-      return value
+        return Choice1Of2 value
+      with e ->
+        return Choice2Of2 e
     }
 
 [<RequireQualifiedAccess>]
@@ -479,7 +474,13 @@ module HTTP =
 open Helpers
 
 type Functions
-  (workersSettings: Settings.WorkersSettings, _bot: ITelegramBotClient, _db: IMongoDatabase, _httpClientFactory: IHttpClientFactory) =
+  (
+    workersSettings: Settings.WorkersSettings,
+    _bot: ITelegramBotClient,
+    _db: IMongoDatabase,
+    _httpClientFactory: IHttpClientFactory,
+    _logger: ILogger<Functions>
+  ) =
 
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
   let webmLinkRegex = Regex("https?[^ ]*.webm")
@@ -544,12 +545,20 @@ type Functions
       doc |> sendDocToQueue
     | _ -> Task.FromResult()
 
+  let handleUpdate (update: Update) =
+    fun () ->
+      match update.Type with
+      | UpdateType.Message -> processMessage update.Message
+      | UpdateType.ChannelPost -> processMessage update.ChannelPost
+      | _ -> Task.FromResult()
+
   [<Function("HandleUpdate")>]
   member this.HandleUpdate([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update) : Task<unit> =
-    match update.Type with
-    | UpdateType.Message -> processMessage update.Message
-    | UpdateType.ChannelPost -> processMessage update.ChannelPost
-    | _ -> Task.FromResult()
+    handleUpdate update
+    |> Task.invokeSave
+    |> Task.map (function
+      | Choice2Of2 e -> Logf.elogfe _logger e "Error during processing an update:"
+      | _ -> ())
 
   [<Function("Downloader")>]
   member this.DownloadFile
