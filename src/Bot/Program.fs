@@ -29,6 +29,7 @@ open Telegram.Bot.Types.Enums
 open shortid
 open MongoDB.ApplicationInsights.DependencyInjection
 open Polly
+open otsom.FSharp.Extensions
 open otsom.FSharp.Extensions.ServiceCollection
 
 module Helpers =
@@ -59,6 +60,9 @@ module Helpers =
       String.compareCI (Path.GetExtension(d.FileName)) ".webm"
       && String.compareCI d.MimeType "video/webm")
 
+  let (|FromBot|_|) (message: Message) =
+    if message.From.IsBot then Some() else None
+
   let (|StartsWith|_|) (substring: string) (str: string) =
     if str.StartsWith(substring, StringComparison.InvariantCultureIgnoreCase) then
       Some()
@@ -75,20 +79,6 @@ module Helpers =
 
 [<RequireQualifiedAccess>]
 module Task =
-  let map mapping task' =
-    task {
-      let! value = task'
-
-      return mapping value
-    }
-
-  let bind mapping task' =
-    task {
-      let! value = task'
-
-      return! mapping value
-    }
-
   let invokeSave task' =
     task {
       try
@@ -492,6 +482,7 @@ type Functions
     let createConversion = Database.saveNewConversion _db
 
     match message with
+    | FromBot -> Task.FromResult()
     | Text messageText ->
       match messageText with
       | StartsWith "/start" ->
