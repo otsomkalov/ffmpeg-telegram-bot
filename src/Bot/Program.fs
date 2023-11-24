@@ -81,18 +81,6 @@ module Helpers =
       matches |> Seq.map (fun m -> m.Value) |> Some
 
 [<RequireQualifiedAccess>]
-module Task =
-  let invokeSave task' =
-    task {
-      try
-        let! value = task' ()
-
-        return Choice1Of2 value
-      with e ->
-        return Choice2Of2 e
-    }
-
-[<RequireQualifiedAccess>]
 module Settings =
   [<CLIMutable>]
   type StorageSettings = { Queue: string }
@@ -479,6 +467,7 @@ type Functions
   let webmLinkRegex = Regex("https?[^ ]*.webm")
 
   let processMessage (message: Message) =
+
     let userId = message.Chat.Id
     let sendMessage = Telegram.sendMessage _bot userId
     let replyToMessage = Telegram.replyToMessage _bot userId message.MessageId
@@ -540,19 +529,22 @@ type Functions
     | _ -> Task.FromResult()
 
   let handleUpdate (update: Update) =
-    fun () ->
-      match update.Type with
-      | UpdateType.Message -> processMessage update.Message
-      | UpdateType.ChannelPost -> processMessage update.ChannelPost
-      | _ -> Task.FromResult()
+    match update.Type with
+    | UpdateType.Message -> processMessage update.Message
+    | UpdateType.ChannelPost -> processMessage update.ChannelPost
+    | _ -> Task.FromResult()
 
   [<Function("HandleUpdate")>]
   member this.HandleUpdate([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update) : Task<unit> =
-    handleUpdate update
-    |> Task.invokeSave
-    |> Task.map (function
-      | Choice2Of2 e -> Logf.elogfe _logger e "Error during processing an update:"
-      | _ -> ())
+    task {
+      try
+        do! handleUpdate update
+
+        return ()
+      with e ->
+        Logf.elogfe _logger e "Error during processing an update:"
+        return ()
+    }
 
   [<Function("Downloader")>]
   member this.DownloadFile
