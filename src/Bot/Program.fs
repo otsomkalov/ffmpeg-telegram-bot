@@ -502,9 +502,7 @@ type Functions
           }
 
         matches |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
-      | _ ->
-        sendMessage
-          "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/"
+      | _ -> Task.FromResult()
     | Document doc ->
       let sendDocToQueue (doc: Document) =
         task {
