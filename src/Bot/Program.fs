@@ -61,7 +61,10 @@ module Helpers =
       && String.compareCI d.MimeType "video/webm")
 
   let (|FromBot|_|) (message: Message) =
-    if message.From.IsBot then Some() else None
+    message.From
+    |> Option.ofObj
+    |> Option.filter (fun u -> u.IsBot)
+    |> Option.map ignore
 
   let (|StartsWith|_|) (substring: string) (str: string) =
     if str.StartsWith(substring, StringComparison.InvariantCultureIgnoreCase) then
