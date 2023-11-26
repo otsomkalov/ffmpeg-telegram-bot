@@ -14,6 +14,7 @@
     "Workers__Thumbnailer__Input__Queue": "thumbnailer-input",
     "Workers__Thumbnailer__Output__Container": "thumbnailer-output",
     "Workers__Thumbnailer__Output__Queue": "thumbnailer-output",
+    "Workers__Uploader__Queue": "uploader",
     "Database__ConnectionString": "<MongoDB connection string>",
     "Database__Name": "<Database name>",
     "Telegram__Token": "<Telegram bot token>"

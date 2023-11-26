@@ -98,7 +98,8 @@ module Settings =
     { ConnectionString: string
       Downloader: StorageSettings
       Converter: ConverterSettings
-      Thumbnailer: ConverterSettings }
+      Thumbnailer: ConverterSettings
+      Uploader: StorageSettings }
 
     static member SectionName = "Workers"
 
@@ -201,21 +202,37 @@ module Telegram =
         do! thumbnailBlob.DeleteAsync() |> Task.map ignore
       }
 
+  type private BlobType =
+    | Converter
+    | Thumbnailer
+
+  let private getBlobStream (workersSettings: Settings.WorkersSettings) =
+    fun name type' ->
+      let blobServiceClient = BlobServiceClient(workersSettings.ConnectionString)
+
+      let container =
+        match type' with
+        | Converter -> workersSettings.Converter.Input.Container
+        | Thumbnailer -> workersSettings.Thumbnailer.Input.Container
+
+      let containerClient = blobServiceClient.GetBlobContainerClient(container)
+
+      let blobClient = containerClient.GetBlobClient(name)
+
+      blobClient.OpenWriteAsync(true)
+
   type DownloadDocument = string -> string -> Task<string>
 
   let downloadDocument (bot: ITelegramBotClient) (workersSettings: Settings.WorkersSettings) : DownloadDocument =
     fun id name ->
       task {
-        let blobServiceClient = BlobServiceClient(workersSettings.ConnectionString)
+        use! converterBlobStream = getBlobStream workersSettings name Converter
 
-        let containerClient =
-          blobServiceClient.GetBlobContainerClient(workersSettings.Converter.Input.Container)
+        do! bot.GetInfoAndDownloadFileAsync(id, converterBlobStream) |> Task.map ignore
 
-        let blobClient = containerClient.GetBlobClient(name)
+        use! thumbnailerBlobStream = getBlobStream workersSettings name Thumbnailer
 
-        use! blobStream = blobClient.OpenWriteAsync(true)
-
-        do! bot.GetInfoAndDownloadFileAsync(id, blobStream) |> Task.map ignore
+        do! bot.GetInfoAndDownloadFileAsync(id, thumbnailerBlobStream) |> Task.map ignore
 
         return name
       }
@@ -272,31 +289,21 @@ module Queue =
 
       queueClient.SendMessageAsync(messageBody) |> Task.map ignore
 
+  [<CLIMutable>]
+  type UploaderMessage = { ConversionId: string }
+
+  let sendUploaderMessage (workersSettings: Settings.WorkersSettings) =
+    fun (message: UploaderMessage) ->
+      let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
+
+      let queueClient = queueServiceClient.GetQueueClient(workersSettings.Uploader.Queue)
+
+      let messageBody = JSON.serialize message
+
+      queueClient.SendMessageAsync(messageBody) |> Task.map ignore
+
 [<RequireQualifiedAccess>]
 module Storage =
-  let prepareForThumbnailing (workersSettings: Settings.WorkersSettings) =
-    fun file ->
-      let blobService = BlobServiceClient(workersSettings.ConnectionString)
-
-      let convertedFilesContainer =
-        blobService.GetBlobContainerClient(workersSettings.Converter.Output.Container)
-
-      let thumbnailerInputContainer =
-        blobService.GetBlobContainerClient(workersSettings.Thumbnailer.Input.Container)
-
-      let convertedFileBlob = convertedFilesContainer.GetBlobClient(file)
-      let thumbnailerFileBlob = thumbnailerInputContainer.GetBlobClient(file)
-
-      task {
-        let! downloadedBlob = convertedFileBlob.DownloadStreamingAsync()
-
-        do!
-          thumbnailerFileBlob.UploadAsync(downloadedBlob.Value.Content, true)
-          |> Task.map ignore
-
-        ()
-      }
-
   let deleteVideo (workersSettings: Settings.WorkersSettings) =
     fun name ->
       let blobService = BlobServiceClient(workersSettings.ConnectionString)
@@ -318,97 +325,124 @@ module Storage =
       convertedFileBlob.DeleteIfExistsAsync() |> Task.map ignore
 
 [<RequireQualifiedAccess>]
-module Entities =
-  [<CLIMutable>]
+module Domain =
   type NewConversion =
     { Id: string
       ReceivedMessageId: int
       SentMessageId: int
       UserId: int64 }
 
-  [<CLIMutable>]
-  type PreparedConversion =
-    { Id: string
-      ReceivedMessageId: int
-      SentMessageId: int
-      UserId: int64
-      InputFileName: string }
+  type ConversionState =
+    | Prepared of inputFileName: string
+    | Converted of outputFileName: string
+    | Thumbnailed of thumbnailFileName: string
+    | Completed of outputFileName: string * thumbnailFileName: string
 
-  [<CLIMutable>]
-  type ConvertedConversion =
+  type Conversion =
     { Id: string
       ReceivedMessageId: int
       SentMessageId: int
       UserId: int64
-      OutputFileName: string }
+      State: ConversionState }
+
+[<RequireQualifiedAccess>]
+module Mappings =
+  [<RequireQualifiedAccess>]
+  module NewConversion =
+    let fromDb (conversion: Database.Conversion) : Domain.NewConversion =
+      match conversion.State with
+      | Database.ConversionState.New ->
+        { Id = conversion.Id
+          UserId = conversion.UserId
+          ReceivedMessageId = conversion.ReceivedMessageId
+          SentMessageId = conversion.SentMessageId }
+
+    let toDb (conversion: Domain.NewConversion) : Database.Conversion =
+      Database.Conversion(
+        Id = conversion.Id,
+        UserId = conversion.UserId,
+        ReceivedMessageId = conversion.ReceivedMessageId,
+        SentMessageId = conversion.SentMessageId,
+        State = Database.ConversionState.New
+      )
+
+  [<RequireQualifiedAccess>]
+  module Conversion =
+    let fromDb (conversion: Database.Conversion) : Domain.Conversion =
+      { Id = conversion.Id
+        UserId = conversion.UserId
+        ReceivedMessageId = conversion.ReceivedMessageId
+        SentMessageId = conversion.SentMessageId
+        State =
+          match conversion.State with
+          | Database.ConversionState.Prepared -> Domain.ConversionState.Prepared conversion.InputFileName
+          | Database.ConversionState.Converted -> Domain.ConversionState.Converted conversion.OutputFileName
+          | Database.ConversionState.Thumbnailed -> Domain.ConversionState.Thumbnailed conversion.ThumbnailFileName
+          | Database.ConversionState.Completed -> Domain.ConversionState.Completed(conversion.OutputFileName, conversion.ThumbnailFileName) }
+
+    let toDb (conversion: Domain.Conversion) : Database.Conversion =
+      let entity =
+        Database.Conversion(
+          Id = conversion.Id,
+          UserId = conversion.UserId,
+          ReceivedMessageId = conversion.ReceivedMessageId,
+          SentMessageId = conversion.SentMessageId
+        )
+
+      do
+        match conversion.State with
+        | Domain.Prepared inputFileName ->
+          entity.InputFileName <- inputFileName
+          entity.State <- Database.ConversionState.Prepared
+        | Domain.Converted outputFileName ->
+          entity.OutputFileName <- outputFileName
+          entity.State <- Database.ConversionState.Converted
+        | Domain.Thumbnailed thumbnailFileName ->
+          entity.ThumbnailFileName <- thumbnailFileName
+          entity.State <- Database.ConversionState.Thumbnailed
+        | Domain.Completed(outputFileName, thumbnailFileName) ->
+          entity.OutputFileName <- outputFileName
+          entity.ThumbnailFileName <- thumbnailFileName
+          entity.State <- Database.ConversionState.Completed
+
+      entity
 
 [<RequireQualifiedAccess>]
 module Database =
-  let loadNewConversion (db: IMongoDatabase) : string -> Task<Entities.NewConversion> =
+
+  let loadNewConversion (db: IMongoDatabase) : string -> Task<Domain.NewConversion> =
     let collection = db.GetCollection "conversions"
 
     fun conversionId ->
-      task {
-        let filter =
-          Builders<Entities.NewConversion>.Filter.Eq((fun c -> c.Id), conversionId)
+      let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
 
-        let! dbConversion = collection.Find(filter).SingleOrDefaultAsync()
-
-        return dbConversion
-      }
-
-  let loadPreparedConversion (db: IMongoDatabase) : string -> Task<Entities.PreparedConversion> =
-    let collection = db.GetCollection "conversions"
-
-    fun conversionId ->
-      task {
-        let filter =
-          Builders<Entities.PreparedConversion>.Filter.Eq((fun c -> c.Id), conversionId)
-
-        let! dbConversion = collection.Find(filter).SingleOrDefaultAsync()
-
-        return dbConversion
-      }
+      collection.Find(filter).SingleOrDefaultAsync()
+      |> Task.map Mappings.NewConversion.fromDb
 
   let saveNewConversion (db: IMongoDatabase) =
     let collection = db.GetCollection "conversions"
 
-    fun conversion -> task { do! collection.InsertOneAsync(conversion) }
+    fun conversion ->
+      let entity = conversion |> Mappings.NewConversion.toDb
+      task { do! collection.InsertOneAsync(entity) }
 
-  let savePreparedConversion (db: IMongoDatabase) : Entities.PreparedConversion -> Task<unit> =
+  let saveConversion (db: IMongoDatabase) : Domain.Conversion -> Task<unit> =
     let collection = db.GetCollection "conversions"
 
     fun conversion ->
-      task {
-        let filter =
-          Builders<Entities.PreparedConversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
+      let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
 
-        do! collection.ReplaceOneAsync(filter, conversion) |> Task.map ignore
-      }
+      let entity = conversion |> Mappings.Conversion.toDb
+      collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
 
-  let saveConvertedConversion (db: IMongoDatabase) : Entities.ConvertedConversion -> Task<unit> =
-    let collection = db.GetCollection "conversions"
-
-    fun conversion ->
-      task {
-        let filter =
-          Builders<Entities.ConvertedConversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
-
-        do! collection.ReplaceOneAsync(filter, conversion) |> Task.map ignore
-      }
-
-  let loadConvertedConversion (db: IMongoDatabase) : string -> Task<Entities.ConvertedConversion> =
+  let loadConversion (db: IMongoDatabase) : string -> Task<Domain.Conversion> =
     let collection = db.GetCollection "conversions"
 
     fun conversionId ->
-      task {
-        let filter =
-          Builders<Entities.ConvertedConversion>.Filter.Eq((fun c -> c.Id), conversionId)
+      let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
 
-        let! dbConversion = collection.Find(filter).SingleOrDefaultAsync()
-
-        return dbConversion
-      }
+      collection.Find(filter).SingleOrDefaultAsync()
+      |> Task.map Mappings.Conversion.fromDb
 
 [<RequireQualifiedAccess>]
 module HTTP =
@@ -486,7 +520,7 @@ type Functions
           task {
             let! sentMessageId = replyToMessage $"File {url} is waiting to be downloaded 🕒"
 
-            let newConversion: Entities.NewConversion =
+            let newConversion: Domain.NewConversion =
               { Id = ShortId.Generate()
                 UserId = userId
                 ReceivedMessageId = message.MessageId
@@ -508,7 +542,7 @@ type Functions
         task {
           let! sentMessageId = replyToMessage "File is waiting to be downloaded 🕒"
 
-          let newConversion: Entities.NewConversion =
+          let newConversion: Domain.NewConversion =
             { Id = ShortId.Generate()
               UserId = userId
               ReceivedMessageId = message.MessageId
@@ -551,10 +585,11 @@ type Functions
       _: FunctionContext
     ) : Task<unit> =
     let sendConverterMessage = Queue.sendConverterMessage workersSettings
+    let sendThumbnailerMessage = Queue.sendTumbnailerMessage workersSettings
     let loadNewConversion = Database.loadNewConversion _db
     let downloadLink = HTTP.downloadLink _httpClientFactory workersSettings
     let downloadFile = Telegram.downloadDocument _bot workersSettings
-    let savePreparedConversion = Database.savePreparedConversion _db
+    let saveConversion = Database.saveConversion _db
 
     let downloadFile file =
       match file with
@@ -573,18 +608,22 @@ type Functions
         |> Task.bind (function
           | Ok file ->
             task {
-              let preparedConversion: Entities.PreparedConversion =
+              let preparedConversion: Domain.Conversion =
                 { Id = message.ConversionId
                   UserId = conversion.UserId
                   ReceivedMessageId = conversion.ReceivedMessageId
                   SentMessageId = conversion.SentMessageId
-                  InputFileName = file }
+                  State = Domain.ConversionState.Prepared file }
 
-              do! savePreparedConversion preparedConversion
+              do! saveConversion preparedConversion
 
               let converterMessage: Queue.ConverterMessage = { Id = conversion.Id; Name = file }
 
               do! sendConverterMessage converterMessage
+
+              let thumbnailerMessage: Queue.ConverterMessage = { Id = conversion.Id; Name = file }
+
+              do! sendThumbnailerMessage thumbnailerMessage
 
               do! editMessage "Conversion is in progress 🚀"
             }
@@ -593,16 +632,15 @@ type Functions
           | Error(HTTP.DownloadLinkError.ServerError) -> editMessage "Server error 🛑")
     }
 
-  [<Function("Thumbnailer")>]
-  member this.GenerateThumbnail
+  [<Function("SaveConversionResult")>]
+  member this.SaveConversionResult
     (
       [<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage,
       _: FunctionContext
     ) : Task<unit> =
-    let loadConversion = Database.loadPreparedConversion _db
-    let sendThumbnailerMessage = Queue.sendTumbnailerMessage workersSettings
-    let prepareForThumbnailing = Storage.prepareForThumbnailing workersSettings
-    let saveConvertedConversion = Database.saveConvertedConversion _db
+    let loadConversion = Database.loadConversion _db
+    let saveConversion = Database.saveConversion _db
+    let sendUploaderMessage = Queue.sendUploaderMessage workersSettings
 
     task {
       let! conversion = loadConversion message.Id
@@ -610,43 +648,102 @@ type Functions
       let editMessage =
         Telegram.editMessage _bot conversion.UserId conversion.SentMessageId
 
-      match message.Result with
-      | Queue.Success file ->
-        do! prepareForThumbnailing file
+      return!
+        match message.Result with
+        | Queue.Success file ->
+          match conversion.State with
+          | Domain.Prepared inputFileName ->
+            let convertedConversion: Domain.Conversion =
+              { Id = conversion.Id
+                UserId = conversion.UserId
+                ReceivedMessageId = conversion.ReceivedMessageId
+                SentMessageId = conversion.SentMessageId
+                State = Domain.ConversionState.Converted file }
 
-        let convertedConversion: Entities.ConvertedConversion =
-          { Id = conversion.Id
-            UserId = conversion.UserId
-            OutputFileName = file
-            ReceivedMessageId = conversion.ReceivedMessageId
-            SentMessageId = conversion.SentMessageId }
+            task {
+              do! saveConversion convertedConversion
+              do! editMessage "Thumbnail generated! Converting the video..."
+            }
+          | Domain.Thumbnailed thumbnailFileName ->
+            let completedConversion: Domain.Conversion =
+              { Id = conversion.Id
+                UserId = conversion.UserId
+                ReceivedMessageId = conversion.ReceivedMessageId
+                SentMessageId = conversion.SentMessageId
+                State = Domain.ConversionState.Completed(file, thumbnailFileName) }
 
-        do! saveConvertedConversion convertedConversion
+            let uploaderMessage: Queue.UploaderMessage = { ConversionId = conversion.Id }
 
-        let converterMessage: Queue.ConverterMessage = { Id = conversion.Id; Name = file }
+            task {
+              do! saveConversion completedConversion
+              do! sendUploaderMessage uploaderMessage
+              do! editMessage "File successfully converted! Uploading the file 🚀"
+            }
+        | Queue.Error error -> editMessage error
+    }
 
-        do! sendThumbnailerMessage converterMessage
-        do! editMessage "Generating thumbnail 🖼️"
-      | Queue.Error error ->
+  [<Function("SaveThumbnailingResult")>]
+  member this.SaveThumbnailingResult
+    (
+      [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage,
+      _: FunctionContext
+    ) : Task<unit> =
+    let loadConversion = Database.loadConversion _db
+    let saveConversion = Database.saveConversion _db
+    let sendUploaderMessage = Queue.sendUploaderMessage workersSettings
 
-        do! editMessage error
+    task {
+      let! conversion = loadConversion message.Id
 
-      ()
+      let editMessage =
+        Telegram.editMessage _bot conversion.UserId conversion.SentMessageId
+
+      return!
+        match message.Result with
+        | Queue.Success file ->
+          match conversion.State with
+          | Domain.Prepared inputFileName ->
+            let convertedConversion: Domain.Conversion =
+              { Id = conversion.Id
+                UserId = conversion.UserId
+                ReceivedMessageId = conversion.ReceivedMessageId
+                SentMessageId = conversion.SentMessageId
+                State = Domain.ConversionState.Thumbnailed file }
+
+            task {
+              do! saveConversion convertedConversion
+              do! editMessage "Video successfully converted! Generating the thumbnail..."
+            }
+          | Domain.Converted convertedFileName ->
+            let completedConversion: Domain.Conversion =
+              { Id = conversion.Id
+                UserId = conversion.UserId
+                ReceivedMessageId = conversion.ReceivedMessageId
+                SentMessageId = conversion.SentMessageId
+                State = Domain.ConversionState.Completed(convertedFileName, file) }
+
+            let uploaderMessage: Queue.UploaderMessage = { ConversionId = conversion.Id }
+
+            [ saveConversion completedConversion
+              sendUploaderMessage uploaderMessage
+              editMessage "File successfully converted! Uploading the file 🚀" ]
+            |> Task.WhenAll
+            |> Task.map ignore
+        | Queue.Error error ->
+
+          editMessage error
     }
 
   [<Function("Uploader")>]
   member this.Upload
     (
-      [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage,
+      [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.UploaderMessage,
       _: FunctionContext
     ) : Task =
-    let loadConversion = Database.loadConvertedConversion _db
+    let loadConversion = Database.loadConversion _db
 
     task {
-      let! conversion = loadConversion message.Id
-
-      let editMessage =
-        Telegram.editMessage _bot conversion.UserId conversion.SentMessageId
+      let! conversion = loadConversion message.ConversionId
 
       let deleteMessage =
         Telegram.deleteMessage _bot conversion.UserId conversion.SentMessageId
@@ -657,18 +754,13 @@ type Functions
       let deleteVideo = Storage.deleteVideo workersSettings
       let deleteThumbnail = Storage.deleteThumbnail workersSettings
 
-      return!
-        match message.Result with
-        | Queue.Success file ->
-          task {
-            do! deleteMessage ()
+      match conversion.State with
+      | Domain.Completed(outputFileName, thumbnailFileName) ->
+        do! replyWithVideo outputFileName thumbnailFileName
+        do! deleteMessage ()
 
-            do! replyWithVideo conversion.OutputFileName file
-
-            do! deleteVideo conversion.OutputFileName
-            do! deleteThumbnail file
-          }
-        | Queue.Error error -> task { do! editMessage error }
+        do! deleteVideo outputFileName
+        do! deleteThumbnail thumbnailFileName
     }
 
 #nowarn "20"
