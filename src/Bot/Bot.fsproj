@@ -28,6 +28,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="Helpers.fs" />
+    <Compile Include="Domain.fs" />
+    <Compile Include="Settings.fs" />
+    <Compile Include="Mappings.fs" />
+    <Compile Include="Telegram.fs" />
+    <Compile Include="Queue.fs" />
+    <Compile Include="Storage.fs" />
+    <Compile Include="Database.fs" />
+    <Compile Include="HTTP.fs" />
+    <Compile Include="Functions.fs" />
     <Compile Include="Program.fs"/>
   </ItemGroup>
 
