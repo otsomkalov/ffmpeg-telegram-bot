@@ -158,7 +158,7 @@ resource "azurerm_linux_function_app" "func-webm-to-mp4-tg-bot" {
     Workers__Thumbnailer__Output__Container = azurerm_storage_container.stc-thumbnailer-output-webm-to-mp4-tg-bot.name
     Workers__Thumbnailer__Output__Queue     = azurerm_storage_queue.stq-thumbnailer-output-webm-to-mp4-tg-bot.name
 
-    Workers__Uploader__Queue = azurerm_storage_queue.stq-uploader-webm-to-mp4-tg-bot
+    Workers__Uploader__Queue = azurerm_storage_queue.stq-uploader-webm-to-mp4-tg-bot.name
   }
 
   tags = local.tags

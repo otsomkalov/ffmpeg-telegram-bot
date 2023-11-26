@@ -202,11 +202,11 @@ module Telegram =
         do! thumbnailBlob.DeleteAsync() |> Task.map ignore
       }
 
-  type private BlobType =
+  type BlobType =
     | Converter
     | Thumbnailer
 
-  let private getBlobStream (workersSettings: Settings.WorkersSettings) =
+  let getBlobClient (workersSettings: Settings.WorkersSettings) =
     fun name type' ->
       let blobServiceClient = BlobServiceClient(workersSettings.ConnectionString)
 
@@ -217,7 +217,11 @@ module Telegram =
 
       let containerClient = blobServiceClient.GetBlobContainerClient(container)
 
-      let blobClient = containerClient.GetBlobClient(name)
+      containerClient.GetBlobClient(name)
+
+  let getBlobStream (workersSettings: Settings.WorkersSettings) =
+    fun name type' ->
+      let blobClient = getBlobClient workersSettings name type'
 
       blobClient.OpenWriteAsync(true)
 
@@ -454,6 +458,8 @@ module HTTP =
   type DownloadLink = string -> Task<Result<string, DownloadLinkError>>
 
   let downloadLink (httpClientFactory: IHttpClientFactory) (workersSettings: Settings.WorkersSettings) : DownloadLink =
+    let getBlobStream = Telegram.getBlobStream workersSettings
+
     fun link ->
       task {
         use client = httpClientFactory.CreateClient()
@@ -467,20 +473,13 @@ module HTTP =
           | HttpStatusCode.InternalServerError -> ServerError |> Error |> Task.FromResult
           | _ ->
             task {
-              use! responseStream = response.Content.ReadAsStreamAsync()
+              let fileName = Path.GetFileName(link)
 
-              let blobServiceClient = BlobServiceClient(workersSettings.ConnectionString)
+              use! converterBlobStream = getBlobStream fileName Telegram.Converter
+              use! thumbnailerBlobStream = getBlobStream fileName Telegram.Thumbnailer
 
-              let uri = Uri(link)
-
-              let fileName = uri.Segments |> Seq.last
-
-              let containerClient =
-                blobServiceClient.GetBlobContainerClient(workersSettings.Converter.Input.Container)
-
-              let blobClient = containerClient.GetBlobClient(fileName)
-
-              do! blobClient.UploadAsync(responseStream, true) |> Task.map ignore
+              do! response.Content.CopyToAsync(converterBlobStream)
+              do! response.Content.CopyToAsync(thumbnailerBlobStream)
 
               return Ok(fileName)
             }
@@ -724,11 +723,11 @@ type Functions
 
             let uploaderMessage: Queue.UploaderMessage = { ConversionId = conversion.Id }
 
-            [ saveConversion completedConversion
-              sendUploaderMessage uploaderMessage
-              editMessage "File successfully converted! Uploading the file 🚀" ]
-            |> Task.WhenAll
-            |> Task.map ignore
+            task{
+              do! saveConversion completedConversion
+              do! sendUploaderMessage uploaderMessage
+              do! editMessage "File successfully converted! Uploading the file 🚀"
+            }
         | Queue.Error error ->
 
           editMessage error
