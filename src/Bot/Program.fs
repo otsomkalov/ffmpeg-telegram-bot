@@ -661,7 +661,7 @@ type Functions
 
             task {
               do! saveConversion convertedConversion
-              do! editMessage "Thumbnail generated! Converting the video..."
+              do! editMessage "Video successfully converted! Generating the thumbnail..."
             }
           | Domain.Thumbnailed thumbnailFileName ->
             let completedConversion: Domain.Conversion =
@@ -711,7 +711,7 @@ type Functions
 
             task {
               do! saveConversion convertedConversion
-              do! editMessage "Video successfully converted! Generating the thumbnail..."
+              do! editMessage "Thumbnail generated! Converting the video..."
             }
           | Domain.Converted convertedFileName ->
             let completedConversion: Domain.Conversion =
@@ -723,7 +723,7 @@ type Functions
 
             let uploaderMessage: Queue.UploaderMessage = { ConversionId = conversion.Id }
 
-            task{
+            task {
               do! saveConversion completedConversion
               do! sendUploaderMessage uploaderMessage
               do! editMessage "File successfully converted! Uploading the file 🚀"
