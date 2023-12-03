@@ -1,40 +1,138 @@
-﻿[<RequireQualifiedAccess>]
-module Bot.Database
+﻿module Bot.Database
 
 open System.Threading.Tasks
 open MongoDB.Driver
 open otsom.FSharp.Extensions
+open Bot.Workflows
 
-let loadNewConversion (db: IMongoDatabase) : string -> Task<Domain.NewConversion> =
-  let collection = db.GetCollection "conversions"
+[<RequireQualifiedAccess>]
+module UserConversion =
+  let load (db: IMongoDatabase) : UserConversion.Load =
+    let collection = db.GetCollection "conversions"
 
-  fun conversionId ->
-    let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+    fun conversionId ->
+      let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
 
-    collection.Find(filter).SingleOrDefaultAsync()
-    |> Task.map Mappings.NewConversion.fromDb
+      collection.Find(filter).SingleOrDefaultAsync()
+      |> Task.map Mappings.UserConversion.fromDb
 
-let saveNewConversion (db: IMongoDatabase) =
-  let collection = db.GetCollection "conversions"
+  let save (db: IMongoDatabase) : UserConversion.Save =
+    let collection = db.GetCollection "conversions"
 
-  fun conversion ->
-    let entity = conversion |> Mappings.NewConversion.toDb
-    task { do! collection.InsertOneAsync(entity) }
+    fun conversion ->
+      let entity = conversion |> Mappings.UserConversion.toDb
+      task { do! collection.InsertOneAsync(entity) }
 
-let saveConversion (db: IMongoDatabase) : Domain.Conversion -> Task<unit> =
-  let collection = db.GetCollection "conversions"
+[<RequireQualifiedAccess>]
+module Conversion =
+  [<RequireQualifiedAccess>]
+  module New =
+    let load (db: IMongoDatabase) : Conversion.New.Load =
+      let collection = db.GetCollection "conversions"
 
-  fun conversion ->
-    let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
+      fun conversionId ->
+        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
 
-    let entity = conversion |> Mappings.Conversion.toDb
-    collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
+        collection.Find(filter).SingleOrDefaultAsync()
+        |> Task.map Mappings.Conversion.New.fromDb
 
-let loadConversion (db: IMongoDatabase) : string -> Task<Domain.Conversion> =
-  let collection = db.GetCollection "conversions"
+    let save (db: IMongoDatabase) : Conversion.New.Save =
+      let collection = db.GetCollection "conversions"
 
-  fun conversionId ->
-    let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+      fun conversion ->
+        let entity = conversion |> Mappings.Conversion.New.toDb
+        task { do! collection.InsertOneAsync(entity) }
 
-    collection.Find(filter).SingleOrDefaultAsync()
-    |> Task.map Mappings.Conversion.fromDb
+  [<RequireQualifiedAccess>]
+  module Prepared =
+    let load (db: IMongoDatabase) : Conversion.Prepared.Load =
+      let collection = db.GetCollection "conversions"
+
+      fun conversionId ->
+        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+
+        collection.Find(filter).SingleOrDefaultAsync()
+        |> Task.map Mappings.Conversion.Prepared.fromDb
+
+    let save (db: IMongoDatabase) : Conversion.Prepared.Save =
+      let collection = db.GetCollection "conversions"
+
+      fun conversion ->
+        let entity = conversion |> Mappings.Conversion.Prepared.toDb
+        task { do! collection.InsertOneAsync(entity) }
+
+  [<RequireQualifiedAccess>]
+  module Converted =
+    let load (db: IMongoDatabase) =
+      let collection = db.GetCollection "conversions"
+
+      fun conversionId ->
+        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+
+        collection.Find(filter).SingleOrDefaultAsync()
+        |> Task.map Mappings.Conversion.Converted.fromDb
+
+    let save (db: IMongoDatabase) : Conversion.Converted.Save =
+      let collection = db.GetCollection "conversions"
+
+      fun conversion ->
+        let entity = conversion |> Mappings.Conversion.Converted.toDb
+        task { do! collection.InsertOneAsync(entity) }
+
+  [<RequireQualifiedAccess>]
+  module Thumbnailed =
+    let load (db: IMongoDatabase) =
+      let collection = db.GetCollection "conversions"
+
+      fun conversionId ->
+        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+
+        collection.Find(filter).SingleOrDefaultAsync()
+        |> Task.map Mappings.Conversion.Thumbnailed.fromDb
+
+    let save (db: IMongoDatabase) : Conversion.Thumbnailed.Save =
+      let collection = db.GetCollection "conversions"
+
+      fun conversion ->
+        let entity = conversion |> Mappings.Conversion.Thumbnailed.toDb
+        task { do! collection.InsertOneAsync(entity) }
+
+  [<RequireQualifiedAccess>]
+  module PreparedOrConverted =
+    let load (db: IMongoDatabase) : Conversion.PreparedOrConverted.Load =
+      let collection = db.GetCollection "conversions"
+
+      fun conversionId ->
+        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+
+        collection.Find(filter).SingleOrDefaultAsync()
+        |> Task.map Mappings.Conversion.PreparedOrConverted.fromDb
+
+  [<RequireQualifiedAccess>]
+  module PreparedOrThumbnailed =
+    let load (db: IMongoDatabase) : Conversion.PreparedOrThumbnailed.Load =
+      let collection = db.GetCollection "conversions"
+
+      fun conversionId ->
+        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+
+        collection.Find(filter).SingleOrDefaultAsync()
+        |> Task.map Mappings.Conversion.PreparedOrThumbnailed.fromDb
+
+  [<RequireQualifiedAccess>]
+  module Completed =
+    let load (db: IMongoDatabase) : Conversion.Completed.Load =
+      let collection = db.GetCollection "conversions"
+
+      fun conversionId ->
+        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+
+        collection.Find(filter).SingleOrDefaultAsync()
+        |> Task.map Mappings.Conversion.Completed.fromDb
+
+    let save (db: IMongoDatabase) : Conversion.Completed.Save =
+      let collection = db.GetCollection "conversions"
+
+      fun conversion ->
+        let entity = conversion |> Mappings.Conversion.Completed.toDb
+        task { do! collection.InsertOneAsync(entity) }

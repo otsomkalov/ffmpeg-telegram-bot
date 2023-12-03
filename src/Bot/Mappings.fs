@@ -2,61 +2,92 @@
 module Bot.Mappings
 
 [<RequireQualifiedAccess>]
-module NewConversion =
-  let fromDb (conversion: Database.Conversion) : Domain.NewConversion =
-    match conversion.State with
-    | Database.ConversionState.New ->
-      { Id = conversion.Id
-        UserId = conversion.UserId
-        ReceivedMessageId = conversion.ReceivedMessageId
-        SentMessageId = conversion.SentMessageId }
+module UserConversion =
+  let fromDb (conversion: Database.Conversion) : Domain.UserConversion =
+    { ConversionId = conversion.Id
+      UserId = conversion.UserId
+      ReceivedMessageId = conversion.ReceivedMessageId
+      SentMessageId = conversion.SentMessageId }
 
-  let toDb (conversion: Domain.NewConversion) : Database.Conversion =
+  let toDb (conversion: Domain.UserConversion) : Database.Conversion =
     Database.Conversion(
-      Id = conversion.Id,
+      Id = conversion.ConversionId,
       UserId = conversion.UserId,
       ReceivedMessageId = conversion.ReceivedMessageId,
-      SentMessageId = conversion.SentMessageId,
-      State = Database.ConversionState.New
+      SentMessageId = conversion.SentMessageId
     )
 
 [<RequireQualifiedAccess>]
 module Conversion =
-  let fromDb (conversion: Database.Conversion) : Domain.Conversion =
-    { Id = conversion.Id
-      UserId = conversion.UserId
-      ReceivedMessageId = conversion.ReceivedMessageId
-      SentMessageId = conversion.SentMessageId
-      State =
-        match conversion.State with
-        | Database.ConversionState.Prepared -> Domain.ConversionState.Prepared conversion.InputFileName
-        | Database.ConversionState.Converted -> Domain.ConversionState.Converted conversion.OutputFileName
-        | Database.ConversionState.Thumbnailed -> Domain.ConversionState.Thumbnailed conversion.ThumbnailFileName
-        | Database.ConversionState.Completed -> Domain.ConversionState.Completed(conversion.OutputFileName, conversion.ThumbnailFileName) }
+  [<RequireQualifiedAccess>]
+  module New =
+    let fromDb (conversion: Database.Conversion) : Domain.Conversion.New =
+      match conversion.State with
+      | Database.ConversionState.New -> { Id = conversion.Id }
 
-  let toDb (conversion: Domain.Conversion) : Database.Conversion =
-    let entity =
+    let toDb (conversion: Domain.Conversion.New) : Database.Conversion =
+      Database.Conversion(Id = conversion.Id, State = Database.ConversionState.New)
+
+  [<RequireQualifiedAccess>]
+  module Prepared =
+    let fromDb (conversion: Database.Conversion) : Domain.Conversion.Prepared =
+      match conversion.State with
+      | Database.ConversionState.Prepared ->
+        { Id = conversion.Id
+          InputFile = conversion.InputFileName }
+
+    let toDb (conversion: Domain.Conversion.Prepared) : Database.Conversion =
+      Database.Conversion(Id = conversion.Id, InputFileName = conversion.InputFile, State = Database.ConversionState.Prepared)
+
+  [<RequireQualifiedAccess>]
+  module Converted =
+    let fromDb (conversion: Database.Conversion) : Domain.Conversion.Converted =
+      match conversion.State with
+      | Database.ConversionState.Converted ->
+        { Id = conversion.Id
+          OutputFile = conversion.OutputFileName }
+
+    let toDb (conversion: Domain.Conversion.Converted) : Database.Conversion =
+      Database.Conversion(Id = conversion.Id, OutputFileName = conversion.OutputFile, State = Database.ConversionState.Converted)
+
+  [<RequireQualifiedAccess>]
+  module Thumbnailed =
+    let fromDb (conversion: Database.Conversion) : Domain.Conversion.Thumbnailed =
+      match conversion.State with
+      | Database.ConversionState.Thumbnailed ->
+        { Id = conversion.Id
+          ThumbnailName = conversion.ThumbnailFileName }
+
+    let toDb (conversion: Domain.Conversion.Thumbnailed) : Database.Conversion =
+      Database.Conversion(Id = conversion.Id, ThumbnailFileName = conversion.ThumbnailName, State = Database.ConversionState.Thumbnailed)
+
+  [<RequireQualifiedAccess>]
+  module PreparedOrConverted =
+    let fromDb (conversion: Database.Conversion) : Domain.Conversion.PreparedOrConverted =
+      match conversion.State with
+      | Database.ConversionState.Prepared -> Prepared.fromDb conversion |> Choice1Of2
+      | Database.ConversionState.Converted -> Converted.fromDb conversion |> Choice2Of2
+
+  [<RequireQualifiedAccess>]
+  module PreparedOrThumbnailed =
+    let fromDb (conversion: Database.Conversion) : Domain.Conversion.PreparedOrThumbnailed =
+      match conversion.State with
+      | Database.ConversionState.Prepared -> Prepared.fromDb conversion |> Choice1Of2
+      | Database.ConversionState.Thumbnailed -> Thumbnailed.fromDb conversion |> Choice2Of2
+
+  [<RequireQualifiedAccess>]
+  module Completed =
+    let fromDb (conversion: Database.Conversion) : Domain.Conversion.Completed =
+      match conversion.State with
+      | Database.ConversionState.Completed ->
+        { Id = conversion.Id
+          OutputFile = conversion.OutputFileName
+          ThumbnailFile = conversion.ThumbnailFileName }
+
+    let toDb (conversion: Domain.Conversion.Completed) : Database.Conversion =
       Database.Conversion(
         Id = conversion.Id,
-        UserId = conversion.UserId,
-        ReceivedMessageId = conversion.ReceivedMessageId,
-        SentMessageId = conversion.SentMessageId
+        OutputFileName = conversion.OutputFile,
+        ThumbnailFileName = conversion.ThumbnailFile,
+        State = Database.ConversionState.Completed
       )
-
-    do
-      match conversion.State with
-      | Domain.Prepared inputFileName ->
-        entity.InputFileName <- inputFileName
-        entity.State <- Database.ConversionState.Prepared
-      | Domain.Converted outputFileName ->
-        entity.OutputFileName <- outputFileName
-        entity.State <- Database.ConversionState.Converted
-      | Domain.Thumbnailed thumbnailFileName ->
-        entity.ThumbnailFileName <- thumbnailFileName
-        entity.State <- Database.ConversionState.Thumbnailed
-      | Domain.Completed(outputFileName, thumbnailFileName) ->
-        entity.OutputFileName <- outputFileName
-        entity.ThumbnailFileName <- thumbnailFileName
-        entity.State <- Database.ConversionState.Completed
-
-    entity

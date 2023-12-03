@@ -1,21 +1,26 @@
-﻿[<RequireQualifiedAccess>]
-module Bot.Domain
+﻿module Bot.Domain
 
-type NewConversion =
-  { Id: string
-    ReceivedMessageId: int
+type UserConversion =
+  { ReceivedMessageId: int
     SentMessageId: int
+    ConversionId: string
     UserId: int64 }
 
-type ConversionState =
-  | Prepared of inputFileName: string
-  | Converted of outputFileName: string
-  | Thumbnailed of thumbnailFileName: string
-  | Completed of outputFileName: string * thumbnailFileName: string
+[<RequireQualifiedAccess>]
+module Conversion =
+  type New = { Id: string }
 
-type Conversion =
-  { Id: string
-    ReceivedMessageId: int
-    SentMessageId: int
-    UserId: int64
-    State: ConversionState }
+  type Prepared = { Id: string; InputFile: string }
+
+  type Converted = { Id: string; OutputFile: string }
+
+  type Thumbnailed = { Id: string; ThumbnailName: string }
+
+  type PreparedOrConverted = Choice<Prepared, Converted>
+
+  type PreparedOrThumbnailed = Choice<Prepared, Thumbnailed>
+
+  type Completed =
+    { Id: string
+      OutputFile: string
+      ThumbnailFile: string }

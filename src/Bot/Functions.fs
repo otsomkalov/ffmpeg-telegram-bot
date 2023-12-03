@@ -4,6 +4,8 @@ open System.Net.Http
 open System.Text.RegularExpressions
 open System.Threading.Tasks
 open Bot
+open Bot.Domain
+open Bot.Database
 open FSharp
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
@@ -34,7 +36,8 @@ type Functions
     let userId = message.Chat.Id
     let sendMessage = Telegram.sendMessage _bot userId
     let replyToMessage = Telegram.replyToMessage _bot userId message.MessageId
-    let createConversion = Database.saveNewConversion _db
+    let saveUserConversion = UserConversion.save _db
+    let saveConversion = Conversion.New.save _db
 
     match message with
     | FromBot -> Task.FromResult()
@@ -49,13 +52,17 @@ type Functions
           task {
             let! sentMessageId = replyToMessage $"File {url} is waiting to be downloaded 🕒"
 
-            let newConversion: Domain.NewConversion =
-              { Id = ShortId.Generate()
-                UserId = userId
-                ReceivedMessageId = message.MessageId
-                SentMessageId = sentMessageId }
+            let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
 
-            do! createConversion newConversion
+            do! saveConversion newConversion
+
+            let userConversion: Domain.UserConversion =
+              { ConversionId = newConversion.Id
+                UserId = userId
+                SentMessageId = sentMessageId
+                ReceivedMessageId = message.MessageId }
+
+            do! saveUserConversion userConversion
 
             let message: Queue.DownloaderMessage =
               { ConversionId = newConversion.Id
@@ -71,13 +78,17 @@ type Functions
         task {
           let! sentMessageId = replyToMessage "File is waiting to be downloaded 🕒"
 
-          let newConversion: Domain.NewConversion =
-            { Id = ShortId.Generate()
-              UserId = userId
-              ReceivedMessageId = message.MessageId
-              SentMessageId = sentMessageId }
+          let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
 
-          do! createConversion newConversion
+          do! saveConversion newConversion
+
+          let userConversion: Domain.UserConversion =
+            { ConversionId = newConversion.Id
+              UserId = userId
+              SentMessageId = sentMessageId
+              ReceivedMessageId = message.MessageId }
+
+          do! saveUserConversion userConversion
 
           let message: Queue.DownloaderMessage =
             { ConversionId = newConversion.Id
@@ -115,10 +126,11 @@ type Functions
     ) : Task<unit> =
     let sendConverterMessage = Queue.sendConverterMessage workersSettings
     let sendThumbnailerMessage = Queue.sendTumbnailerMessage workersSettings
-    let loadNewConversion = Database.loadNewConversion _db
+    let loadUserConversion = UserConversion.load _db
+    let loadNewConversion = Conversion.New.load _db
     let downloadLink = HTTP.downloadLink _httpClientFactory workersSettings
     let downloadFile = Telegram.downloadDocument _bot workersSettings
-    let saveConversion = Database.saveConversion _db
+    let savePreparedConversion = Conversion.Prepared.save _db
 
     let downloadFile file =
       match file with
@@ -126,10 +138,12 @@ type Functions
       | Queue.File.Link link -> downloadLink link
 
     task {
-      let! conversion = loadNewConversion message.ConversionId
+      let! userConversion = loadUserConversion message.ConversionId
 
       let editMessage =
-        Telegram.editMessage _bot conversion.UserId conversion.SentMessageId
+        Telegram.editMessage _bot userConversion.UserId userConversion.SentMessageId
+
+      let! conversion = loadNewConversion message.ConversionId
 
       return!
         message.File
@@ -137,14 +151,11 @@ type Functions
         |> Task.bind (function
           | Ok file ->
             task {
-              let preparedConversion: Domain.Conversion =
+              let preparedConversion: Domain.Conversion.Prepared =
                 { Id = message.ConversionId
-                  UserId = conversion.UserId
-                  ReceivedMessageId = conversion.ReceivedMessageId
-                  SentMessageId = conversion.SentMessageId
-                  State = Domain.ConversionState.Prepared file }
+                  InputFile = file }
 
-              do! saveConversion preparedConversion
+              do! savePreparedConversion preparedConversion
 
               let converterMessage: Queue.ConverterMessage = { Id = conversion.Id; Name = file }
 
@@ -167,44 +178,44 @@ type Functions
       [<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage,
       _: FunctionContext
     ) : Task<unit> =
-    let loadConversion = Database.loadConversion _db
-    let saveConversion = Database.saveConversion _db
+    let loadUserConversion = UserConversion.load _db
+    let loadPreparedOrThumbnailed = Conversion.PreparedOrThumbnailed.load _db
+    let saveConvertedConversion = Conversion.Converted.save _db
+    let saveCompletedConversion = Conversion.Completed.save _db
     let sendUploaderMessage = Queue.sendUploaderMessage workersSettings
 
     task {
-      let! conversion = loadConversion message.Id
+      let! userConversion = loadUserConversion message.Id
 
       let editMessage =
-        Telegram.editMessage _bot conversion.UserId conversion.SentMessageId
+        Telegram.editMessage _bot userConversion.UserId userConversion.SentMessageId
+
+      let! conversion = loadPreparedOrThumbnailed message.Id
 
       return!
         match message.Result with
         | Queue.Success file ->
-          match conversion.State with
-          | Domain.Prepared inputFileName ->
-            let convertedConversion: Domain.Conversion =
-              { Id = conversion.Id
-                UserId = conversion.UserId
-                ReceivedMessageId = conversion.ReceivedMessageId
-                SentMessageId = conversion.SentMessageId
-                State = Domain.ConversionState.Converted file }
+          match conversion with
+          | Choice1Of2 preparedConversion ->
+            let convertedConversion: Domain.Conversion.Converted =
+              { Id = preparedConversion.Id
+                OutputFile = file }
 
             task {
-              do! saveConversion convertedConversion
+              do! saveConvertedConversion convertedConversion
               do! editMessage "Video successfully converted! Generating the thumbnail..."
             }
-          | Domain.Thumbnailed thumbnailFileName ->
-            let completedConversion: Domain.Conversion =
-              { Id = conversion.Id
-                UserId = conversion.UserId
-                ReceivedMessageId = conversion.ReceivedMessageId
-                SentMessageId = conversion.SentMessageId
-                State = Domain.ConversionState.Completed(file, thumbnailFileName) }
+          | Choice2Of2 thumbnailedConversion ->
+            let completedConversion: Domain.Conversion.Completed =
+              { Id = thumbnailedConversion.Id
+                OutputFile = file
+                ThumbnailFile = thumbnailedConversion.ThumbnailName }
 
-            let uploaderMessage: Queue.UploaderMessage = { ConversionId = conversion.Id }
+            let uploaderMessage: Queue.UploaderMessage =
+              { ConversionId = thumbnailedConversion.Id }
 
             task {
-              do! saveConversion completedConversion
+              do! saveCompletedConversion completedConversion
               do! sendUploaderMessage uploaderMessage
               do! editMessage "File successfully converted! Uploading the file 🚀"
             }
@@ -217,44 +228,44 @@ type Functions
       [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage,
       _: FunctionContext
     ) : Task<unit> =
-    let loadConversion = Database.loadConversion _db
-    let saveConversion = Database.saveConversion _db
+    let loadUserConversion = UserConversion.load _db
+    let loadPreparedOrConverted = Conversion.PreparedOrConverted.load _db
+    let saveThumbnailedConversion = Conversion.Thumbnailed.save _db
+    let saveCompletedConversion = Conversion.Completed.save _db
     let sendUploaderMessage = Queue.sendUploaderMessage workersSettings
 
     task {
-      let! conversion = loadConversion message.Id
+      let! userConversion = loadUserConversion message.Id
 
       let editMessage =
-        Telegram.editMessage _bot conversion.UserId conversion.SentMessageId
+        Telegram.editMessage _bot userConversion.UserId userConversion.SentMessageId
+
+      let! conversion = loadPreparedOrConverted message.Id
 
       return!
         match message.Result with
         | Queue.Success file ->
-          match conversion.State with
-          | Domain.Prepared inputFileName ->
-            let convertedConversion: Domain.Conversion =
-              { Id = conversion.Id
-                UserId = conversion.UserId
-                ReceivedMessageId = conversion.ReceivedMessageId
-                SentMessageId = conversion.SentMessageId
-                State = Domain.ConversionState.Thumbnailed file }
+          match conversion with
+          | Choice1Of2 preparedConversion ->
+            let thumbnailedConversion: Domain.Conversion.Thumbnailed =
+              { Id = preparedConversion.Id
+                ThumbnailName = file }
 
             task {
-              do! saveConversion convertedConversion
+              do! saveThumbnailedConversion thumbnailedConversion
               do! editMessage "Thumbnail generated! Converting the video..."
             }
-          | Domain.Converted convertedFileName ->
-            let completedConversion: Domain.Conversion =
-              { Id = conversion.Id
-                UserId = conversion.UserId
-                ReceivedMessageId = conversion.ReceivedMessageId
-                SentMessageId = conversion.SentMessageId
-                State = Domain.ConversionState.Completed(convertedFileName, file) }
+          | Choice2Of2 convertedConversion ->
+            let completedConversion: Domain.Conversion.Completed =
+              { Id = convertedConversion.Id
+                OutputFile = convertedConversion.OutputFile
+                ThumbnailFile = file }
 
-            let uploaderMessage: Queue.UploaderMessage = { ConversionId = conversion.Id }
+            let uploaderMessage: Queue.UploaderMessage =
+              { ConversionId = convertedConversion.Id }
 
             task {
-              do! saveConversion completedConversion
+              do! saveCompletedConversion completedConversion
               do! sendUploaderMessage uploaderMessage
               do! editMessage "File successfully converted! Uploading the file 🚀"
             }
@@ -269,25 +280,26 @@ type Functions
       [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.UploaderMessage,
       _: FunctionContext
     ) : Task =
-    let loadConversion = Database.loadConversion _db
+    let loadUserConversion = UserConversion.load _db
+    let loadCompletedConversion = Conversion.Completed.load _db
 
     task {
-      let! conversion = loadConversion message.ConversionId
+      let! userConversion = loadUserConversion message.ConversionId
 
       let deleteMessage =
-        Telegram.deleteMessage _bot conversion.UserId conversion.SentMessageId
+        Telegram.deleteMessage _bot userConversion.UserId userConversion.SentMessageId
 
       let replyWithVideo =
-        Telegram.replyWithVideo workersSettings _bot conversion.UserId conversion.ReceivedMessageId
+        Telegram.replyWithVideo workersSettings _bot userConversion.UserId userConversion.ReceivedMessageId
 
       let deleteVideo = Storage.deleteVideo workersSettings
       let deleteThumbnail = Storage.deleteThumbnail workersSettings
 
-      match conversion.State with
-      | Domain.Completed(outputFileName, thumbnailFileName) ->
-        do! replyWithVideo outputFileName thumbnailFileName
-        do! deleteMessage ()
+      let! conversion = loadCompletedConversion message.ConversionId
 
-        do! deleteVideo outputFileName
-        do! deleteThumbnail thumbnailFileName
+      do! replyWithVideo conversion.OutputFile conversion.ThumbnailFile
+      do! deleteMessage ()
+
+      do! deleteVideo conversion.OutputFile
+      do! deleteThumbnail conversion.ThumbnailFile
     }
