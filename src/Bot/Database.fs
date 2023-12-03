@@ -1,6 +1,5 @@
 ﻿module Bot.Database
 
-open System.Threading.Tasks
 open MongoDB.Driver
 open otsom.FSharp.Extensions
 open Bot.Workflows
@@ -8,7 +7,7 @@ open Bot.Workflows
 [<RequireQualifiedAccess>]
 module UserConversion =
   let load (db: IMongoDatabase) : UserConversion.Load =
-    let collection = db.GetCollection "conversions"
+    let collection = db.GetCollection "users-conversions"
 
     fun conversionId ->
       let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
@@ -17,7 +16,7 @@ module UserConversion =
       |> Task.map Mappings.UserConversion.fromDb
 
   let save (db: IMongoDatabase) : UserConversion.Save =
-    let collection = db.GetCollection "conversions"
+    let collection = db.GetCollection "users-conversions"
 
     fun conversion ->
       let entity = conversion |> Mappings.UserConversion.toDb
@@ -58,8 +57,9 @@ module Conversion =
       let collection = db.GetCollection "conversions"
 
       fun conversion ->
+        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Prepared.toDb
-        task { do! collection.InsertOneAsync(entity) }
+        collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
 
   [<RequireQualifiedAccess>]
   module Converted =
@@ -76,8 +76,9 @@ module Conversion =
       let collection = db.GetCollection "conversions"
 
       fun conversion ->
+        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Converted.toDb
-        task { do! collection.InsertOneAsync(entity) }
+        collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
 
   [<RequireQualifiedAccess>]
   module Thumbnailed =
@@ -94,8 +95,9 @@ module Conversion =
       let collection = db.GetCollection "conversions"
 
       fun conversion ->
+        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Thumbnailed.toDb
-        task { do! collection.InsertOneAsync(entity) }
+        collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
 
   [<RequireQualifiedAccess>]
   module PreparedOrConverted =
@@ -134,5 +136,6 @@ module Conversion =
       let collection = db.GetCollection "conversions"
 
       fun conversion ->
+        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Completed.toDb
-        task { do! collection.InsertOneAsync(entity) }
+        collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
