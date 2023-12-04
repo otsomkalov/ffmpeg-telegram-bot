@@ -26,8 +26,6 @@ open Helpers
 #nowarn "20"
 
 module Startup =
-  ServicePointManager.ServerCertificateValidationCallback <- RemoteCertificateValidationCallback(fun o c ch er -> true)
-
   let configureWebApp (builder: IFunctionsWorkerApplicationBuilder) =
     builder.Services.Configure<JsonSerializerOptions>(fun opts -> JSON.options.AddToJsonSerializerOptions(opts))
 
@@ -77,8 +75,11 @@ module Startup =
       .AddSingletonFunc<IMongoClient, IMongoClientFactory, Settings.DatabaseSettings>(fun factory settings ->
         factory.GetClient settings.ConnectionString)
       .AddSingletonFunc<IMongoDatabase, IMongoClient, Settings.DatabaseSettings>(fun client settings -> client.GetDatabase settings.Name)
-      .AddSingletonFunc<ITelegramBotClient, Settings.TelegramSettings>(fun settings ->
-        TelegramBotClientOptions(settings.Token, settings.ApiUrl) |> TelegramBotClient :> ITelegramBotClient)
+      .AddSingleton<HttpClientHandler>(fun _ -> new HttpClientHandler(ServerCertificateCustomValidationCallback = (fun a b c d -> true)))
+      .AddSingletonFunc<HttpClient, HttpClientHandler>(fun handler -> new HttpClient(handler))
+      .AddSingletonFunc<ITelegramBotClient, Settings.TelegramSettings, HttpClient>(fun settings client ->
+        let options = TelegramBotClientOptions(settings.Token, settings.ApiUrl)
+        TelegramBotClient(options, client) :> ITelegramBotClient)
 
     services
       .AddHttpClient(fun (client: HttpClient) -> client.DefaultRequestHeaders.UserAgent.ParseAdd(chromeUserAgent))
