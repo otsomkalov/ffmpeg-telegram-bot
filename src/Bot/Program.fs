@@ -26,6 +26,8 @@ open Helpers
 #nowarn "20"
 
 module Startup =
+  ServicePointManager.ServerCertificateValidationCallback <- RemoteCertificateValidationCallback(fun o c ch er -> true)
+
   let configureWebApp (builder: IFunctionsWorkerApplicationBuilder) =
     builder.Services.Configure<JsonSerializerOptions>(fun opts -> JSON.options.AddToJsonSerializerOptions(opts))
 
@@ -102,6 +104,5 @@ module Startup =
   //     appBuilder.ConfigureTablesExtension() |> ignore
   // ) |> ignore
 
-  ServicePointManager.ServerCertificateValidationCallback <- RemoteCertificateValidationCallback(fun o c ch er -> true)
 
   host.Run()
