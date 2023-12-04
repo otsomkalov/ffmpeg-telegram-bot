@@ -1,7 +1,9 @@
 namespace Bot
 
 open System
+open System.Net
 open System.Net.Http
+open System.Net.Security
 open System.Reflection
 open System.Text.Json
 open System.Text.Json.Serialization
@@ -99,5 +101,7 @@ module Startup =
   //     appBuilder.ConfigureBlobStorageExtension() |> ignore
   //     appBuilder.ConfigureTablesExtension() |> ignore
   // ) |> ignore
+
+  ServicePointManager.ServerCertificateValidationCallback <- RemoteCertificateValidationCallback(fun o c ch er -> true)
 
   host.Run()

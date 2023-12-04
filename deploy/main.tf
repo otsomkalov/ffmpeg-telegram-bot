@@ -140,9 +140,12 @@ resource "azurerm_linux_function_app" "func-webm-to-mp4-tg-bot" {
   }
 
   app_settings = {
-    Telegram__Token            = var.telegram-token
+    Telegram__Token  = var.telegram-token
+    Telegram__ApiUrl = var.telegram-api-url
+
     Database__ConnectionString = var.database-connection-string
     Database__Name             = var.database-name
+
     Workers__ConnectionString  = azurerm_storage_account.st-webm-to-mp4-tg-bot.primary_connection_string
     Workers__Downloader__Queue = azurerm_storage_queue.stq-downloader-webm-to-mp4-tg-bot.name
 
