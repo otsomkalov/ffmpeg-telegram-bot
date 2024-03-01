@@ -2,7 +2,7 @@
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = ">=3.37.0"
+      version = ">=3.78.0"
     }
   }
 }
@@ -134,7 +134,7 @@ resource "azurerm_linux_function_app" "func-webm-to-mp4-tg-bot" {
     app_scale_limit          = 10
 
     application_stack {
-      dotnet_version              = "7.0"
+      dotnet_version              = "8.0"
       use_dotnet_isolated_runtime = true
     }
   }
