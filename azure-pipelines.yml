@@ -1,12 +1,12 @@
 trigger:
   branches:
     include:
-      - features/rework
+      - main
 
 pr:
   branches:
     include:
-      - features/rework
+      - main
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -17,7 +17,7 @@ variables:
 steps:
   - task: UseDotNet@2
     inputs:
-      version: '7.x'
+      version: '8.x'
   - task: DotNetCoreCLI@2
     name: Restore
     inputs:
