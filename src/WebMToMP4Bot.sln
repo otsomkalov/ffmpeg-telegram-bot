@@ -2,7 +2,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9325722B-8F26-4705-AFAB-10298EFD2646}"
 	ProjectSection(SolutionItems) = preProject
-		README.MD = README.MD
+		..\README.MD = ..\README.MD
 	EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Bot", "Bot\Bot.fsproj", "{F607163E-4962-440B-B16C-67026021ACF1}"

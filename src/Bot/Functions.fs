@@ -1,6 +1,8 @@
 ﻿namespace Bot.Functions
 
+open System.IO
 open System.Net.Http
+open System.Net.Mime
 open System.Text.RegularExpressions
 open System.Threading.Tasks
 open Bot
@@ -8,6 +10,7 @@ open Bot.Domain
 open Bot.Database
 open FSharp
 open Microsoft.AspNetCore.Http
+open Microsoft.AspNetCore.StaticFiles
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
 open Microsoft.Extensions.Logging
@@ -25,11 +28,12 @@ type Functions
     _bot: ITelegramBotClient,
     _db: IMongoDatabase,
     _httpClientFactory: IHttpClientFactory,
-    _logger: ILogger<Functions>
+    _logger: ILogger<Functions>,
+    inputValidationSettings: Settings.InputValidationSettings
   ) =
 
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
-  let webmLinkRegex = Regex("https?[^ ]*.webm")
+  let linkRegex = Regex(inputValidationSettings.LinkRegex)
 
   let processMessage (message: Message) =
 
@@ -46,11 +50,10 @@ type Functions
       | StartsWith "/start" ->
         sendMessage
           "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/"
-      | Regex webmLinkRegex matches ->
-
+      | Regex linkRegex matches ->
         let sendUrlToQueue (url: string) =
           task {
-            let! sentMessageId = replyToMessage $"File {url} is waiting to be downloaded 🕒"
+            let! sentMessageId = replyToMessage $"File *{url}* is waiting to be downloaded 🕒"
 
             let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
 
@@ -73,31 +76,14 @@ type Functions
 
         matches |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
       | _ -> Task.FromResult()
-    | Document doc ->
-      let sendDocToQueue (doc: Document) =
-        task {
-          let! sentMessageId = replyToMessage "File is waiting to be downloaded 🕒"
-
-          let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
-
-          do! saveConversion newConversion
-
-          let userConversion: Domain.UserConversion =
-            { ConversionId = newConversion.Id
-              UserId = userId
-              SentMessageId = sentMessageId
-              ReceivedMessageId = message.MessageId }
-
-          do! saveUserConversion userConversion
-
-          let message: Queue.DownloaderMessage =
-            { ConversionId = newConversion.Id
-              File = Queue.File.Document(doc.FileId, doc.FileName) }
-
-          return! sendDownloaderMessage message
-        }
+    | Document inputValidationSettings.MimeTypes doc ->
+      let sendDocToQueue = Telegram.sendDocToQueue replyToMessage saveConversion saveUserConversion sendDownloaderMessage userId message
 
       doc |> sendDocToQueue
+    | Video inputValidationSettings.MimeTypes video ->
+      let sendDocToQueue = Telegram.sendDocToQueue replyToMessage saveConversion saveUserConversion sendDownloaderMessage userId message
+
+      video |> sendDocToQueue
     | _ -> Task.FromResult()
 
   let handleUpdate (update: Update) =

@@ -24,7 +24,7 @@ let sendDownloaderMessage (workersSettings: Settings.WorkersSettings) =
     queueClient.SendMessageAsync(messageBody) |> Task.map ignore
 
 [<CLIMutable>]
-type ConverterMessage = { Id: string; Name: string }
+type ConverterMessage = { Id: string; Name: string; }
 
 let sendConverterMessage (workersSettings: Settings.WorkersSettings) =
   fun (message: ConverterMessage) ->

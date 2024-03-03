@@ -3,6 +3,10 @@
   default = "prd"
 }
 
+variable "bot-name" {
+  type = string
+}
+
 variable "telegram-token" {
   type = string
 }

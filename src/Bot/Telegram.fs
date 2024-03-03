@@ -8,6 +8,7 @@ open Telegram.Bot
 open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
 open otsom.FSharp.Extensions
+open shortid
 
 let escapeMarkdownString (str: string) =
   Regex.Replace(str, "([`\.#\-!])", "\$1")
@@ -114,4 +115,28 @@ let downloadDocument (bot: ITelegramBotClient) (workersSettings: Settings.Worker
       do! bot.GetInfoAndDownloadFileAsync(id, thumbnailerBlobStream) |> Task.map ignore
 
       return name
+    }
+
+let inline sendDocToQueue replyToMessage saveConversion saveUserConversion sendDownloaderMessage =
+  fun userId (message: Message) (doc: ^T when ^T:(member FileName: string)  and 'T:(member FileId: string)) ->
+    task {
+      let! sentMessageId = replyToMessage $"File *{doc.FileName}* is waiting to be downloaded 🕒"
+
+      let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
+
+      do! saveConversion newConversion
+
+      let userConversion: Domain.UserConversion =
+        { ConversionId = newConversion.Id
+          UserId = userId
+          SentMessageId = sentMessageId
+          ReceivedMessageId = message.MessageId }
+
+      do! saveUserConversion userConversion
+
+      let message: Queue.DownloaderMessage =
+        { ConversionId = newConversion.Id
+          File = Queue.File.Document(doc.FileId, doc.FileName) }
+
+      return! sendDownloaderMessage message
     }
