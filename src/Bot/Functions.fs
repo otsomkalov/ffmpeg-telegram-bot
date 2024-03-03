@@ -1,8 +1,6 @@
 ﻿namespace Bot.Functions
 
-open System.IO
 open System.Net.Http
-open System.Net.Mime
 open System.Text.RegularExpressions
 open System.Threading.Tasks
 open Bot
@@ -10,7 +8,6 @@ open Bot.Domain
 open Bot.Database
 open FSharp
 open Microsoft.AspNetCore.Http
-open Microsoft.AspNetCore.StaticFiles
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
 open Microsoft.Extensions.Logging
