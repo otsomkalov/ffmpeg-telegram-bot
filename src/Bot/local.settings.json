@@ -17,6 +17,9 @@
     "Workers__Uploader__Queue": "uploader",
     "Database__ConnectionString": "<MongoDB connection string>",
     "Database__Name": "<Database name>",
-    "Telegram__Token": "<Telegram bot token>"
+    "Telegram__Token": "<Telegram bot token>",
+    "Telegram__ApiUrl": "https://api.telegram.org",
+    "Validation__LinkRegex": "<Regex to match input link file name>",
+    "Validation__MimeType": "<Regex to match input file name>"
   }
 }
