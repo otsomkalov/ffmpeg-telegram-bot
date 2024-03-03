@@ -20,6 +20,6 @@
     "Telegram__Token": "<Telegram bot token>",
     "Telegram__ApiUrl": "https://api.telegram.org",
     "Validation__LinkRegex": "<Regex to match input link file name>",
-    "Validation__MimeType": "<Regex to match input file name>"
+    "Validation__MimeTypes__0": "<MimeTypes of input video>"
   }
 }
