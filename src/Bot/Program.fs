@@ -7,6 +7,7 @@ open System.Net.Security
 open System.Reflection
 open System.Text.Json
 open System.Text.Json.Serialization
+open Bot.Database
 open FSharp
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
@@ -80,6 +81,7 @@ module Startup =
       .AddSingletonFunc<ITelegramBotClient, Settings.TelegramSettings, HttpClient>(fun settings client ->
         let options = TelegramBotClientOptions(settings.Token, settings.ApiUrl)
         TelegramBotClient(options, client) :> ITelegramBotClient)
+      .AddSingletonFunc<Translation.GetLocaleTranslations, IMongoDatabase>(Translation.getLocaleTranslations)
 
     services
       .AddHttpClient(fun (client: HttpClient) -> client.DefaultRequestHeaders.UserAgent.ParseAdd(chromeUserAgent))

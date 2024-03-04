@@ -1,8 +1,40 @@
 ﻿module Bot.Database
 
+open System.Threading.Tasks
+open Google.Protobuf.WellKnownTypes
 open MongoDB.Driver
 open otsom.FSharp.Extensions
 open Bot.Workflows
+
+[<RequireQualifiedAccess>]
+module User =
+  let load (db: IMongoDatabase) : User.Load =
+    let collection = db.GetCollection "users"
+
+    fun userId ->
+      let filter = Builders<Database.User>.Filter.Eq((fun c -> c.Id), userId)
+
+      collection.Find(filter).SingleOrDefaultAsync()
+      |> Task.map Mappings.User.fromDb
+
+  let save (db: IMongoDatabase) : User.Save =
+    let collection = db.GetCollection "users"
+
+    fun conversion ->
+      let entity = conversion |> Mappings.User.toDb
+      task { do! collection.InsertOneAsync(entity) }
+
+  let ensureExists (db: IMongoDatabase) : User.EnsureExists =
+    let collection = db.GetCollection "users"
+
+    fun user ->
+      let filter = Builders<Database.User>.Filter.Eq((fun u -> u.Id), user.Id)
+      let entity = user |> Mappings.User.toDb
+      let setOnInsert =
+        [Builders<Database.User>.Update.SetOnInsert((fun u -> u.Id), user.Id)
+         Builders<Database.User>.Update.SetOnInsert((fun u -> u.Lang), user.Lang)]
+
+      task { do! (collection.UpdateOneAsync(filter, Builders.Update.Combine(setOnInsert), UpdateOptions(IsUpsert = true)) |> Task.map ignore) }
 
 [<RequireQualifiedAccess>]
 module UserConversion =
@@ -139,3 +171,34 @@ module Conversion =
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Completed.toDb
         collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
+
+[<RequireQualifiedAccess>]
+module Translation =
+  let getLocaleTranslations (db: IMongoDatabase) : Translation.GetLocaleTranslations =
+    fun lang ->
+      let collection = db.GetCollection "resources"
+
+      let localeTranslations =
+        let filter = Builders<Database.Translation>.Filter.Eq((fun t -> t.Lang), lang)
+
+        collection.Find(filter).ToList()
+        |> (Seq.groupBy(_.Key) >> Seq.map(fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head)) >> Map.ofSeq)
+
+      let defaultTranslations =
+        let filter = Builders<Database.Translation>.Filter.Eq((fun t -> t.Lang), Translation.DefaultLang)
+
+        collection.Find(filter).ToList()
+        |> (Seq.groupBy(_.Key) >> Seq.map(fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head)) >> Map.ofSeq)
+
+
+      fun key ->
+        let localeTranslation =
+          localeTranslations
+          |> Map.tryFind key
+
+        let fallbackedTranslation =
+          match localeTranslation with
+          | Some t -> Some t
+          | None -> defaultTranslations |> Map.tryFind key
+
+        fallbackedTranslation |> Option.defaultValue key
