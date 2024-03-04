@@ -50,7 +50,11 @@ type Functions
     | Text messageText ->
       match messageText with
       | StartsWith "/start" ->
-        sendMessage (getTranslation Resources.Welcome)
+        task{
+          let user = message.From |> Mappings.User.fromTg
+          do! ensureUserExists user
+          do! sendMessage (getTranslation Resources.Welcome)
+        }
 
       | Regex webmLinkRegex matches ->
 
@@ -104,6 +108,7 @@ type Functions
         }
 
       doc |> sendDocToQueue
+    |
     | _ -> Task.FromResult()
 
   let handleUpdate (update: Update) =
