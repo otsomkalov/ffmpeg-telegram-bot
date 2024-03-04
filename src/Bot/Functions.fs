@@ -1,7 +1,6 @@
 ﻿namespace Bot.Functions
 
 open System.Net.Http
-open System.Text.RegularExpressions
 open System.Threading.Tasks
 open Bot
 open Bot.Domain
@@ -14,7 +13,6 @@ open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open Telegram.Bot
 open Telegram.Bot.Types
-open Helpers
 open Telegram.Bot.Types.Enums
 open shortid
 open otsom.FSharp.Extensions
@@ -29,7 +27,6 @@ type Functions
   ) =
 
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
-  let webmLinkRegex = Regex("https?[^ ]*.webm")
 
   let processMessage (message: Message) =
 
@@ -39,44 +36,10 @@ type Functions
     let saveUserConversion = UserConversion.save _db
     let saveConversion = Conversion.New.save _db
 
-    match message with
-    | FromBot -> Task.FromResult()
-    | Text messageText ->
-      match messageText with
-      | StartsWith "/start" ->
-        sendMessage
-          "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/"
-      | Regex webmLinkRegex matches ->
-
-        let sendUrlToQueue (url: string) =
-          task {
-            let! sentMessageId = replyToMessage $"File {url} is waiting to be downloaded 🕒"
-
-            let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
-
-            do! saveConversion newConversion
-
-            let userConversion: Domain.UserConversion =
-              { ConversionId = newConversion.Id
-                UserId = userId
-                SentMessageId = sentMessageId
-                ReceivedMessageId = message.MessageId }
-
-            do! saveUserConversion userConversion
-
-            let message: Queue.DownloaderMessage =
-              { ConversionId = newConversion.Id
-                File = Queue.File.Link url }
-
-            return! sendDownloaderMessage message
-          }
-
-        matches |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
-      | _ -> Task.FromResult()
-    | Document doc ->
-      let sendDocToQueue (doc: Document) =
+    let processLinks links =
+      let sendUrlToQueue (url: string) =
         task {
-          let! sentMessageId = replyToMessage "File is waiting to be downloaded 🕒"
+          let! sentMessageId = replyToMessage $"File {url} is waiting to be downloaded 🕒"
 
           let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
 
@@ -92,13 +55,46 @@ type Functions
 
           let message: Queue.DownloaderMessage =
             { ConversionId = newConversion.Id
-              File = Queue.File.Document(doc.FileId, doc.FileName) }
+              File = Queue.File.Link url }
 
           return! sendDownloaderMessage message
         }
 
-      doc |> sendDocToQueue
-    | _ -> Task.FromResult()
+      links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
+
+    let processDocument fileId fileName =
+      task {
+        let! sentMessageId = replyToMessage "File is waiting to be downloaded 🕒"
+
+        let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
+
+        do! saveConversion newConversion
+
+        let userConversion: Domain.UserConversion =
+          { ConversionId = newConversion.Id
+            UserId = userId
+            SentMessageId = sentMessageId
+            ReceivedMessageId = message.MessageId }
+
+        do! saveUserConversion userConversion
+
+        let message: Queue.DownloaderMessage =
+          { ConversionId = newConversion.Id
+            File = Queue.File.Document(fileId, fileName) }
+
+        return! sendDownloaderMessage message
+      }
+
+    let processMessage' =
+      function
+      | None -> Task.FromResult()
+      | Some Start ->
+        sendMessage
+          "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/"
+      | Some(Links links) -> processLinks links
+      | Some(Document(fileId, fileName)) -> processDocument fileId fileName
+
+    Workflows.parseCommand message |> Task.bind processMessage'
 
   let handleUpdate (update: Update) =
     match update.Type with
