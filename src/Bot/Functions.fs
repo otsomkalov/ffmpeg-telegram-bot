@@ -35,6 +35,7 @@ type Functions
     let replyToMessage = Telegram.replyToMessage _bot userId message.MessageId
     let saveUserConversion = UserConversion.save _db
     let saveConversion = Conversion.New.save _db
+    let ensureUserExists = User.ensureExists _db
 
     let processLinks links =
       let sendUrlToQueue (url: string) =

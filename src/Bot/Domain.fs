@@ -3,6 +3,8 @@
 open System.Threading.Tasks
 open Telegram.Bot.Types
 
+type User = { Id: int64; Lang: string }
+
 type UserConversion =
   { ReceivedMessageId: int
     SentMessageId: int
