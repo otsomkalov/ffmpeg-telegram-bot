@@ -46,13 +46,18 @@ module Conversion =
 let parseCommand : ParseCommand =
   let webmLinkRegex = Regex("https?[^ ]*.webm")
 
-  fun message ->
-    match message with
-    | FromBot -> None |> Task.FromResult
-    | Text messageText ->
-      match messageText with
-      | StartsWith "/start" -> Command.Start |> Some |> Task.FromResult
-      | Regex webmLinkRegex matches -> matches |> Command.Links |> Some |> Task.FromResult
-      | _ -> None |> Task.FromResult
-    | Document doc -> Command.Document(doc.FileId, doc.FileName) |> Some |> Task.FromResult
-    | _ -> None |> Task.FromResult
+  function
+  | FromBot ->
+    None |> Task.FromResult
+  | Text messageText ->
+    match messageText with
+    | StartsWith "/start" ->
+      Command.Start |> Some |> Task.FromResult
+    | Regex webmLinkRegex matches ->
+      matches |> Command.Links |> Some |> Task.FromResult
+    | _ ->
+      None |> Task.FromResult
+  | Document doc ->
+    Command.Document(doc.FileId, doc.FileName) |> Some |> Task.FromResult
+  | _ ->
+    None |> Task.FromResult
