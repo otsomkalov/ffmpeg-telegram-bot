@@ -1,7 +1,6 @@
 ﻿namespace Bot.Functions
 
 open System.Net.Http
-open System.Text.RegularExpressions
 open System.Threading.Tasks
 open Bot
 open Bot.Domain
@@ -17,7 +16,6 @@ open MongoDB.Bson
 open MongoDB.Driver
 open Telegram.Bot
 open Telegram.Bot.Types
-open Helpers
 open Telegram.Bot.Types.Enums
 open shortid
 open otsom.FSharp.Extensions
@@ -33,7 +31,6 @@ type Functions
   ) =
 
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
-  let webmLinkRegex = Regex("https?[^ ]*.webm")
 
   let processMessage (message: Message) =
 
@@ -45,48 +42,10 @@ type Functions
     let getTranslation = getLocaleTranslations message.From.LanguageCode
     let ensureUserExists = User.ensureExists _db
 
-    match message with
-    | FromBot -> Task.FromResult()
-    | Text messageText ->
-      match messageText with
-      | StartsWith "/start" ->
-        task{
-          let user = message.From |> Mappings.User.fromTg
-          do! ensureUserExists user
-          do! sendMessage (getTranslation Resources.Welcome)
-        }
-
-      | Regex webmLinkRegex matches ->
-
-        let sendUrlToQueue (url: string) =
-          task {
-            let! sentMessageId = replyToMessage (getTranslation Resources.LinkDownload)
-
-            let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
-
-            do! saveConversion newConversion
-
-            let userConversion: Domain.UserConversion =
-              { ConversionId = newConversion.Id
-                UserId = userId
-                SentMessageId = sentMessageId
-                ReceivedMessageId = message.MessageId }
-
-            do! saveUserConversion userConversion
-
-            let message: Queue.DownloaderMessage =
-              { ConversionId = newConversion.Id
-                File = Queue.File.Link url }
-
-            return! sendDownloaderMessage message
-          }
-
-        matches |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
-      | _ -> Task.FromResult()
-    | Document doc ->
-      let sendDocToQueue (doc: Document) =
+    let processLinks links =
+      let sendUrlToQueue (url: string) =
         task {
-          let! sentMessageId = replyToMessage (getTranslation Resources.DocumentDownload)
+          let! sentMessageId = replyToMessage (getTranslation Resources.LinkDownload)
 
           let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
 
@@ -102,14 +61,45 @@ type Functions
 
           let message: Queue.DownloaderMessage =
             { ConversionId = newConversion.Id
-              File = Queue.File.Document(doc.FileId, doc.FileName) }
+              File = Queue.File.Link url }
 
           return! sendDownloaderMessage message
         }
 
-      doc |> sendDocToQueue
-    |
-    | _ -> Task.FromResult()
+      links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
+
+    let processDocument fileId fileName =
+      task {
+        let! sentMessageId = replyToMessage (getTranslation Resources.DocumentDownload)
+
+        let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
+
+        do! saveConversion newConversion
+
+        let userConversion: Domain.UserConversion =
+          { ConversionId = newConversion.Id
+            UserId = userId
+            SentMessageId = sentMessageId
+            ReceivedMessageId = message.MessageId }
+
+        do! saveUserConversion userConversion
+
+        let message: Queue.DownloaderMessage =
+          { ConversionId = newConversion.Id
+            File = Queue.File.Document(fileId, fileName) }
+
+        return! sendDownloaderMessage message
+      }
+
+    let processMessage' =
+      function
+      | None -> Task.FromResult()
+      | Some Start ->
+        sendMessage (getTranslation Resources.Welcome)
+      | Some(Links links) -> processLinks links
+      | Some(Document(fileId, fileName)) -> processDocument fileId fileName
+
+    Workflows.parseCommand message |> Task.bind processMessage'
 
   let handleUpdate (update: Update) =
     match update.Type with

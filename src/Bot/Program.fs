@@ -1,14 +1,10 @@
 namespace Bot
 
 open System
-open System.Net
 open System.Net.Http
-open System.Net.Security
 open System.Reflection
 open System.Text.Json
 open System.Text.Json.Serialization
-open Bot.Database
-open FSharp
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting

@@ -1,7 +1,5 @@
 ﻿module Bot.Database
 
-open System.Threading.Tasks
-open Google.Protobuf.WellKnownTypes
 open MongoDB.Driver
 open otsom.FSharp.Extensions
 open Bot.Workflows
@@ -29,7 +27,6 @@ module User =
 
     fun user ->
       let filter = Builders<Database.User>.Filter.Eq((fun u -> u.Id), user.Id)
-      let entity = user |> Mappings.User.toDb
       let setOnInsert =
         [Builders<Database.User>.Update.SetOnInsert((fun u -> u.Id), user.Id)
          Builders<Database.User>.Update.SetOnInsert((fun u -> u.Lang), user.Lang)]
