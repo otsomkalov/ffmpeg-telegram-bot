@@ -32,7 +32,6 @@
     <Compile Include="Workflows.fs" />
     <Compile Include="Settings.fs" />
     <Compile Include="Translation.fs" />
-    <Compile Include="MemoryCache.fs" />
     <Compile Include="Mappings.fs" />
     <Compile Include="Telegram.fs" />
     <Compile Include="Queue.fs" />
