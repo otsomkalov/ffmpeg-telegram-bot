@@ -10,7 +10,7 @@ open Telegram.Bot.Types.Enums
 open otsom.FSharp.Extensions
 
 let escapeMarkdownString (str: string) =
-  Regex.Replace(str, "([`\.#\-!])", "\$1")
+  Regex.Replace(str, "([\(\)`\.#\-!+])", "\$1")
 
 type SendMessage = string -> Task<unit>
 
