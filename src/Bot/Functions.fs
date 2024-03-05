@@ -38,14 +38,19 @@ type Functions
     let replyToMessage = Telegram.replyToMessage _bot userId message.MessageId
     let saveUserConversion = UserConversion.save _db
     let saveConversion = Conversion.New.save _db
+    let ensureUserExists = User.ensureExists _db
 
     match message with
     | FromBot -> Task.FromResult()
     | Text messageText ->
       match messageText with
       | StartsWith "/start" ->
-        sendMessage
-          "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/"
+        task{
+          let user = message.From |> Mappings.User.fromTg
+          do! ensureUserExists user
+          do! sendMessage "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/"
+        }
+
       | Regex webmLinkRegex matches ->
 
         let sendUrlToQueue (url: string) =
@@ -71,7 +76,12 @@ type Functions
             return! sendDownloaderMessage message
           }
 
-        matches |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
+        task{
+          let user = message.From |> Mappings.User.fromTg
+          do! ensureUserExists user
+
+          do! matches |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
+        }
       | _ -> Task.FromResult()
     | Document doc ->
       let sendDocToQueue (doc: Document) =
@@ -97,7 +107,12 @@ type Functions
           return! sendDownloaderMessage message
         }
 
-      doc |> sendDocToQueue
+      task {
+        let user = message.From |> Mappings.User.fromTg
+        do! ensureUserExists user
+
+        do! doc |> sendDocToQueue
+      }
     | _ -> Task.FromResult()
 
   let handleUpdate (update: Update) =

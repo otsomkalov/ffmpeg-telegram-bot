@@ -5,6 +5,35 @@ open otsom.FSharp.Extensions
 open Bot.Workflows
 
 [<RequireQualifiedAccess>]
+module User =
+  let load (db: IMongoDatabase) : User.Load =
+    let collection = db.GetCollection "users"
+
+    fun userId ->
+      let filter = Builders<Database.User>.Filter.Eq((fun c -> c.Id), userId)
+
+      collection.Find(filter).SingleOrDefaultAsync()
+      |> Task.map Mappings.User.fromDb
+
+  let save (db: IMongoDatabase) : User.Save =
+    let collection = db.GetCollection "users"
+
+    fun conversion ->
+      let entity = conversion |> Mappings.User.toDb
+      task { do! collection.InsertOneAsync(entity) }
+
+  let ensureExists (db: IMongoDatabase) : User.EnsureExists =
+    let collection = db.GetCollection "users"
+
+    fun user ->
+      let filter = Builders<Database.User>.Filter.Eq((fun u -> u.Id), user.Id)
+      let setOnInsert =
+        [Builders<Database.User>.Update.SetOnInsert((fun u -> u.Id), user.Id)
+         Builders<Database.User>.Update.SetOnInsert((fun u -> u.Lang), user.Lang)]
+
+      task { do! (collection.UpdateOneAsync(filter, Builders.Update.Combine(setOnInsert), UpdateOptions(IsUpsert = true)) |> Task.map ignore) }
+
+[<RequireQualifiedAccess>]
 module UserConversion =
   let load (db: IMongoDatabase) : UserConversion.Load =
     let collection = db.GetCollection "users-conversions"

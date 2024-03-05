@@ -2,6 +2,17 @@
 module Bot.Mappings
 
 [<RequireQualifiedAccess>]
+module User =
+  let fromDb (user: Database.User) : Domain.User = { Id = user.Id; Lang = user.Lang }
+
+  let toDb (user: Domain.User) : Database.User =
+    Database.User(Id = user.Id, Lang = user.Lang)
+
+  let fromTg (user: Telegram.Bot.Types.User) : Domain.User =
+    { Id = user.Id
+      Lang = user.LanguageCode }
+
+[<RequireQualifiedAccess>]
 module UserConversion =
   let fromDb (conversion: Database.Conversion) : Domain.UserConversion =
     { ConversionId = conversion.Id

@@ -1,5 +1,7 @@
 ﻿module Bot.Domain
 
+type User = { Id: int64; Lang: string }
+
 type UserConversion =
   { ReceivedMessageId: int
     SentMessageId: int
