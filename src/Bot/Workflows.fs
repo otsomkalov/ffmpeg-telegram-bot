@@ -12,12 +12,6 @@ module User =
   type EnsureExists = User -> Task<unit>
 
 [<RequireQualifiedAccess>]
-module User =
-  type Load = int64 -> Task<User>
-  type Save = User -> Task<unit>
-  type EnsureExists = User -> Task<unit>
-
-[<RequireQualifiedAccess>]
 module UserConversion =
   type Load = string -> UserConversion Task
   type Save = UserConversion -> unit Task

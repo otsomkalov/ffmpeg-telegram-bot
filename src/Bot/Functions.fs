@@ -91,13 +91,19 @@ type Functions
         return! sendDownloaderMessage message
       }
 
+    let processCommand =
+      function
+      | Start ->
+        sendMessage (getTranslation Resources.Welcome)
+      | Links links -> processLinks links
+      | Document(fileId, fileName) -> processDocument fileId fileName
+
     let processMessage' =
       function
       | None -> Task.FromResult()
-      | Some Start ->
-        sendMessage (getTranslation Resources.Welcome)
-      | Some(Links links) -> processLinks links
-      | Some(Document(fileId, fileName)) -> processDocument fileId fileName
+      | Some cmd ->
+        ensureUserExists (Mappings.User.fromTg message.From)
+        |> Task.bind(fun () -> processCommand cmd)
 
     Workflows.parseCommand message |> Task.bind processMessage'
 
