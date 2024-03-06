@@ -3,6 +3,7 @@
 open MongoDB.Driver
 open otsom.FSharp.Extensions
 open Bot.Workflows
+open System
 
 [<RequireQualifiedAccess>]
 module User =
@@ -187,15 +188,25 @@ module Translation =
         collection.Find(filter).ToList()
         |> (Seq.groupBy(_.Key) >> Seq.map(fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head)) >> Map.ofSeq)
 
-
-      fun key ->
-        let localeTranslation =
+      let getTranslation : Translation.GetTranslation =
+        fun key ->
           localeTranslations
           |> Map.tryFind key
+          |> Option.defaultWith (fun () -> defaultTranslations |> Map.tryFind key |> Option.defaultValue key)
 
-        let fallbackedTranslation =
-          match localeTranslation with
-          | Some t -> Some t
-          | None -> defaultTranslations |> Map.tryFind key
+      let formatTranslation : Translation.FormatTranslation =
+        fun (key, [<ParamArray>]args) ->
+          let localeTemplate =
+            localeTranslations
+            |> Map.tryFind key
 
-        fallbackedTranslation |> Option.defaultValue key
+          let fallbackedTemplate =
+            match localeTemplate with
+            | Some t -> Some t
+            | None -> defaultTranslations |> Map.tryFind key
+
+          match fallbackedTemplate with
+          | Some t -> String.Format(t, args)
+          | None -> key
+
+      (getTranslation, formatTranslation)

@@ -12,8 +12,9 @@ module Translation =
   let DefaultLang = "en"
 
   type GetTranslation = string -> string
+  type FormatTranslation = string * obj array -> string
 
-  type GetLocaleTranslations = string -> GetTranslation
+  type GetLocaleTranslations = string -> GetTranslation * FormatTranslation
 
   [<RequireQualifiedAccess>]
   module Resources =

@@ -10,9 +10,7 @@ open FSharp
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
-open Microsoft.Extensions.Localization
 open Microsoft.Extensions.Logging
-open MongoDB.Bson
 open MongoDB.Driver
 open Telegram.Bot
 open Telegram.Bot.Types
@@ -39,13 +37,13 @@ type Functions
     let replyToMessage = Telegram.replyToMessage _bot userId message.MessageId
     let saveUserConversion = UserConversion.save _db
     let saveConversion = Conversion.New.save _db
-    let getTranslation = getLocaleTranslations message.From.LanguageCode
+    let tran, tranf = getLocaleTranslations message.From.LanguageCode
     let ensureUserExists = User.ensureExists _db
 
     let processLinks links =
       let sendUrlToQueue (url: string) =
         task {
-          let! sentMessageId = replyToMessage (getTranslation Resources.LinkDownload)
+          let! sentMessageId = replyToMessage (tranf(Resources.LinkDownload, [|url|]))
 
           let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
 
@@ -70,7 +68,7 @@ type Functions
 
     let processDocument fileId fileName =
       task {
-        let! sentMessageId = replyToMessage (getTranslation Resources.DocumentDownload)
+        let! sentMessageId = replyToMessage (tran Resources.DocumentDownload)
 
         let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
 
@@ -94,7 +92,7 @@ type Functions
     let processCommand =
       function
       | Start ->
-        sendMessage (getTranslation Resources.Welcome)
+        sendMessage (tran Resources.Welcome)
       | Links links -> processLinks links
       | Document(fileId, fileName) -> processDocument fileId fileName
 
@@ -148,7 +146,7 @@ type Functions
     task {
       let! userConversion = loadUserConversion message.ConversionId
       let! user = loadUser userConversion.UserId
-      let getTranslation = getLocaleTranslations user.Lang
+      let tran, _ = getLocaleTranslations user.Lang
 
       let editMessage =
         Telegram.editMessage _bot userConversion.UserId userConversion.SentMessageId
@@ -175,7 +173,7 @@ type Functions
 
               do! sendThumbnailerMessage thumbnailerMessage
 
-              do! editMessage (getTranslation Resources.ConversionInProgress)
+              do! editMessage (tran Resources.ConversionInProgress)
             }
           | Error(HTTP.DownloadLinkError.Unauthorized) -> editMessage Resources.NotAuthorized
           | Error(HTTP.DownloadLinkError.NotFound) -> editMessage Resources.NotFound
@@ -202,7 +200,7 @@ type Functions
         Telegram.editMessage _bot userConversion.UserId userConversion.SentMessageId
 
       let! user = loadUser userConversion.UserId
-      let getTranslation = getLocaleTranslations user.Lang
+      let tran, _ = getLocaleTranslations user.Lang
 
       let! conversion = loadPreparedOrThumbnailed message.Id
 
@@ -217,7 +215,7 @@ type Functions
 
             task {
               do! saveConvertedConversion convertedConversion
-              do! editMessage (getTranslation Resources.VideoConverted)
+              do! editMessage (tran Resources.VideoConverted)
             }
           | Choice2Of2 thumbnailedConversion ->
             let completedConversion: Domain.Conversion.Completed =
@@ -231,7 +229,7 @@ type Functions
             task {
               do! saveCompletedConversion completedConversion
               do! sendUploaderMessage uploaderMessage
-              do! editMessage (getTranslation Resources.Uploading)
+              do! editMessage (tran Resources.Uploading)
             }
         | Queue.Error error -> editMessage error
     }
@@ -256,7 +254,7 @@ type Functions
         Telegram.editMessage _bot userConversion.UserId userConversion.SentMessageId
 
       let! user = loadUser userConversion.UserId
-      let getTranslation = getLocaleTranslations user.Lang
+      let tran, _ = getLocaleTranslations user.Lang
 
       let! conversion = loadPreparedOrConverted message.Id
 
@@ -271,7 +269,7 @@ type Functions
 
             task {
               do! saveThumbnailedConversion thumbnailedConversion
-              do! editMessage (getTranslation Resources.ThumbnailGenerated)
+              do! editMessage (tran Resources.ThumbnailGenerated)
             }
           | Choice2Of2 convertedConversion ->
             let completedConversion: Domain.Conversion.Completed =
@@ -285,7 +283,7 @@ type Functions
             task {
               do! saveCompletedConversion completedConversion
               do! sendUploaderMessage uploaderMessage
-              do! editMessage (getTranslation Resources.Uploading)
+              do! editMessage (tran Resources.Uploading)
             }
         | Queue.Error error ->
 
