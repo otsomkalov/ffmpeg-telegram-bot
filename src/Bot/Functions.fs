@@ -66,7 +66,7 @@ type Functions
 
       links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
 
-    let processDocument fileId (fileName: string) =
+    let processDocument fileId fileName =
       task {
         let! sentMessageId = replyToMessage (tranf (Resources.DocumentDownload, [|fileName|]))
 
