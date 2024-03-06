@@ -51,7 +51,7 @@ module Conversion =
     type Save = Conversion.Completed -> unit Task
 
 let parseCommand : ParseCommand =
-  let webmLinkRegex = Regex("https?[^ ]*.webm")
+  let webmLinkRegex = Regex("https?[^ ]*.webm\??(?:&?[^=&]*=[^=&]*)*")
 
   function
   | FromBot ->
