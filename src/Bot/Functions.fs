@@ -66,9 +66,9 @@ type Functions
 
       links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
 
-    let processDocument fileId fileName =
+    let processDocument fileId (fileName: string) =
       task {
-        let! sentMessageId = replyToMessage (tran Resources.DocumentDownload)
+        let! sentMessageId = replyToMessage (tranf (Resources.DocumentDownload, [|fileName|]))
 
         let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
 
