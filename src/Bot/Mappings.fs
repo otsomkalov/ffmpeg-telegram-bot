@@ -102,3 +102,9 @@ module Conversion =
         ThumbnailFileName = conversion.ThumbnailFile,
         State = Database.ConversionState.Completed
       )
+
+[<RequireQualifiedAccess>]
+module Translation =
+  let fromDb (translation: Database.Translation) : Translation =
+    { Key = translation.Key
+      Value = translation.Value }

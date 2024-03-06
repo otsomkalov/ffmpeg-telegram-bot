@@ -6,6 +6,7 @@ open System.Text.Json
 open System.Text.Json.Serialization
 open System.Text.RegularExpressions
 open Telegram.Bot.Types
+open Telegram.Bot.Types.Enums
 
 [<RequireQualifiedAccess>]
 module String =

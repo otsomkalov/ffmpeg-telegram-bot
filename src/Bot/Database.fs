@@ -3,6 +3,7 @@
 open MongoDB.Driver
 open otsom.FSharp.Extensions
 open Bot.Workflows
+open System
 
 [<RequireQualifiedAccess>]
 module User =
@@ -168,3 +169,44 @@ module Conversion =
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Completed.toDb
         collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
+
+[<RequireQualifiedAccess>]
+module Translation =
+  let getLocaleTranslations (db: IMongoDatabase) : Translation.GetLocaleTranslations =
+    fun lang ->
+      let collection = db.GetCollection "resources"
+
+      let localeTranslations =
+        let filter = Builders<Database.Translation>.Filter.Eq((fun t -> t.Lang), lang)
+
+        collection.Find(filter).ToList()
+        |> (Seq.groupBy(_.Key) >> Seq.map(fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head)) >> Map.ofSeq)
+
+      let defaultTranslations =
+        let filter = Builders<Database.Translation>.Filter.Eq((fun t -> t.Lang), Translation.DefaultLang)
+
+        collection.Find(filter).ToList()
+        |> (Seq.groupBy(_.Key) >> Seq.map(fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head)) >> Map.ofSeq)
+
+      let getTranslation : Translation.GetTranslation =
+        fun key ->
+          localeTranslations
+          |> Map.tryFind key
+          |> Option.defaultWith (fun () -> defaultTranslations |> Map.tryFind key |> Option.defaultValue key)
+
+      let formatTranslation : Translation.FormatTranslation =
+        fun (key, [<ParamArray>]args) ->
+          let localeTemplate =
+            localeTranslations
+            |> Map.tryFind key
+
+          let fallbackedTemplate =
+            match localeTemplate with
+            | Some t -> Some t
+            | None -> defaultTranslations |> Map.tryFind key
+
+          match fallbackedTemplate with
+          | Some t -> String.Format(t, args)
+          | None -> key
+
+      (getTranslation, formatTranslation)

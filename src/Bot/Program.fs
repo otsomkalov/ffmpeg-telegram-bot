@@ -19,6 +19,7 @@ open MongoDB.ApplicationInsights.DependencyInjection
 open Polly
 open otsom.FSharp.Extensions.ServiceCollection
 open Helpers
+open Database
 
 #nowarn "20"
 
@@ -48,7 +49,7 @@ module Startup =
       .HandleTransientHttpError()
       .WaitAndRetryAsync(5, (fun retryAttempt -> TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))))
 
-  let private configureServices (context: HostBuilderContext) (services: IServiceCollection) =
+  let private configureServices _ (services: IServiceCollection) =
     services.AddApplicationInsightsTelemetryWorkerService()
     services.ConfigureFunctionsApplicationInsights()
 
@@ -77,6 +78,7 @@ module Startup =
       .AddSingletonFunc<ITelegramBotClient, Settings.TelegramSettings, HttpClient>(fun settings client ->
         let options = TelegramBotClientOptions(settings.Token, settings.ApiUrl)
         TelegramBotClient(options, client) :> ITelegramBotClient)
+      .AddSingletonFunc<Translation.GetLocaleTranslations, IMongoDatabase>(Translation.getLocaleTranslations)
 
     services
       .AddHttpClient(fun (client: HttpClient) -> client.DefaultRequestHeaders.UserAgent.ParseAdd(chromeUserAgent))
