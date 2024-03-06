@@ -10,13 +10,16 @@ open FSharp
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
+open Microsoft.Extensions.Localization
 open Microsoft.Extensions.Logging
+open MongoDB.Bson
 open MongoDB.Driver
 open Telegram.Bot
 open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
 open shortid
-open otsom.FSharp.Extensions
+open otsom.fs.Extensions
+open otsom.fs.Telegram.Bot.Core
 
 type Functions
   (
@@ -25,7 +28,10 @@ type Functions
     _db: IMongoDatabase,
     _httpClientFactory: IHttpClientFactory,
     _logger: ILogger<Functions>,
-    getLocaleTranslations: Translation.GetLocaleTranslations
+    getLocaleTranslations: Translation.GetLocaleTranslations,
+    sendUserMessage: SendUserMessage,
+    replyToUserMessage: ReplyToUserMessage,
+    editBotMessage: EditBotMessage
   ) =
 
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
@@ -33,8 +39,9 @@ type Functions
   let processMessage (message: Message) =
 
     let userId = message.Chat.Id
-    let sendMessage = Telegram.sendMessage _bot userId
-    let replyToMessage = Telegram.replyToMessage _bot userId message.MessageId
+    let userId' = UserId userId
+    let sendMessage = sendUserMessage userId'
+    let replyToMessage = replyToUserMessage userId' message.MessageId
     let saveUserConversion = UserConversion.save _db
     let saveConversion = Conversion.New.save _db
     let tran, tranf = getLocaleTranslations message.From.LanguageCode
@@ -51,7 +58,7 @@ type Functions
 
           let userConversion: Domain.UserConversion =
             { ConversionId = newConversion.Id
-              UserId = userId
+              UserId = userId'
               SentMessageId = sentMessageId
               ReceivedMessageId = message.MessageId }
 
@@ -64,7 +71,7 @@ type Functions
           return! sendDownloaderMessage message
         }
 
-      links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
+      links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.ignore
 
     let processDocument fileId fileName =
       task {
@@ -76,7 +83,7 @@ type Functions
 
         let userConversion: Domain.UserConversion =
           { ConversionId = newConversion.Id
-            UserId = userId
+            UserId = userId'
             SentMessageId = sentMessageId
             ReceivedMessageId = message.MessageId }
 
@@ -148,8 +155,7 @@ type Functions
       let! user = loadUser userConversion.UserId
       let tran, _ = getLocaleTranslations user.Lang
 
-      let editMessage =
-        Telegram.editMessage _bot userConversion.UserId userConversion.SentMessageId
+      let editMessage = editBotMessage userConversion.UserId userConversion.SentMessageId
 
       let! conversion = loadNewConversion message.ConversionId
 
@@ -196,8 +202,10 @@ type Functions
     task {
       let! userConversion = loadUserConversion message.Id
 
-      let editMessage =
-        Telegram.editMessage _bot userConversion.UserId userConversion.SentMessageId
+      let editMessage = editBotMessage userConversion.UserId userConversion.SentMessageId
+
+      let! user = loadUser userConversion.UserId
+      let getTranslation = getLocaleTranslations user.Lang
 
       let! user = loadUser userConversion.UserId
       let tran, _ = getLocaleTranslations user.Lang
@@ -250,8 +258,10 @@ type Functions
     task {
       let! userConversion = loadUserConversion message.Id
 
-      let editMessage =
-        Telegram.editMessage _bot userConversion.UserId userConversion.SentMessageId
+      let editMessage = editBotMessage userConversion.UserId userConversion.SentMessageId
+
+      let! user = loadUser userConversion.UserId
+      let getTranslation = getLocaleTranslations user.Lang
 
       let! user = loadUser userConversion.UserId
       let tran, _ = getLocaleTranslations user.Lang
