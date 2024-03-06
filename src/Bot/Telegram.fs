@@ -41,7 +41,7 @@ let replyWithVideo (workersSettings: Settings.WorkersSettings) (bot: ITelegramBo
           thumbnail = InputFileStream(thumbnailStreamResponse.Value.Content, thumbnail),
           disableNotification = true
         )
-        |> Task.map ignore
+        |> Task.ignore
 
       do! videoBlob.DeleteAsync() |> Task.ignore
       do! thumbnailBlob.DeleteAsync() |> Task.ignore

@@ -22,8 +22,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="7.0.0"/>
     <PackageReference Include="MongoDB.ApplicationInsights.DependencyInjection" Version="1.0.34"/>
     <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="6.0.7"/>
-    <PackageReference Include="otsom.fs.Extensions" Version="0.0.13"/>
-    <PackageReference Include="otsom.fs.Extensions.DependencyInjection" Version="0.0.1"/>
+    <PackageReference Include="otsom.fs.Extensions" Version="0.0.17"/>
     <PackageReference Include="otsom.fs.Telegram.Bot" Version="0.0.12"/>
     <PackageReference Include="FSharp.Logf" Version="1.2.2"/>
   </ItemGroup>

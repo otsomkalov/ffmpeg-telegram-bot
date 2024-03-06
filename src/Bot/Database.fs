@@ -172,7 +172,7 @@ module Conversion =
       fun conversion ->
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Completed.toDb
-        collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
+        collection.ReplaceOneAsync(filter, entity) |> Task.ignore
 
 [<RequireQualifiedAccess>]
 module Translation =

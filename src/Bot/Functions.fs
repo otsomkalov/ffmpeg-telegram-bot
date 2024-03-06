@@ -71,7 +71,7 @@ type Functions
           return! sendDownloaderMessage message
         }
 
-      links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
+      links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.ignore
 
     let processDocument fileId fileName =
       task {

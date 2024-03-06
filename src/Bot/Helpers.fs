@@ -6,16 +6,7 @@ open System.Text.Json
 open System.Text.Json.Serialization
 open System.Text.RegularExpressions
 open Telegram.Bot.Types
-open Telegram.Bot.Types.Enums
-
-[<RequireQualifiedAccess>]
-module String =
-  let compareCI input toCompare =
-
-    String.Equals(input, toCompare, StringComparison.InvariantCultureIgnoreCase)
-
-  let containsCI (input: string) (toSearch: string) =
-    input.Contains(toSearch, StringComparison.InvariantCultureIgnoreCase)
+open otsom.fs.Extensions.String
 
 let private contains (substring: string) (str: string) =
   str.Contains(substring, StringComparison.InvariantCultureIgnoreCase)
@@ -24,17 +15,18 @@ let (|Text|_|) (message: Message) =
   message
   |> Option.ofObj
   |> Option.bind (fun m -> m.Text |> Option.ofObj)
-  |> Option.filter (fun t -> String.containsCI t "!nsfw" |> not)
+  |> Option.filter (function | Contains "!nsfw" -> false | _ -> true)
   |> Option.filter (String.IsNullOrEmpty >> not)
 
 let (|Document|_|) (message: Message) =
   message
   |> Option.ofObj
-  |> Option.filter (fun m -> String.IsNullOrEmpty m.Caption || (String.containsCI m.Caption "!nsfw" |> not))
+  |> Option.filter (fun m -> String.IsNullOrEmpty m.Caption || (match m.Caption with | Contains "!nsfw" -> false | _ -> true))
   |> Option.bind (fun m -> m.Document |> Option.ofObj)
-  |> Option.filter (fun d ->
-    String.compareCI (Path.GetExtension(d.FileName)) ".webm"
-    && String.compareCI d.MimeType "video/webm")
+  |> Option.bind (fun d ->
+    match (Path.GetExtension(d.FileName), d.MimeType) with
+    | Equals ".webm", Equals "video/webm" -> Some d
+    | _ -> None)
 
 let (|FromBot|_|) (message: Message) =
   message.From
