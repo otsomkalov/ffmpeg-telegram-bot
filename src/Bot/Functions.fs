@@ -10,9 +10,7 @@ open FSharp
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
-open Microsoft.Extensions.Localization
 open Microsoft.Extensions.Logging
-open MongoDB.Bson
 open MongoDB.Driver
 open Telegram.Bot
 open Telegram.Bot.Types
@@ -38,10 +36,11 @@ type Functions
 
   let processMessage (message: Message) =
 
-    let userId = message.Chat.Id
+    let chatId = message.Chat.Id |> UserId
+    let userId = message.From.Id
     let userId' = UserId userId
     let sendMessage = sendUserMessage userId'
-    let replyToMessage = replyToUserMessage userId' message.MessageId
+    let replyToMessage = replyToUserMessage chatId message.MessageId
     let saveUserConversion = UserConversion.save _db
     let saveConversion = Conversion.New.save _db
     let tran, tranf = getLocaleTranslations message.From.LanguageCode
@@ -60,7 +59,8 @@ type Functions
             { ConversionId = newConversion.Id
               UserId = userId'
               SentMessageId = sentMessageId
-              ReceivedMessageId = message.MessageId }
+              ReceivedMessageId = message.MessageId
+              ChatId = chatId }
 
           do! saveUserConversion userConversion
 
@@ -85,7 +85,8 @@ type Functions
           { ConversionId = newConversion.Id
             UserId = userId'
             SentMessageId = sentMessageId
-            ReceivedMessageId = message.MessageId }
+            ReceivedMessageId = message.MessageId
+            ChatId = chatId }
 
         do! saveUserConversion userConversion
 
@@ -155,7 +156,7 @@ type Functions
       let! user = loadUser userConversion.UserId
       let tran, _ = getLocaleTranslations user.Lang
 
-      let editMessage = editBotMessage userConversion.UserId userConversion.SentMessageId
+      let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
       let! conversion = loadNewConversion message.ConversionId
 
@@ -202,10 +203,7 @@ type Functions
     task {
       let! userConversion = loadUserConversion message.Id
 
-      let editMessage = editBotMessage userConversion.UserId userConversion.SentMessageId
-
-      let! user = loadUser userConversion.UserId
-      let getTranslation = getLocaleTranslations user.Lang
+      let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
       let! user = loadUser userConversion.UserId
       let tran, _ = getLocaleTranslations user.Lang
@@ -258,10 +256,7 @@ type Functions
     task {
       let! userConversion = loadUserConversion message.Id
 
-      let editMessage = editBotMessage userConversion.UserId userConversion.SentMessageId
-
-      let! user = loadUser userConversion.UserId
-      let getTranslation = getLocaleTranslations user.Lang
+      let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
       let! user = loadUser userConversion.UserId
       let tran, _ = getLocaleTranslations user.Lang
@@ -313,10 +308,10 @@ type Functions
       let! userConversion = loadUserConversion message.ConversionId
 
       let deleteMessage =
-        Telegram.deleteMessage _bot userConversion.UserId userConversion.SentMessageId
+        Telegram.deleteMessage _bot userConversion.ChatId userConversion.SentMessageId
 
       let replyWithVideo =
-        Telegram.replyWithVideo workersSettings _bot userConversion.UserId userConversion.ReceivedMessageId
+        Telegram.replyWithVideo workersSettings _bot userConversion.ChatId userConversion.ReceivedMessageId
 
       let deleteVideo = Storage.deleteVideo workersSettings
       let deleteThumbnail = Storage.deleteThumbnail workersSettings

@@ -23,6 +23,8 @@ public class Conversion
 
     public long UserId { get; set; }
 
+    public long ChatId { get; set; }
+
     public int ReceivedMessageId { get; set; }
 
     public int SentMessageId { get; set; }

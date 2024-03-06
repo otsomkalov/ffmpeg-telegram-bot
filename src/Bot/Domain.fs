@@ -4,13 +4,16 @@ open System.Threading.Tasks
 open Telegram.Bot.Types
 open otsom.fs.Telegram.Bot.Core
 
+type ChatId = ChatId of int64
+
 type User = { Id: UserId; Lang: string }
 
 type UserConversion =
   { ReceivedMessageId: int
     SentMessageId: BotMessageId
     ConversionId: string
-    UserId: UserId }
+    UserId: UserId
+    ChatId: UserId }
 
 [<RequireQualifiedAccess>]
 module Conversion =

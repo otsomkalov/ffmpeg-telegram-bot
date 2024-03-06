@@ -20,14 +20,16 @@ module UserConversion =
     { ConversionId = conversion.Id
       UserId = UserId conversion.UserId
       ReceivedMessageId = conversion.ReceivedMessageId
-      SentMessageId = BotMessageId conversion.SentMessageId }
+      SentMessageId = BotMessageId conversion.SentMessageId
+      ChatId = UserId conversion.ChatId }
 
   let toDb (conversion: Domain.UserConversion) : Database.Conversion =
     Database.Conversion(
       Id = conversion.ConversionId,
       UserId = (conversion.UserId |> UserId.value),
       ReceivedMessageId = conversion.ReceivedMessageId,
-      SentMessageId = (conversion.SentMessageId |> BotMessageId.value)
+      SentMessageId = (conversion.SentMessageId |> BotMessageId.value),
+      ChatId = (conversion.ChatId |> UserId.value)
     )
 
 [<RequireQualifiedAccess>]
