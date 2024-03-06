@@ -13,8 +13,6 @@ public class Conversion
 {
     public string Id { get; set; }
 
-    public string Name { get; set; }
-
     public string InputFileName { get; set; }
 
     public string OutputFileName { get; set; }
