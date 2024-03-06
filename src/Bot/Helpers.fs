@@ -8,9 +8,6 @@ open System.Text.RegularExpressions
 open Telegram.Bot.Types
 open otsom.fs.Extensions.String
 
-let private contains (substring: string) (str: string) =
-  str.Contains(substring, StringComparison.InvariantCultureIgnoreCase)
-
 let (|Text|_|) (message: Message) =
   message
   |> Option.ofObj
