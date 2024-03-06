@@ -3,7 +3,7 @@ module Bot.Queue
 
 open Azure.Storage.Queues
 open Bot.Helpers
-open otsom.FSharp.Extensions
+open otsom.fs.Extensions
 
 type File =
   | Link of url: string
@@ -21,7 +21,7 @@ let sendDownloaderMessage (workersSettings: Settings.WorkersSettings) =
 
     let messageBody = JSON.serialize message
 
-    queueClient.SendMessageAsync(messageBody) |> Task.map ignore
+    queueClient.SendMessageAsync(messageBody) |> Task.ignore
 
 [<CLIMutable>]
 type ConverterMessage = { Id: string; Name: string }
@@ -35,7 +35,7 @@ let sendConverterMessage (workersSettings: Settings.WorkersSettings) =
 
     let messageBody = JSON.serialize message
 
-    queueClient.SendMessageAsync(messageBody) |> Task.map ignore
+    queueClient.SendMessageAsync(messageBody) |> Task.ignore
 
 type ConversionResult =
   | Success of name: string
@@ -53,7 +53,7 @@ let sendTumbnailerMessage (workersSettings: Settings.WorkersSettings) =
 
     let messageBody = JSON.serialize message
 
-    queueClient.SendMessageAsync(messageBody) |> Task.map ignore
+    queueClient.SendMessageAsync(messageBody) |> Task.ignore
 
 [<CLIMutable>]
 type UploaderMessage = { ConversionId: string }
@@ -66,4 +66,4 @@ let sendUploaderMessage (workersSettings: Settings.WorkersSettings) =
 
     let messageBody = JSON.serialize message
 
-    queueClient.SendMessageAsync(messageBody) |> Task.map ignore
+    queueClient.SendMessageAsync(messageBody) |> Task.ignore

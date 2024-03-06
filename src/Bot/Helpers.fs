@@ -11,6 +11,7 @@ open Telegram.Bot.Types.Enums
 [<RequireQualifiedAccess>]
 module String =
   let compareCI input toCompare =
+
     String.Equals(input, toCompare, StringComparison.InvariantCultureIgnoreCase)
 
   let containsCI (input: string) (toSearch: string) =

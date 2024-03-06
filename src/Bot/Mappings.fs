@@ -1,31 +1,33 @@
 ﻿[<RequireQualifiedAccess>]
 module Bot.Mappings
 
+open otsom.fs.Telegram.Bot.Core
+
 [<RequireQualifiedAccess>]
 module User =
-  let fromDb (user: Database.User) : Domain.User = { Id = user.Id; Lang = user.Lang }
+  let fromDb (user: Database.User) : Domain.User = { Id = UserId user.Id; Lang = user.Lang }
 
   let toDb (user: Domain.User) : Database.User =
-    Database.User(Id = user.Id, Lang = user.Lang)
+    Database.User(Id = (user.Id |> UserId.value), Lang = user.Lang)
 
   let fromTg (user: Telegram.Bot.Types.User) : Domain.User =
-    { Id = user.Id
+    { Id = UserId user.Id
       Lang = user.LanguageCode }
 
 [<RequireQualifiedAccess>]
 module UserConversion =
   let fromDb (conversion: Database.Conversion) : Domain.UserConversion =
     { ConversionId = conversion.Id
-      UserId = conversion.UserId
+      UserId = UserId conversion.UserId
       ReceivedMessageId = conversion.ReceivedMessageId
-      SentMessageId = conversion.SentMessageId }
+      SentMessageId = BotMessageId conversion.SentMessageId }
 
   let toDb (conversion: Domain.UserConversion) : Database.Conversion =
     Database.Conversion(
       Id = conversion.ConversionId,
-      UserId = conversion.UserId,
+      UserId = (conversion.UserId |> UserId.value),
       ReceivedMessageId = conversion.ReceivedMessageId,
-      SentMessageId = conversion.SentMessageId
+      SentMessageId = (conversion.SentMessageId |> BotMessageId.value)
     )
 
 [<RequireQualifiedAccess>]

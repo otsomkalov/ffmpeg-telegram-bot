@@ -4,10 +4,11 @@ open System.Text.RegularExpressions
 open Bot.Domain
 open System.Threading.Tasks
 open Helpers
+open otsom.fs.Telegram.Bot.Core
 
 [<RequireQualifiedAccess>]
 module User =
-  type Load = int64 -> Task<User>
+  type Load = UserId -> Task<User>
   type Save = User -> Task<unit>
   type EnsureExists = User -> Task<unit>
 

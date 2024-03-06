@@ -1,8 +1,9 @@
 ﻿module Bot.Database
 
 open MongoDB.Driver
-open otsom.FSharp.Extensions
+open otsom.fs.Extensions
 open Bot.Workflows
+open otsom.fs.Telegram.Bot.Core
 
 [<RequireQualifiedAccess>]
 module User =
@@ -10,7 +11,8 @@ module User =
     let collection = db.GetCollection "users"
 
     fun userId ->
-      let filter = Builders<Database.User>.Filter.Eq((fun c -> c.Id), userId)
+      let userId' = userId |> UserId.value
+      let filter = Builders<Database.User>.Filter.Eq((fun c -> c.Id), userId')
 
       collection.Find(filter).SingleOrDefaultAsync()
       |> Task.map Mappings.User.fromDb
@@ -26,12 +28,14 @@ module User =
     let collection = db.GetCollection "users"
 
     fun user ->
-      let filter = Builders<Database.User>.Filter.Eq((fun u -> u.Id), user.Id)
+      let userId' = user.Id |> UserId.value
+
+      let filter = Builders<Database.User>.Filter.Eq((fun u -> u.Id), userId')
       let setOnInsert =
-        [Builders<Database.User>.Update.SetOnInsert((fun u -> u.Id), user.Id)
+        [Builders<Database.User>.Update.SetOnInsert((fun u -> u.Id), userId')
          Builders<Database.User>.Update.SetOnInsert((fun u -> u.Lang), user.Lang)]
 
-      task { do! (collection.UpdateOneAsync(filter, Builders.Update.Combine(setOnInsert), UpdateOptions(IsUpsert = true)) |> Task.map ignore) }
+      task { do! (collection.UpdateOneAsync(filter, Builders.Update.Combine(setOnInsert), UpdateOptions(IsUpsert = true)) |> Task.ignore) }
 
 [<RequireQualifiedAccess>]
 module UserConversion =
@@ -88,7 +92,7 @@ module Conversion =
       fun conversion ->
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Prepared.toDb
-        collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
+        collection.ReplaceOneAsync(filter, entity) |> Task.ignore
 
   [<RequireQualifiedAccess>]
   module Converted =
@@ -107,7 +111,7 @@ module Conversion =
       fun conversion ->
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Converted.toDb
-        collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
+        collection.ReplaceOneAsync(filter, entity) |> Task.ignore
 
   [<RequireQualifiedAccess>]
   module Thumbnailed =
@@ -126,7 +130,7 @@ module Conversion =
       fun conversion ->
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Thumbnailed.toDb
-        collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
+        collection.ReplaceOneAsync(filter, entity) |> Task.ignore
 
   [<RequireQualifiedAccess>]
   module PreparedOrConverted =
@@ -167,7 +171,7 @@ module Conversion =
       fun conversion ->
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Completed.toDb
-        collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
+        collection.ReplaceOneAsync(filter, entity) |> Task.ignore
 
 [<RequireQualifiedAccess>]
 module Translation =
