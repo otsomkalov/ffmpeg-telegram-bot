@@ -29,7 +29,8 @@ type Functions
     getLocaleTranslations: Translation.GetLocaleTranslations,
     sendUserMessage: SendUserMessage,
     replyToUserMessage: ReplyToUserMessage,
-    editBotMessage: EditBotMessage
+    editBotMessage: EditBotMessage,
+    defaultLocaleTranslations: Translation.DefaultLocaleTranslations
   ) =
 
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
@@ -37,9 +38,8 @@ type Functions
   let processMessage (message: Message) =
 
     let chatId = message.Chat.Id |> UserId
-    let userId = message.From.Id
-    let userId' = UserId userId
-    let sendMessage = sendUserMessage userId'
+    let userId = message.From |> Option.ofObj |> Option.map (_.Id >> UserId)
+    let sendMessage = sendUserMessage chatId
     let replyToMessage = replyToUserMessage chatId message.MessageId
     let saveUserConversion = UserConversion.save _db
     let saveConversion = Conversion.New.save _db
@@ -57,7 +57,7 @@ type Functions
 
           let userConversion: Domain.UserConversion =
             { ConversionId = newConversion.Id
-              UserId = userId'
+              UserId = userId
               SentMessageId = sentMessageId
               ReceivedMessageId = message.MessageId
               ChatId = chatId }
@@ -83,7 +83,7 @@ type Functions
 
         let userConversion: Domain.UserConversion =
           { ConversionId = newConversion.Id
-            UserId = userId'
+            UserId = userId
             SentMessageId = sentMessageId
             ReceivedMessageId = message.MessageId
             ChatId = chatId }
@@ -153,8 +153,10 @@ type Functions
 
     task {
       let! userConversion = loadUserConversion message.ConversionId
-      let! user = loadUser userConversion.UserId
-      let tran, _ = getLocaleTranslations user.Lang
+      let! tran, _ =
+        match userConversion.UserId with
+        | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
+        | None -> defaultLocaleTranslations |> Task.FromResult
 
       let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
@@ -205,8 +207,10 @@ type Functions
 
       let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
-      let! user = loadUser userConversion.UserId
-      let tran, _ = getLocaleTranslations user.Lang
+      let! tran, _ =
+        match userConversion.UserId with
+        | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
+        | None -> defaultLocaleTranslations |> Task.FromResult
 
       let! conversion = loadPreparedOrThumbnailed message.Id
 
@@ -258,8 +262,10 @@ type Functions
 
       let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
-      let! user = loadUser userConversion.UserId
-      let tran, _ = getLocaleTranslations user.Lang
+      let! tran, _ =
+        match userConversion.UserId with
+        | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
+        | None -> defaultLocaleTranslations |> Task.FromResult
 
       let! conversion = loadPreparedOrConverted message.Id
 

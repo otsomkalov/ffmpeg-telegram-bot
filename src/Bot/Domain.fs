@@ -12,7 +12,7 @@ type UserConversion =
   { ReceivedMessageId: int
     SentMessageId: BotMessageId
     ConversionId: string
-    UserId: UserId
+    UserId: UserId option
     ChatId: UserId }
 
 [<RequireQualifiedAccess>]
