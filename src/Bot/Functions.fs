@@ -26,11 +26,11 @@ type Functions
     _db: IMongoDatabase,
     _httpClientFactory: IHttpClientFactory,
     _logger: ILogger<Functions>,
-    getLocaleTranslations: Translation.GetLocaleTranslations,
+    getLocaleTranslations: GetLocaleTranslations,
     sendUserMessage: SendUserMessage,
     replyToUserMessage: ReplyToUserMessage,
     editBotMessage: EditBotMessage,
-    defaultLocaleTranslations: Translation.DefaultLocaleTranslations
+    defaultLocaleTranslations: DefaultLocaleTranslations
   ) =
 
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
@@ -43,7 +43,10 @@ type Functions
     let replyToMessage = replyToUserMessage chatId message.MessageId
     let saveUserConversion = UserConversion.save _db
     let saveConversion = Conversion.New.save _db
-    let tran, tranf = getLocaleTranslations message.From.LanguageCode
+    let tran, tranf =
+      match message.From |> Option.ofObj |> Option.map (_.LanguageCode) with
+      | Some lang -> getLocaleTranslations lang
+      | None -> defaultLocaleTranslations
     let ensureUserExists = User.ensureExists _db
 
     let processLinks links =
