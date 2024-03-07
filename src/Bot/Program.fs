@@ -11,6 +11,7 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.ApplicationInsights
+open Microsoft.Extensions.Options
 open MongoDB.ApplicationInsights
 open MongoDB.Driver
 open Polly.Extensions.Http
@@ -50,6 +51,16 @@ module Startup =
       .HandleTransientHttpError()
       .WaitAndRetryAsync(5, (fun retryAttempt -> TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))))
 
+  let private configureMongoClient (factory: IMongoClientFactory) (options: IOptions<Settings.DatabaseSettings>) =
+    let settings = options.Value
+
+    factory.GetClient(settings.ConnectionString)
+
+  let private configureMongoDatabase (options: IOptions<Settings.DatabaseSettings>) (mongoClient: IMongoClient) =
+    let settings = options.Value
+
+    mongoClient.GetDatabase(settings.Name)
+
   let private configureServices _ (services: IServiceCollection) =
     services.AddApplicationInsightsTelemetryWorkerService()
     services.ConfigureFunctionsApplicationInsights()
@@ -74,9 +85,9 @@ module Startup =
     services.AddMongoClientFactory()
 
     services
-      .BuildSingleton<IMongoClient, IMongoClientFactory, Settings.DatabaseSettings>(fun factory settings ->
-        factory.GetClient settings.ConnectionString)
-      .BuildSingleton<IMongoDatabase, IMongoClient, Settings.DatabaseSettings>(fun client settings -> client.GetDatabase settings.Name)
+      .AddMongoClientFactory()
+      .BuildSingleton<IMongoClient, IMongoClientFactory, IOptions<Settings.DatabaseSettings>>(configureMongoClient)
+      .BuildSingleton<IMongoDatabase, IOptions<Settings.DatabaseSettings>, IMongoClient>(configureMongoDatabase)
       .AddSingleton<HttpClientHandler>(fun _ -> new HttpClientHandler(ServerCertificateCustomValidationCallback = (fun a b c d -> true)))
       .BuildSingleton<HttpClient, HttpClientHandler>(fun handler -> new HttpClient(handler))
       .BuildSingleton<ITelegramBotClient, Settings.TelegramSettings, HttpClient>(fun settings client ->
