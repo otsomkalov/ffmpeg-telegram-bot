@@ -10,9 +10,7 @@ open FSharp
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
-open Microsoft.Extensions.Localization
 open Microsoft.Extensions.Logging
-open MongoDB.Bson
 open MongoDB.Driver
 open Telegram.Bot
 open Telegram.Bot.Types
@@ -28,23 +26,27 @@ type Functions
     _db: IMongoDatabase,
     _httpClientFactory: IHttpClientFactory,
     _logger: ILogger<Functions>,
-    getLocaleTranslations: Translation.GetLocaleTranslations,
+    getLocaleTranslations: GetLocaleTranslations,
     sendUserMessage: SendUserMessage,
     replyToUserMessage: ReplyToUserMessage,
-    editBotMessage: EditBotMessage
+    editBotMessage: EditBotMessage,
+    defaultLocaleTranslations: DefaultLocaleTranslations
   ) =
 
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
 
   let processMessage (message: Message) =
 
-    let userId = message.Chat.Id
-    let userId' = UserId userId
-    let sendMessage = sendUserMessage userId'
-    let replyToMessage = replyToUserMessage userId' message.MessageId
+    let chatId = message.Chat.Id |> UserId
+    let userId = message.From |> Option.ofObj |> Option.map (_.Id >> UserId)
+    let sendMessage = sendUserMessage chatId
+    let replyToMessage = replyToUserMessage chatId message.MessageId
     let saveUserConversion = UserConversion.save _db
     let saveConversion = Conversion.New.save _db
-    let tran, tranf = getLocaleTranslations message.From.LanguageCode
+    let tran, tranf =
+      match message.From |> Option.ofObj |> Option.map (_.LanguageCode) with
+      | Some lang -> getLocaleTranslations lang
+      | None -> defaultLocaleTranslations
     let ensureUserExists = User.ensureExists _db
 
     let processLinks links =
@@ -58,9 +60,10 @@ type Functions
 
           let userConversion: Domain.UserConversion =
             { ConversionId = newConversion.Id
-              UserId = userId'
+              UserId = userId
               SentMessageId = sentMessageId
-              ReceivedMessageId = message.MessageId }
+              ReceivedMessageId = message.MessageId
+              ChatId = chatId }
 
           do! saveUserConversion userConversion
 
@@ -83,9 +86,10 @@ type Functions
 
         let userConversion: Domain.UserConversion =
           { ConversionId = newConversion.Id
-            UserId = userId'
+            UserId = userId
             SentMessageId = sentMessageId
-            ReceivedMessageId = message.MessageId }
+            ReceivedMessageId = message.MessageId
+            ChatId = chatId }
 
         do! saveUserConversion userConversion
 
@@ -152,10 +156,12 @@ type Functions
 
     task {
       let! userConversion = loadUserConversion message.ConversionId
-      let! user = loadUser userConversion.UserId
-      let tran, _ = getLocaleTranslations user.Lang
+      let! tran, _ =
+        match userConversion.UserId with
+        | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
+        | None -> defaultLocaleTranslations |> Task.FromResult
 
-      let editMessage = editBotMessage userConversion.UserId userConversion.SentMessageId
+      let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
       let! conversion = loadNewConversion message.ConversionId
 
@@ -202,13 +208,12 @@ type Functions
     task {
       let! userConversion = loadUserConversion message.Id
 
-      let editMessage = editBotMessage userConversion.UserId userConversion.SentMessageId
+      let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
-      let! user = loadUser userConversion.UserId
-      let getTranslation = getLocaleTranslations user.Lang
-
-      let! user = loadUser userConversion.UserId
-      let tran, _ = getLocaleTranslations user.Lang
+      let! tran, _ =
+        match userConversion.UserId with
+        | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
+        | None -> defaultLocaleTranslations |> Task.FromResult
 
       let! conversion = loadPreparedOrThumbnailed message.Id
 
@@ -258,13 +263,12 @@ type Functions
     task {
       let! userConversion = loadUserConversion message.Id
 
-      let editMessage = editBotMessage userConversion.UserId userConversion.SentMessageId
+      let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
-      let! user = loadUser userConversion.UserId
-      let getTranslation = getLocaleTranslations user.Lang
-
-      let! user = loadUser userConversion.UserId
-      let tran, _ = getLocaleTranslations user.Lang
+      let! tran, _ =
+        match userConversion.UserId with
+        | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
+        | None -> defaultLocaleTranslations |> Task.FromResult
 
       let! conversion = loadPreparedOrConverted message.Id
 
@@ -313,10 +317,10 @@ type Functions
       let! userConversion = loadUserConversion message.ConversionId
 
       let deleteMessage =
-        Telegram.deleteMessage _bot userConversion.UserId userConversion.SentMessageId
+        Telegram.deleteMessage _bot userConversion.ChatId userConversion.SentMessageId
 
       let replyWithVideo =
-        Telegram.replyWithVideo workersSettings _bot userConversion.UserId userConversion.ReceivedMessageId
+        Telegram.replyWithVideo workersSettings _bot userConversion.ChatId userConversion.ReceivedMessageId
 
       let deleteVideo = Storage.deleteVideo workersSettings
       let deleteThumbnail = Storage.deleteThumbnail workersSettings
