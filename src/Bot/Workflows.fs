@@ -4,6 +4,7 @@ open System.Text.RegularExpressions
 open Bot.Domain
 open System.Threading.Tasks
 open Helpers
+open Microsoft.Extensions.Options
 open otsom.fs.Telegram.Bot.Core
 
 [<RequireQualifiedAccess>]
@@ -50,7 +51,7 @@ module Conversion =
     type Load = string -> Conversion.Completed Task
     type Save = Conversion.Completed -> unit Task
 
-let parseCommand : ParseCommand =
+let parseCommand (settings: Settings.InputValidationSettings) : ParseCommand =
   let webmLinkRegex = Regex("https?[^ ]*.webm\??(?:&?[^=&]*=[^=&]*)*")
 
   function
@@ -64,7 +65,7 @@ let parseCommand : ParseCommand =
       matches |> Command.Links |> Some |> Task.FromResult
     | _ ->
       None |> Task.FromResult
-  | Document doc ->
+  | Document  doc ->
     Command.Document(doc.FileId, doc.FileName) |> Some |> Task.FromResult
   | _ ->
     None |> Task.FromResult

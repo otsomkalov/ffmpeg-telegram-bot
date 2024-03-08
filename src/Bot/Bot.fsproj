@@ -31,8 +31,8 @@
   <ItemGroup>
     <Compile Include="Helpers.fs"/>
     <Compile Include="Domain.fs"/>
+    <Compile Include="Settings.fs" />
     <Compile Include="Workflows.fs"/>
-    <Compile Include="Settings.fs"/>
     <Compile Include="Translation.fs"/>
     <Compile Include="Mappings.fs"/>
     <Compile Include="Queue.fs"/>

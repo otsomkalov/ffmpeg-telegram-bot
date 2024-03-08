@@ -25,7 +25,7 @@ let (|Document|_|) (mimeTypes: string seq) (message: Message) =
 let (|Video|_|) (mimeTypes: string seq) (message: Message) =
   message
   |> Option.ofObj
-  |> Option.filter (fun m -> String.IsNullOrEmpty m.Caption || (String.containsCI m.Caption "!nsfw" |> not))
+  |> Option.filter (fun m -> String.IsNullOrEmpty m.Caption || (match m.Caption with | Contains "!nsfw" -> false | _ -> true))
   |> Option.bind (fun m -> m.Video |> Option.ofObj)
   |> Option.filter(fun m -> mimeTypes |> Seq.contains m.MimeType)
 

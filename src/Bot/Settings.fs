@@ -36,6 +36,7 @@ type TelegramSettings =
 
   static member SectionName = "Telegram"
 
+[<CLIMutable>]
 type InputValidationSettings =
   { LinkRegex: string
     MimeTypes: string seq }
