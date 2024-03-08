@@ -51,14 +51,10 @@ module Startup =
       .HandleTransientHttpError()
       .WaitAndRetryAsync(5, (fun retryAttempt -> TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))))
 
-  let private configureMongoClient (factory: IMongoClientFactory) (options: IOptions<Settings.DatabaseSettings>) =
-    let settings = options.Value
-
+  let private configureMongoClient (factory: IMongoClientFactory) (settings: Settings.DatabaseSettings) =
     factory.GetClient(settings.ConnectionString)
 
-  let private configureMongoDatabase (options: IOptions<Settings.DatabaseSettings>) (mongoClient: IMongoClient) =
-    let settings = options.Value
-
+  let private configureMongoDatabase (settings: Settings.DatabaseSettings) (mongoClient: IMongoClient) =
     mongoClient.GetDatabase(settings.Name)
 
   let private configureServices _ (services: IServiceCollection) =
@@ -86,8 +82,8 @@ module Startup =
 
     services
       .AddMongoClientFactory()
-      .BuildSingleton<IMongoClient, IMongoClientFactory, IOptions<Settings.DatabaseSettings>>(configureMongoClient)
-      .BuildSingleton<IMongoDatabase, IOptions<Settings.DatabaseSettings>, IMongoClient>(configureMongoDatabase)
+      .BuildSingleton<IMongoClient, IMongoClientFactory, Settings.DatabaseSettings>(configureMongoClient)
+      .BuildSingleton<IMongoDatabase, Settings.DatabaseSettings, IMongoClient>(configureMongoDatabase)
       .AddSingleton<HttpClientHandler>(fun _ -> new HttpClientHandler(ServerCertificateCustomValidationCallback = (fun a b c d -> true)))
       .BuildSingleton<HttpClient, HttpClientHandler>(fun handler -> new HttpClient(handler))
       .BuildSingleton<ITelegramBotClient, Settings.TelegramSettings, HttpClient>(fun settings client ->
