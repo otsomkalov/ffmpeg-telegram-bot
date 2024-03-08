@@ -27,6 +27,8 @@ module Translation =
     [<Literal>]
     let DocumentDownload="document-download"
     [<Literal>]
+    let VideoDownload="video-download"
+    [<Literal>]
     let ConversionInProgress = "conversion-in-progress"
     [<Literal>]
     let NotAuthorized = "not-authorized"

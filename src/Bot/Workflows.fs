@@ -66,5 +66,7 @@ let parseCommand : ParseCommand =
       None |> Task.FromResult
   | Document doc ->
     Command.Document(doc.FileId, doc.FileName) |> Some |> Task.FromResult
+  | Video vid ->
+    Command.Video(vid.FileId, vid.FileName) |> Some |> Task.FromResult
   | _ ->
     None |> Task.FromResult
