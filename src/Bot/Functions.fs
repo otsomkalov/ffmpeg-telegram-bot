@@ -190,9 +190,9 @@ type Functions
 
               do! editMessage (tran Resources.ConversionInProgress)
             }
-          | Error(HTTP.DownloadLinkError.Unauthorized) -> editMessage Resources.NotAuthorized
-          | Error(HTTP.DownloadLinkError.NotFound) -> editMessage Resources.NotFound
-          | Error(HTTP.DownloadLinkError.ServerError) -> editMessage Resources.ServerError)
+          | Error(HTTP.DownloadLinkError.Unauthorized) -> editMessage (tran Resources.NotAuthorized)
+          | Error(HTTP.DownloadLinkError.NotFound) -> editMessage (tran Resources.NotFound)
+          | Error(HTTP.DownloadLinkError.ServerError) -> editMessage (tran Resources.ServerError))
     }
 
   [<Function("SaveConversionResult")>]
