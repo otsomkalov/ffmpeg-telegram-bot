@@ -52,7 +52,7 @@ module Conversion =
     type Save = Conversion.Completed -> unit Task
 
 let parseCommand (settings: Settings.InputValidationSettings) : ParseCommand =
-  let webmLinkRegex = Regex("https?[^ ]*.webm\??(?:&?[^=&]*=[^=&]*)*")
+  let linkRegex = Regex(settings.LinkRegex)
 
   function
   | FromBot ->
@@ -61,11 +61,11 @@ let parseCommand (settings: Settings.InputValidationSettings) : ParseCommand =
     match messageText with
     | StartsWith "/start" ->
       Command.Start |> Some |> Task.FromResult
-    | Regex webmLinkRegex matches ->
+    | Regex linkRegex matches ->
       matches |> Command.Links |> Some |> Task.FromResult
     | _ ->
       None |> Task.FromResult
-  | Document  doc ->
+  | Document settings.MimeTypes doc ->
     Command.Document(doc.FileId, doc.FileName) |> Some |> Task.FromResult
   | _ ->
     None |> Task.FromResult

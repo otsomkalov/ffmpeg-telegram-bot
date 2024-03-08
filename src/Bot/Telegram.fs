@@ -7,6 +7,7 @@ open Telegram.Bot
 open Telegram.Bot.Types
 open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
+open shortid
 
 type DeleteMessage = unit -> Task<unit>
 
@@ -99,7 +100,8 @@ let inline sendDocToQueue replyToMessage saveConversion saveUserConversion sendD
         { ConversionId = newConversion.Id
           UserId = userId
           SentMessageId = sentMessageId
-          ReceivedMessageId = message.MessageId }
+          ReceivedMessageId = message.MessageId
+          ChatId = message.Chat.Id }
 
       do! saveUserConversion userConversion
 

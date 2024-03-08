@@ -77,7 +77,7 @@ module Startup =
         cfg
           .GetSection(Settings.DatabaseSettings.SectionName)
           .Get<Settings.DatabaseSettings>())
-      .AddSingletonFunc<Settings.InputValidationSettings, IConfiguration>(fun cfg ->
+      .BuildSingleton<Settings.InputValidationSettings, IConfiguration>(fun cfg ->
         cfg
           .GetSection(Settings.InputValidationSettings.SectionName)
           .Get<Settings.InputValidationSettings>())
