@@ -111,8 +111,11 @@ type Functions
       function
       | None -> Task.FromResult()
       | Some cmd ->
-        ensureUserExists (Mappings.User.fromTg message.From)
-        |> Task.bind(fun () -> processCommand cmd)
+        match message.From |> Option.ofObj with
+        | Some sender ->
+          ensureUserExists (Mappings.User.fromTg sender)
+          |> Task.bind(fun () -> processCommand cmd)
+        | None -> processCommand cmd
 
     Workflows.parseCommand message |> Task.bind processMessage'
 
