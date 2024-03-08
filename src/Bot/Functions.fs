@@ -1,11 +1,11 @@
 ﻿namespace Bot.Functions
 
 open System.Net.Http
-open System.Text.RegularExpressions
 open System.Threading.Tasks
 open Bot
 open Bot.Domain
 open Bot.Database
+open Bot.Translation
 open FSharp
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
@@ -14,10 +14,10 @@ open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open Telegram.Bot
 open Telegram.Bot.Types
-open Helpers
 open Telegram.Bot.Types.Enums
 open shortid
-open otsom.FSharp.Extensions
+open otsom.fs.Extensions
+open otsom.fs.Telegram.Bot.Core
 
 type Functions
   (
@@ -26,62 +26,98 @@ type Functions
     _db: IMongoDatabase,
     _httpClientFactory: IHttpClientFactory,
     _logger: ILogger<Functions>,
-    inputValidationSettings: Settings.InputValidationSettings
+    getLocaleTranslations: GetLocaleTranslations,
+    sendUserMessage: SendUserMessage,
+    replyToUserMessage: ReplyToUserMessage,
+    editBotMessage: EditBotMessage,
+    defaultLocaleTranslations: DefaultLocaleTranslations
   ) =
 
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
-  let linkRegex = Regex(inputValidationSettings.LinkRegex)
 
   let processMessage (message: Message) =
 
-    let userId = message.Chat.Id
-    let sendMessage = Telegram.sendMessage _bot userId
-    let replyToMessage = Telegram.replyToMessage _bot userId message.MessageId
+    let chatId = message.Chat.Id |> UserId
+    let userId = message.From |> Option.ofObj |> Option.map (_.Id >> UserId)
+    let sendMessage = sendUserMessage chatId
+    let replyToMessage = replyToUserMessage chatId message.MessageId
     let saveUserConversion = UserConversion.save _db
     let saveConversion = Conversion.New.save _db
+    let tran, tranf =
+      match message.From |> Option.ofObj |> Option.map (_.LanguageCode) with
+      | Some lang -> getLocaleTranslations lang
+      | None -> defaultLocaleTranslations
+    let ensureUserExists = User.ensureExists _db
 
-    match message with
-    | FromBot -> Task.FromResult()
-    | Text messageText ->
-      match messageText with
-      | StartsWith "/start" ->
-        sendMessage
-          "Send me a video or link to WebM or add bot to group. 🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/"
-      | Regex linkRegex matches ->
-        let sendUrlToQueue (url: string) =
-          task {
-            let! sentMessageId = replyToMessage $"File *{url}* is waiting to be downloaded 🕒"
+    let processLinks links =
+      let sendUrlToQueue (url: string) =
+        task {
+          let! sentMessageId = replyToMessage (tranf(Resources.LinkDownload, [|url|]))
 
-            let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
+          let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
 
-            do! saveConversion newConversion
+          do! saveConversion newConversion
 
-            let userConversion: Domain.UserConversion =
-              { ConversionId = newConversion.Id
-                UserId = userId
-                SentMessageId = sentMessageId
-                ReceivedMessageId = message.MessageId }
+          let userConversion: Domain.UserConversion =
+            { ConversionId = newConversion.Id
+              UserId = userId
+              SentMessageId = sentMessageId
+              ReceivedMessageId = message.MessageId
+              ChatId = chatId }
 
-            do! saveUserConversion userConversion
+          do! saveUserConversion userConversion
 
-            let message: Queue.DownloaderMessage =
-              { ConversionId = newConversion.Id
-                File = Queue.File.Link url }
+          let message: Queue.DownloaderMessage =
+            { ConversionId = newConversion.Id
+              File = Queue.File.Link url }
 
-            return! sendDownloaderMessage message
-          }
+          return! sendDownloaderMessage message
+        }
 
-        matches |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.map ignore
-      | _ -> Task.FromResult()
-    | Document inputValidationSettings.MimeTypes doc ->
-      let sendDocToQueue = Telegram.sendDocToQueue replyToMessage saveConversion saveUserConversion sendDownloaderMessage userId message
+      links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.ignore
 
-      doc |> sendDocToQueue
-    | Video inputValidationSettings.MimeTypes video ->
-      let sendDocToQueue = Telegram.sendDocToQueue replyToMessage saveConversion saveUserConversion sendDownloaderMessage userId message
+    let processDocument fileId fileName =
+      task {
+        let! sentMessageId = replyToMessage (tranf (Resources.DocumentDownload, [|fileName|]))
 
-      video |> sendDocToQueue
-    | _ -> Task.FromResult()
+        let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
+
+        do! saveConversion newConversion
+
+        let userConversion: Domain.UserConversion =
+          { ConversionId = newConversion.Id
+            UserId = userId
+            SentMessageId = sentMessageId
+            ReceivedMessageId = message.MessageId
+            ChatId = chatId }
+
+        do! saveUserConversion userConversion
+
+        let message: Queue.DownloaderMessage =
+          { ConversionId = newConversion.Id
+            File = Queue.File.Document(fileId, fileName) }
+
+        return! sendDownloaderMessage message
+      }
+
+    let processCommand =
+      function
+      | Start ->
+        sendMessage (tran Resources.Welcome)
+      | Links links -> processLinks links
+      | Document(fileId, fileName) -> processDocument fileId fileName
+
+    let processMessage' =
+      function
+      | None -> Task.FromResult()
+      | Some cmd ->
+        match message.From |> Option.ofObj with
+        | Some sender ->
+          ensureUserExists (Mappings.User.fromTg sender)
+          |> Task.bind(fun () -> processCommand cmd)
+        | None -> processCommand cmd
+
+    Workflows.parseCommand message |> Task.bind processMessage'
 
   let handleUpdate (update: Update) =
     match update.Type with
@@ -114,6 +150,7 @@ type Functions
     let downloadLink = HTTP.downloadLink _httpClientFactory workersSettings
     let downloadFile = Telegram.downloadDocument _bot workersSettings
     let savePreparedConversion = Conversion.Prepared.save _db
+    let loadUser = User.load _db
 
     let downloadFile file =
       match file with
@@ -122,9 +159,12 @@ type Functions
 
     task {
       let! userConversion = loadUserConversion message.ConversionId
+      let! tran, _ =
+        match userConversion.UserId with
+        | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
+        | None -> defaultLocaleTranslations |> Task.FromResult
 
-      let editMessage =
-        Telegram.editMessage _bot userConversion.UserId userConversion.SentMessageId
+      let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
       let! conversion = loadNewConversion message.ConversionId
 
@@ -148,11 +188,11 @@ type Functions
 
               do! sendThumbnailerMessage thumbnailerMessage
 
-              do! editMessage "Conversion is in progress 🚀"
+              do! editMessage (tran Resources.ConversionInProgress)
             }
-          | Error(HTTP.DownloadLinkError.Unauthorized) -> editMessage "I am not authorized to download video from this source 🚫"
-          | Error(HTTP.DownloadLinkError.NotFound) -> editMessage "Video not found ⚠️"
-          | Error(HTTP.DownloadLinkError.ServerError) -> editMessage "Server error 🛑")
+          | Error(HTTP.DownloadLinkError.Unauthorized) -> editMessage (tran Resources.NotAuthorized)
+          | Error(HTTP.DownloadLinkError.NotFound) -> editMessage (tran Resources.NotFound)
+          | Error(HTTP.DownloadLinkError.ServerError) -> editMessage (tran Resources.ServerError))
     }
 
   [<Function("SaveConversionResult")>]
@@ -166,12 +206,17 @@ type Functions
     let saveConvertedConversion = Conversion.Converted.save _db
     let saveCompletedConversion = Conversion.Completed.save _db
     let sendUploaderMessage = Queue.sendUploaderMessage workersSettings
+    let loadUser = User.load _db
 
     task {
       let! userConversion = loadUserConversion message.Id
 
-      let editMessage =
-        Telegram.editMessage _bot userConversion.UserId userConversion.SentMessageId
+      let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
+
+      let! tran, _ =
+        match userConversion.UserId with
+        | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
+        | None -> defaultLocaleTranslations |> Task.FromResult
 
       let! conversion = loadPreparedOrThumbnailed message.Id
 
@@ -186,7 +231,7 @@ type Functions
 
             task {
               do! saveConvertedConversion convertedConversion
-              do! editMessage "Video successfully converted! Generating the thumbnail..."
+              do! editMessage (tran Resources.VideoConverted)
             }
           | Choice2Of2 thumbnailedConversion ->
             let completedConversion: Domain.Conversion.Completed =
@@ -200,7 +245,7 @@ type Functions
             task {
               do! saveCompletedConversion completedConversion
               do! sendUploaderMessage uploaderMessage
-              do! editMessage "File successfully converted! Uploading the file 🚀"
+              do! editMessage (tran Resources.Uploading)
             }
         | Queue.Error error -> editMessage error
     }
@@ -216,12 +261,17 @@ type Functions
     let saveThumbnailedConversion = Conversion.Thumbnailed.save _db
     let saveCompletedConversion = Conversion.Completed.save _db
     let sendUploaderMessage = Queue.sendUploaderMessage workersSettings
+    let loadUser = User.load _db
 
     task {
       let! userConversion = loadUserConversion message.Id
 
-      let editMessage =
-        Telegram.editMessage _bot userConversion.UserId userConversion.SentMessageId
+      let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
+
+      let! tran, _ =
+        match userConversion.UserId with
+        | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
+        | None -> defaultLocaleTranslations |> Task.FromResult
 
       let! conversion = loadPreparedOrConverted message.Id
 
@@ -236,7 +286,7 @@ type Functions
 
             task {
               do! saveThumbnailedConversion thumbnailedConversion
-              do! editMessage "Thumbnail generated! Converting the video..."
+              do! editMessage (tran Resources.ThumbnailGenerated)
             }
           | Choice2Of2 convertedConversion ->
             let completedConversion: Domain.Conversion.Completed =
@@ -250,7 +300,7 @@ type Functions
             task {
               do! saveCompletedConversion completedConversion
               do! sendUploaderMessage uploaderMessage
-              do! editMessage "File successfully converted! Uploading the file 🚀"
+              do! editMessage (tran Resources.Uploading)
             }
         | Queue.Error error ->
 
@@ -270,10 +320,10 @@ type Functions
       let! userConversion = loadUserConversion message.ConversionId
 
       let deleteMessage =
-        Telegram.deleteMessage _bot userConversion.UserId userConversion.SentMessageId
+        Telegram.deleteMessage _bot userConversion.ChatId userConversion.SentMessageId
 
       let replyWithVideo =
-        Telegram.replyWithVideo workersSettings _bot userConversion.UserId userConversion.ReceivedMessageId
+        Telegram.replyWithVideo workersSettings _bot userConversion.ChatId userConversion.ReceivedMessageId
 
       let deleteVideo = Storage.deleteVideo workersSettings
       let deleteThumbnail = Storage.deleteThumbnail workersSettings

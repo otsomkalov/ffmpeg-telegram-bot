@@ -1,27 +1,27 @@
 namespace Bot
 
 open System
-open System.Net
 open System.Net.Http
-open System.Net.Security
 open System.Reflection
 open System.Text.Json
 open System.Text.Json.Serialization
-open FSharp
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.ApplicationInsights
+open Microsoft.Extensions.Options
 open MongoDB.ApplicationInsights
 open MongoDB.Driver
 open Polly.Extensions.Http
 open Telegram.Bot
 open MongoDB.ApplicationInsights.DependencyInjection
 open Polly
-open otsom.FSharp.Extensions.ServiceCollection
+open otsom.fs.Extensions.DependencyInjection
 open Helpers
+open Database
+open otsom.fs.Telegram.Bot
 
 #nowarn "20"
 
@@ -51,20 +51,29 @@ module Startup =
       .HandleTransientHttpError()
       .WaitAndRetryAsync(5, (fun retryAttempt -> TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))))
 
-  let private configureServices (context: HostBuilderContext) (services: IServiceCollection) =
+  let private configureMongoClient (factory: IMongoClientFactory) (settings: Settings.DatabaseSettings) =
+    factory.GetClient(settings.ConnectionString)
+
+  let private configureMongoDatabase (settings: Settings.DatabaseSettings) (mongoClient: IMongoClient) =
+    mongoClient.GetDatabase(settings.Name)
+
+  let private configureServices _ (services: IServiceCollection) =
     services.AddApplicationInsightsTelemetryWorkerService()
     services.ConfigureFunctionsApplicationInsights()
 
     services
-      .AddSingletonFunc<Settings.WorkersSettings, IConfiguration>(fun cfg ->
+    |> Startup.addTelegramBotCore
+
+    services
+      .BuildSingleton<Settings.WorkersSettings, IConfiguration>(fun cfg ->
         cfg
           .GetSection(Settings.WorkersSettings.SectionName)
           .Get<Settings.WorkersSettings>())
-      .AddSingletonFunc<Settings.TelegramSettings, IConfiguration>(fun cfg ->
+      .BuildSingleton<Settings.TelegramSettings, IConfiguration>(fun cfg ->
         cfg
           .GetSection(Settings.TelegramSettings.SectionName)
           .Get<Settings.TelegramSettings>())
-      .AddSingletonFunc<Settings.DatabaseSettings, IConfiguration>(fun cfg ->
+      .BuildSingleton<Settings.DatabaseSettings, IConfiguration>(fun cfg ->
         cfg
           .GetSection(Settings.DatabaseSettings.SectionName)
           .Get<Settings.DatabaseSettings>())
@@ -73,17 +82,17 @@ module Startup =
           .GetSection(Settings.InputValidationSettings.SectionName)
           .Get<Settings.InputValidationSettings>())
 
-    services.AddMongoClientFactory()
-
     services
-      .AddSingletonFunc<IMongoClient, IMongoClientFactory, Settings.DatabaseSettings>(fun factory settings ->
-        factory.GetClient settings.ConnectionString)
-      .AddSingletonFunc<IMongoDatabase, IMongoClient, Settings.DatabaseSettings>(fun client settings -> client.GetDatabase settings.Name)
+      .AddMongoClientFactory()
+      .BuildSingleton<IMongoClient, IMongoClientFactory, Settings.DatabaseSettings>(configureMongoClient)
+      .BuildSingleton<IMongoDatabase, Settings.DatabaseSettings, IMongoClient>(configureMongoDatabase)
       .AddSingleton<HttpClientHandler>(fun _ -> new HttpClientHandler(ServerCertificateCustomValidationCallback = (fun a b c d -> true)))
-      .AddSingletonFunc<HttpClient, HttpClientHandler>(fun handler -> new HttpClient(handler))
-      .AddSingletonFunc<ITelegramBotClient, Settings.TelegramSettings, HttpClient>(fun settings client ->
+      .BuildSingleton<HttpClient, HttpClientHandler>(fun handler -> new HttpClient(handler))
+      .BuildSingleton<ITelegramBotClient, Settings.TelegramSettings, HttpClient>(fun settings client ->
         let options = TelegramBotClientOptions(settings.Token, settings.ApiUrl)
         TelegramBotClient(options, client) :> ITelegramBotClient)
+      .BuildSingleton<Translation.DefaultLocaleTranslations, IMongoDatabase>(Translation.defaultTranslations)
+      .BuildSingleton<Translation.GetLocaleTranslations, IMongoDatabase, Translation.DefaultLocaleTranslations>(Translation.getLocaleTranslations)
 
     services
       .AddHttpClient(fun (client: HttpClient) -> client.DefaultRequestHeaders.UserAgent.ParseAdd(chromeUserAgent))

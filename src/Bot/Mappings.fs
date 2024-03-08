@@ -1,20 +1,35 @@
 ﻿[<RequireQualifiedAccess>]
 module Bot.Mappings
 
+open otsom.fs.Telegram.Bot.Core
+
+[<RequireQualifiedAccess>]
+module User =
+  let fromDb (user: Database.User) : Domain.User = { Id = UserId user.Id; Lang = user.Lang }
+
+  let toDb (user: Domain.User) : Database.User =
+    Database.User(Id = (user.Id |> UserId.value), Lang = user.Lang)
+
+  let fromTg (user: Telegram.Bot.Types.User) : Domain.User =
+    { Id = UserId user.Id
+      Lang = user.LanguageCode }
+
 [<RequireQualifiedAccess>]
 module UserConversion =
   let fromDb (conversion: Database.Conversion) : Domain.UserConversion =
     { ConversionId = conversion.Id
-      UserId = conversion.UserId
+      UserId = (conversion.UserId |> Option.ofNullable |> Option.map UserId)
       ReceivedMessageId = conversion.ReceivedMessageId
-      SentMessageId = conversion.SentMessageId }
+      SentMessageId = BotMessageId conversion.SentMessageId
+      ChatId = UserId conversion.ChatId }
 
   let toDb (conversion: Domain.UserConversion) : Database.Conversion =
     Database.Conversion(
       Id = conversion.ConversionId,
-      UserId = conversion.UserId,
+      UserId = (conversion.UserId |> Option.map UserId.value |> Option.toNullable),
       ReceivedMessageId = conversion.ReceivedMessageId,
-      SentMessageId = conversion.SentMessageId
+      SentMessageId = (conversion.SentMessageId |> BotMessageId.value),
+      ChatId = (conversion.ChatId |> UserId.value)
     )
 
 [<RequireQualifiedAccess>]
@@ -91,3 +106,9 @@ module Conversion =
         ThumbnailFileName = conversion.ThumbnailFile,
         State = Database.ConversionState.Completed
       )
+
+[<RequireQualifiedAccess>]
+module Translation =
+  let fromDb (translation: Database.Translation) : Translation =
+    { Key = translation.Key
+      Value = translation.Value }

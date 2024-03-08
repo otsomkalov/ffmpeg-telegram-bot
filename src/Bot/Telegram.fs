@@ -1,52 +1,21 @@
 ﻿[<RequireQualifiedAccess>]
 module Bot.Telegram
 
-open System.Text.RegularExpressions
 open System.Threading.Tasks
 open Azure.Storage.Blobs
 open Telegram.Bot
 open Telegram.Bot.Types
-open Telegram.Bot.Types.Enums
-open otsom.FSharp.Extensions
-open shortid
-
-let escapeMarkdownString (str: string) =
-  Regex.Replace(str, "([`\.#\-!])", "\$1")
-
-type SendMessage = string -> Task<unit>
-
-let sendMessage (bot: ITelegramBotClient) (userId: int64) : SendMessage =
-  fun text ->
-    bot.SendTextMessageAsync((userId |> ChatId), text |> escapeMarkdownString, parseMode = ParseMode.MarkdownV2)
-    |> Task.map ignore
-
-type EditMessage = string -> Task<unit>
-
-let editMessage (bot: ITelegramBotClient) (userId: int64) messageId : EditMessage =
-  fun text ->
-    bot.EditMessageTextAsync((userId |> ChatId), messageId, text |> escapeMarkdownString, ParseMode.MarkdownV2)
-    |> Task.map ignore
-
-type ReplyToMessage = string -> Task<int>
-
-let replyToMessage (bot: ITelegramBotClient) (userId: int64) messageId : ReplyToMessage =
-  fun text ->
-    bot.SendTextMessageAsync(
-      (userId |> ChatId),
-      text |> escapeMarkdownString,
-      parseMode = ParseMode.MarkdownV2,
-      replyToMessageId = messageId
-    )
-    |> Task.map (fun m -> m.MessageId)
+open otsom.fs.Extensions
+open otsom.fs.Telegram.Bot.Core
 
 type DeleteMessage = unit -> Task<unit>
 
-let deleteMessage (bot: ITelegramBotClient) (userId: int64) messageId : DeleteMessage =
-  fun () -> task { do! bot.DeleteMessageAsync((userId |> ChatId), messageId) }
+let deleteMessage (bot: ITelegramBotClient) (userId: UserId) messageId : DeleteMessage =
+  fun () -> task { do! bot.DeleteMessageAsync((userId |> UserId.value |> ChatId), (messageId |> BotMessageId.value)) }
 
 type ReplyWithVideo = string -> string -> Task<unit>
 
-let replyWithVideo (workersSettings: Settings.WorkersSettings) (bot: ITelegramBotClient) (userId: int64) (messageId: int) : ReplyWithVideo =
+let replyWithVideo (workersSettings: Settings.WorkersSettings) (bot: ITelegramBotClient) (userId: UserId) (messageId: int) : ReplyWithVideo =
   fun video thumbnail ->
     let blobServiceClient = BlobServiceClient(workersSettings.ConnectionString)
 
@@ -65,17 +34,17 @@ let replyWithVideo (workersSettings: Settings.WorkersSettings) (bot: ITelegramBo
 
       do!
         bot.SendVideoAsync(
-          (userId |> ChatId),
+          (userId |> UserId.value |> ChatId),
           InputFileStream(videoStreamResponse.Value.Content, video),
           caption = "🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/",
           replyToMessageId = messageId,
           thumbnail = InputFileStream(thumbnailStreamResponse.Value.Content, thumbnail),
           disableNotification = true
         )
-        |> Task.map ignore
+        |> Task.ignore
 
-      do! videoBlob.DeleteAsync() |> Task.map ignore
-      do! thumbnailBlob.DeleteAsync() |> Task.map ignore
+      do! videoBlob.DeleteAsync() |> Task.ignore
+      do! thumbnailBlob.DeleteAsync() |> Task.ignore
     }
 
 type BlobType =
@@ -108,11 +77,11 @@ let downloadDocument (bot: ITelegramBotClient) (workersSettings: Settings.Worker
     task {
       use! converterBlobStream = getBlobStream workersSettings name Converter
 
-      do! bot.GetInfoAndDownloadFileAsync(id, converterBlobStream) |> Task.map ignore
+      do! bot.GetInfoAndDownloadFileAsync(id, converterBlobStream) |> Task.ignore
 
       use! thumbnailerBlobStream = getBlobStream workersSettings name Thumbnailer
 
-      do! bot.GetInfoAndDownloadFileAsync(id, thumbnailerBlobStream) |> Task.map ignore
+      do! bot.GetInfoAndDownloadFileAsync(id, thumbnailerBlobStream) |> Task.ignore
 
       return name
     }

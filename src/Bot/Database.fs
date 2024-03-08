@@ -1,8 +1,42 @@
 ﻿module Bot.Database
 
 open MongoDB.Driver
-open otsom.FSharp.Extensions
+open otsom.fs.Extensions
 open Bot.Workflows
+open otsom.fs.Telegram.Bot.Core
+open System
+
+[<RequireQualifiedAccess>]
+module User =
+  let load (db: IMongoDatabase) : User.Load =
+    let collection = db.GetCollection "users"
+
+    fun userId ->
+      let userId' = userId |> UserId.value
+      let filter = Builders<Database.User>.Filter.Eq((fun c -> c.Id), userId')
+
+      collection.Find(filter).SingleOrDefaultAsync()
+      |> Task.map Mappings.User.fromDb
+
+  let save (db: IMongoDatabase) : User.Save =
+    let collection = db.GetCollection "users"
+
+    fun conversion ->
+      let entity = conversion |> Mappings.User.toDb
+      task { do! collection.InsertOneAsync(entity) }
+
+  let ensureExists (db: IMongoDatabase) : User.EnsureExists =
+    let collection = db.GetCollection "users"
+
+    fun user ->
+      let userId' = user.Id |> UserId.value
+
+      let filter = Builders<Database.User>.Filter.Eq((fun u -> u.Id), userId')
+      let setOnInsert =
+        [Builders<Database.User>.Update.SetOnInsert((fun u -> u.Id), userId')
+         Builders<Database.User>.Update.SetOnInsert((fun u -> u.Lang), user.Lang)]
+
+      task { do! (collection.UpdateOneAsync(filter, Builders.Update.Combine(setOnInsert), UpdateOptions(IsUpsert = true)) |> Task.ignore) }
 
 [<RequireQualifiedAccess>]
 module UserConversion =
@@ -59,7 +93,7 @@ module Conversion =
       fun conversion ->
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Prepared.toDb
-        collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
+        collection.ReplaceOneAsync(filter, entity) |> Task.ignore
 
   [<RequireQualifiedAccess>]
   module Converted =
@@ -78,7 +112,7 @@ module Conversion =
       fun conversion ->
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Converted.toDb
-        collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
+        collection.ReplaceOneAsync(filter, entity) |> Task.ignore
 
   [<RequireQualifiedAccess>]
   module Thumbnailed =
@@ -97,7 +131,7 @@ module Conversion =
       fun conversion ->
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Thumbnailed.toDb
-        collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
+        collection.ReplaceOneAsync(filter, entity) |> Task.ignore
 
   [<RequireQualifiedAccess>]
   module PreparedOrConverted =
@@ -138,4 +172,52 @@ module Conversion =
       fun conversion ->
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Completed.toDb
-        collection.ReplaceOneAsync(filter, entity) |> Task.map ignore
+        collection.ReplaceOneAsync(filter, entity) |> Task.ignore
+
+[<RequireQualifiedAccess>]
+module Translation =
+
+  let private loadTranslationsMap (collection: IMongoCollection<Database.Translation>) key =
+    collection.Find(fun t -> t.Lang = key).ToList()
+    |> (Seq.groupBy (_.Key)
+        >> Seq.map (fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head))
+        >> Map.ofSeq)
+
+  let private formatWithFallback formats fallback =
+    fun (key, args) ->
+      match formats |> Map.tryFind key with
+      | Some fmt -> String.Format(fmt, args)
+      | None -> fallback
+
+  let getLocaleTranslations
+    (db: IMongoDatabase)
+    ((tran, tranf): Translation.DefaultLocaleTranslations)
+    : Translation.GetLocaleTranslations =
+    fun lang ->
+      let collection = db.GetCollection "resources"
+
+      if lang = Translation.DefaultLang then
+        (tran, tranf)
+      else
+        let localeTranslations = loadTranslationsMap collection lang
+
+        let getTranslation: Translation.GetTranslation =
+          fun key -> localeTranslations |> Map.tryFind key |> Option.defaultValue (tran key)
+
+        let formatTranslation: Translation.FormatTranslation =
+          fun (key, args) -> formatWithFallback localeTranslations (tranf (key, args)) (key, args)
+
+        (getTranslation, formatTranslation)
+
+  let defaultTranslations (db: IMongoDatabase) : Translation.DefaultLocaleTranslations =
+    let collection = db.GetCollection "resources"
+
+    let translations = loadTranslationsMap collection Translation.DefaultLang
+
+    let getTranslation =
+      fun key -> translations |> Map.tryFind key |> Option.defaultValue key
+
+    let formatTranslation =
+      fun (key, args) -> formatWithFallback translations key (key, args)
+
+    (getTranslation, formatTranslation)

@@ -13,15 +13,15 @@ public class Conversion
 {
     public string Id { get; set; }
 
-    public string Name { get; set; }
-
     public string InputFileName { get; set; }
 
     public string OutputFileName { get; set; }
 
     public string ThumbnailFileName { get; set; }
 
-    public long UserId { get; set; }
+    public long? UserId { get; set; }
+
+    public long ChatId { get; set; }
 
     public int ReceivedMessageId { get; set; }
 

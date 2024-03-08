@@ -1,10 +1,19 @@
 ﻿module Bot.Domain
 
+open System.Threading.Tasks
+open Telegram.Bot.Types
+open otsom.fs.Telegram.Bot.Core
+
+type ChatId = ChatId of int64
+
+type User = { Id: UserId; Lang: string }
+
 type UserConversion =
   { ReceivedMessageId: int
-    SentMessageId: int
+    SentMessageId: BotMessageId
     ConversionId: string
-    UserId: int64 }
+    UserId: UserId option
+    ChatId: UserId }
 
 [<RequireQualifiedAccess>]
 module Conversion =
@@ -24,3 +33,10 @@ module Conversion =
     { Id: string
       OutputFile: string
       ThumbnailFile: string }
+
+type Command =
+  | Start
+  | Links of string seq
+  | Document of string * string
+
+type ParseCommand = Message -> Task<Command option>

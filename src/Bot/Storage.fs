@@ -2,7 +2,7 @@
 module Bot.Storage
 
 open Azure.Storage.Blobs
-open otsom.FSharp.Extensions
+open otsom.fs.Extensions
 
 let deleteVideo (workersSettings: Settings.WorkersSettings) =
   fun name ->
@@ -12,7 +12,7 @@ let deleteVideo (workersSettings: Settings.WorkersSettings) =
       blobService.GetBlobContainerClient(workersSettings.Converter.Output.Container)
 
     let convertedFileBlob = convertedFilesContainer.GetBlobClient(name)
-    convertedFileBlob.DeleteIfExistsAsync() |> Task.map ignore
+    convertedFileBlob.DeleteIfExistsAsync() |> Task.ignore
 
 let deleteThumbnail (workersSettings: Settings.WorkersSettings) =
   fun name ->
@@ -22,4 +22,4 @@ let deleteThumbnail (workersSettings: Settings.WorkersSettings) =
       blobService.GetBlobContainerClient(workersSettings.Thumbnailer.Output.Container)
 
     let convertedFileBlob = convertedFilesContainer.GetBlobClient(name)
-    convertedFileBlob.DeleteIfExistsAsync() |> Task.map ignore
+    convertedFileBlob.DeleteIfExistsAsync() |> Task.ignore
