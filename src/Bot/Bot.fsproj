@@ -25,6 +25,7 @@
     <PackageReference Include="otsom.fs.Extensions" Version="0.0.17"/>
     <PackageReference Include="otsom.fs.Telegram.Bot" Version="0.0.12"/>
     <PackageReference Include="FSharp.Logf" Version="1.2.2"/>
+    <PackageReference Include="MongoDB.ApplicationInsights.DependencyInjection" Version="1.0.34"/>
   </ItemGroup>
 
   <ItemGroup>
