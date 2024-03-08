@@ -196,18 +196,15 @@ module Translation =
     fun lang ->
       let collection = db.GetCollection "resources"
 
-      if lang = Translation.DefaultLang then
-        (tran, tranf)
-      else
-        let localeTranslations = loadTranslationsMap collection lang
+      let localeTranslations = loadTranslationsMap collection lang
 
-        let getTranslation: Translation.GetTranslation =
-          fun key -> localeTranslations |> Map.tryFind key |> Option.defaultValue (tran key)
+      let getTranslation: Translation.GetTranslation =
+        fun key -> localeTranslations |> Map.tryFind key |> Option.defaultValue (tran key)
 
-        let formatTranslation: Translation.FormatTranslation =
-          fun (key, args) -> formatWithFallback localeTranslations (tranf (key, args)) (key, args)
+      let formatTranslation: Translation.FormatTranslation =
+        fun (key, args) -> formatWithFallback localeTranslations (tranf (key, args)) (key, args)
 
-        (getTranslation, formatTranslation)
+      (getTranslation, formatTranslation)
 
   let defaultTranslations (db: IMongoDatabase) : Translation.DefaultLocaleTranslations =
     let collection = db.GetCollection "resources"
