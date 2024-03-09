@@ -176,41 +176,48 @@ module Conversion =
 
 [<RequireQualifiedAccess>]
 module Translation =
-  let getLocaleTranslations (db: IMongoDatabase) : Translation.GetLocaleTranslations =
+
+  let private loadTranslationsMap (collection: IMongoCollection<Database.Translation>) key =
+    collection.Find(fun t -> t.Lang = key).ToList()
+    |> (Seq.groupBy (_.Key)
+        >> Seq.map (fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head))
+        >> Map.ofSeq)
+
+  let private formatWithFallback formats fallback =
+    fun (key, args) ->
+      match formats |> Map.tryFind key with
+      | Some fmt -> String.Format(fmt, args)
+      | None -> fallback
+
+  let getLocaleTranslations
+    (db: IMongoDatabase)
+    ((tran, tranf): Translation.DefaultLocaleTranslations)
+    : Translation.GetLocaleTranslations =
     fun lang ->
       let collection = db.GetCollection "resources"
 
-      let localeTranslations =
-        let filter = Builders<Database.Translation>.Filter.Eq((fun t -> t.Lang), lang)
+      if lang = Translation.DefaultLang then
+        (tran, tranf)
+      else
+        let localeTranslations = loadTranslationsMap collection lang
 
-        collection.Find(filter).ToList()
-        |> (Seq.groupBy(_.Key) >> Seq.map(fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head)) >> Map.ofSeq)
+        let getTranslation: Translation.GetTranslation =
+          fun key -> localeTranslations |> Map.tryFind key |> Option.defaultValue (tran key)
 
-      let defaultTranslations =
-        let filter = Builders<Database.Translation>.Filter.Eq((fun t -> t.Lang), Translation.DefaultLang)
+        let formatTranslation: Translation.FormatTranslation =
+          fun (key, args) -> formatWithFallback localeTranslations (tranf (key, args)) (key, args)
 
-        collection.Find(filter).ToList()
-        |> (Seq.groupBy(_.Key) >> Seq.map(fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head)) >> Map.ofSeq)
+        (getTranslation, formatTranslation)
 
-      let getTranslation : Translation.GetTranslation =
-        fun key ->
-          localeTranslations
-          |> Map.tryFind key
-          |> Option.defaultWith (fun () -> defaultTranslations |> Map.tryFind key |> Option.defaultValue key)
+  let defaultTranslations (db: IMongoDatabase) : Translation.DefaultLocaleTranslations =
+    let collection = db.GetCollection "resources"
 
-      let formatTranslation : Translation.FormatTranslation =
-        fun (key, [<ParamArray>]args) ->
-          let localeTemplate =
-            localeTranslations
-            |> Map.tryFind key
+    let translations = loadTranslationsMap collection Translation.DefaultLang
 
-          let fallbackedTemplate =
-            match localeTemplate with
-            | Some t -> Some t
-            | None -> defaultTranslations |> Map.tryFind key
+    let getTranslation =
+      fun key -> translations |> Map.tryFind key |> Option.defaultValue key
 
-          match fallbackedTemplate with
-          | Some t -> String.Format(t, args)
-          | None -> key
+    let formatTranslation =
+      fun (key, args) -> formatWithFallback translations key (key, args)
 
-      (getTranslation, formatTranslation)
+    (getTranslation, formatTranslation)

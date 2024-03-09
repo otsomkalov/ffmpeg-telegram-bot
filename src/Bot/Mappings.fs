@@ -18,16 +18,18 @@ module User =
 module UserConversion =
   let fromDb (conversion: Database.Conversion) : Domain.UserConversion =
     { ConversionId = conversion.Id
-      UserId = UserId conversion.UserId
+      UserId = (conversion.UserId |> Option.ofNullable |> Option.map UserId)
       ReceivedMessageId = conversion.ReceivedMessageId
-      SentMessageId = BotMessageId conversion.SentMessageId }
+      SentMessageId = BotMessageId conversion.SentMessageId
+      ChatId = UserId conversion.ChatId }
 
   let toDb (conversion: Domain.UserConversion) : Database.Conversion =
     Database.Conversion(
       Id = conversion.ConversionId,
-      UserId = (conversion.UserId |> UserId.value),
+      UserId = (conversion.UserId |> Option.map UserId.value |> Option.toNullable),
       ReceivedMessageId = conversion.ReceivedMessageId,
-      SentMessageId = (conversion.SentMessageId |> BotMessageId.value)
+      SentMessageId = (conversion.SentMessageId |> BotMessageId.value),
+      ChatId = (conversion.ChatId |> UserId.value)
     )
 
 [<RequireQualifiedAccess>]
