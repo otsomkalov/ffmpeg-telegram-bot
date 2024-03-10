@@ -78,8 +78,6 @@ module Startup =
           .GetSection(Settings.DatabaseSettings.SectionName)
           .Get<Settings.DatabaseSettings>())
 
-    services.AddMongoClientFactory()
-
     services
       .AddMongoClientFactory()
       .BuildSingleton<IMongoClient, IMongoClientFactory, Settings.DatabaseSettings>(configureMongoClient)

@@ -1,7 +1,7 @@
 ﻿[<RequireQualifiedAccess>]
 module Bot.HTTP
 
-open System.IO
+open System
 open System.Net
 open System.Net.Http
 open System.Threading.Tasks
@@ -29,7 +29,7 @@ let downloadLink (httpClientFactory: IHttpClientFactory) (workersSettings: Setti
         | HttpStatusCode.InternalServerError -> ServerError |> Error |> Task.FromResult
         | _ ->
           task {
-            let fileName = Path.GetFileName(link)
+            let fileName = link |> Uri |> (_.Segments) |> Seq.last
 
             use! converterBlobStream = getBlobStream fileName Telegram.Converter
             use! thumbnailerBlobStream = getBlobStream fileName Telegram.Thumbnailer
