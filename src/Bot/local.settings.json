@@ -4,7 +4,7 @@
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "<Azure AppInsights key>",
-    "Workers__ConnectionString": "<Azure Storage connection string>",
+    "Workers__ConnectionString": "UseDevelopmentStorage=true",
     "Workers__Downloader__Queue": "downloader",
     "Workers__Converter__Input__Container": "converter-input",
     "Workers__Converter__Input__Queue": "converter-input",

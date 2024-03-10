@@ -101,7 +101,7 @@ let inline sendDocToQueue replyToMessage saveConversion saveUserConversion sendD
           UserId = userId
           SentMessageId = sentMessageId
           ReceivedMessageId = message.MessageId
-          ChatId = message.Chat.Id }
+          ChatId = message.Chat.Id |> UserId }
 
       do! saveUserConversion userConversion
 
