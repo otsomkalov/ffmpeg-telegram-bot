@@ -7,7 +7,6 @@ open Telegram.Bot
 open Telegram.Bot.Types
 open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
-open shortid
 
 type DeleteMessage = unit -> Task<unit>
 
@@ -85,29 +84,4 @@ let downloadDocument (bot: ITelegramBotClient) (workersSettings: Settings.Worker
       do! bot.GetInfoAndDownloadFileAsync(id, thumbnailerBlobStream) |> Task.ignore
 
       return name
-    }
-
-let inline sendDocToQueue replyToMessage saveConversion saveUserConversion sendDownloaderMessage =
-  fun userId (message: Message) (doc: ^T when ^T:(member FileName: string)  and 'T:(member FileId: string)) ->
-    task {
-      let! sentMessageId = replyToMessage $"File *{doc.FileName}* is waiting to be downloaded 🕒"
-
-      let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
-
-      do! saveConversion newConversion
-
-      let userConversion: Domain.UserConversion =
-        { ConversionId = newConversion.Id
-          UserId = userId
-          SentMessageId = sentMessageId
-          ReceivedMessageId = message.MessageId
-          ChatId = message.Chat.Id |> UserId }
-
-      do! saveUserConversion userConversion
-
-      let message: Queue.DownloaderMessage =
-        { ConversionId = newConversion.Id
-          File = Queue.File.Document(doc.FileId, doc.FileName) }
-
-      return! sendDownloaderMessage message
     }
