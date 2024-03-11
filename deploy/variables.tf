@@ -22,3 +22,11 @@ variable "database-connection-string" {
 variable "database-name" {
   type = string
 }
+
+variable "link-regex" {
+  type = string
+}
+
+variable "mime-types" {
+  type = list(string)
+}

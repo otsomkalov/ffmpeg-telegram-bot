@@ -139,30 +139,37 @@ resource "azurerm_linux_function_app" "func-tg-bot" {
     }
   }
 
-  app_settings = {
-    Telegram__Token  = var.telegram-token
-    Telegram__ApiUrl = var.telegram-api-url
-
-    Database__ConnectionString = var.database-connection-string
-    Database__Name             = var.database-name
-
-    Workers__ConnectionString  = azurerm_storage_account.st-tg-bot.primary_connection_string
-    Workers__Downloader__Queue = azurerm_storage_queue.stq-downloader-tg-bot.name
-
-    Workers__Converter__Input__Container = azurerm_storage_container.stc-converter-input-tg-bot.name
-    Workers__Converter__Input__Queue     = azurerm_storage_queue.stq-converter-input-tg-bot.name
-
-    Workers__Converter__Output__Container = azurerm_storage_container.stc-converter-output-tg-bot.name
-    Workers__Converter__Output__Queue     = azurerm_storage_queue.stq-converter-output-tg-bot.name
-
-    Workers__Thumbnailer__Input__Container = azurerm_storage_container.stc-thumbnailer-input-tg-bot.name
-    Workers__Thumbnailer__Input__Queue     = azurerm_storage_queue.stq-thumbnailer-input-tg-bot.name
-
-    Workers__Thumbnailer__Output__Container = azurerm_storage_container.stc-thumbnailer-output-tg-bot.name
-    Workers__Thumbnailer__Output__Queue     = azurerm_storage_queue.stq-thumbnailer-output-tg-bot.name
-
-    Workers__Uploader__Queue = azurerm_storage_queue.stq-uploader-tg-bot.name
-  }
-
   tags = local.tags
+
+  app_settings = merge(
+    {
+      Telegram__Token  = var.telegram-token
+      Telegram__ApiUrl = var.telegram-api-url
+
+      Database__ConnectionString = var.database-connection-string
+      Database__Name             = var.database-name
+
+      Workers__ConnectionString  = azurerm_storage_account.st-tg-bot.primary_connection_string
+      Workers__Downloader__Queue = azurerm_storage_queue.stq-downloader-tg-bot.name
+
+      Workers__Converter__Input__Container = azurerm_storage_container.stc-converter-input-tg-bot.name
+      Workers__Converter__Input__Queue     = azurerm_storage_queue.stq-converter-input-tg-bot.name
+
+      Workers__Converter__Output__Container = azurerm_storage_container.stc-converter-output-tg-bot.name
+      Workers__Converter__Output__Queue     = azurerm_storage_queue.stq-converter-output-tg-bot.name
+
+      Workers__Thumbnailer__Input__Container = azurerm_storage_container.stc-thumbnailer-input-tg-bot.name
+      Workers__Thumbnailer__Input__Queue     = azurerm_storage_queue.stq-thumbnailer-input-tg-bot.name
+
+      Workers__Thumbnailer__Output__Container = azurerm_storage_container.stc-thumbnailer-output-tg-bot.name
+      Workers__Thumbnailer__Output__Queue     = azurerm_storage_queue.stq-thumbnailer-output-tg-bot.name
+
+      Workers__Uploader__Queue = azurerm_storage_queue.stq-uploader-tg-bot.name
+
+      Validation__LinkRegex = var.link-regex
+
+    },
+    {
+      for idx, type in var.mime-types : "Validation__MimeTypes__${idx}" => type
+    })
 }
