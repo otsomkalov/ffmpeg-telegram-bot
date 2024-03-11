@@ -61,8 +61,7 @@ module Startup =
     services.AddApplicationInsightsTelemetryWorkerService()
     services.ConfigureFunctionsApplicationInsights()
 
-    services
-    |> Startup.addTelegramBotCore
+    services |> Startup.addTelegramBotCore
 
     services
       .BuildSingleton<Settings.WorkersSettings, IConfiguration>(fun cfg ->
@@ -77,6 +76,10 @@ module Startup =
         cfg
           .GetSection(Settings.DatabaseSettings.SectionName)
           .Get<Settings.DatabaseSettings>())
+      .BuildSingleton<Settings.InputValidationSettings, IConfiguration>(fun cfg ->
+        cfg
+          .GetSection(Settings.InputValidationSettings.SectionName)
+          .Get<Settings.InputValidationSettings>())
 
     services
       .AddMongoClientFactory()
@@ -88,7 +91,9 @@ module Startup =
         let options = TelegramBotClientOptions(settings.Token, settings.ApiUrl)
         TelegramBotClient(options, client) :> ITelegramBotClient)
       .BuildSingleton<Translation.DefaultLocaleTranslations, IMongoDatabase>(Translation.defaultTranslations)
-      .BuildSingleton<Translation.GetLocaleTranslations, IMongoDatabase, Translation.DefaultLocaleTranslations>(Translation.getLocaleTranslations)
+      .BuildSingleton<Translation.GetLocaleTranslations, IMongoDatabase, Translation.DefaultLocaleTranslations>(
+        Translation.getLocaleTranslations
+      )
 
     services
       .AddHttpClient(fun (client: HttpClient) -> client.DefaultRequestHeaders.UserAgent.ParseAdd(chromeUserAgent))

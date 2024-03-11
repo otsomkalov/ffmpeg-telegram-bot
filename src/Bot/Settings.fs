@@ -35,3 +35,10 @@ type TelegramSettings =
     ApiUrl: string }
 
   static member SectionName = "Telegram"
+
+[<CLIMutable>]
+type InputValidationSettings =
+  { LinkRegex: string
+    MimeTypes: string seq }
+
+  static member SectionName = "Validation"
