@@ -30,7 +30,8 @@ type Functions
     sendUserMessage: SendUserMessage,
     replyToUserMessage: ReplyToUserMessage,
     editBotMessage: EditBotMessage,
-    defaultLocaleTranslations: DefaultLocaleTranslations
+    defaultLocaleTranslations: DefaultLocaleTranslations,
+    inputValidationSettings: Settings.InputValidationSettings
   ) =
 
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
@@ -48,6 +49,7 @@ type Functions
       | Some lang -> getLocaleTranslations lang
       | None -> defaultLocaleTranslations
     let ensureUserExists = User.ensureExists _db
+    let parseCommand = Workflows.parseCommand inputValidationSettings
 
     let processLinks links =
       let sendUrlToQueue (url: string) =
@@ -117,7 +119,7 @@ type Functions
           |> Task.bind(fun () -> processCommand cmd)
         | None -> processCommand cmd
 
-    Workflows.parseCommand message |> Task.bind processMessage'
+    parseCommand message |> Task.bind processMessage'
 
   let handleUpdate (update: Update) =
     match update.Type with
