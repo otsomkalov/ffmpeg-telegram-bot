@@ -51,37 +51,8 @@ type Functions
     let ensureUserExists = User.ensureExists _db
     let parseCommand = Workflows.parseCommand inputValidationSettings
 
-    let processLinks links =
-      let sendUrlToQueue (url: string) =
-        task {
-          let! sentMessageId = replyToMessage (tranf(Resources.LinkDownload, [|url|]))
-
-          let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
-
-          do! saveConversion newConversion
-
-          let userConversion: Domain.UserConversion =
-            { ConversionId = newConversion.Id
-              UserId = userId
-              SentMessageId = sentMessageId
-              ReceivedMessageId = message.MessageId
-              ChatId = chatId }
-
-          do! saveUserConversion userConversion
-
-          let message: Queue.DownloaderMessage =
-            { ConversionId = newConversion.Id
-              File = Queue.File.Link url }
-
-          return! sendDownloaderMessage message
-        }
-
-      links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.ignore
-
-    let processDocument fileId fileName =
-      task {
-        let! sentMessageId = replyToMessage (tranf (Resources.DocumentDownload, [|fileName|]))
-
+    let saveAndQueueConversion sentMessageId getDownloaderMessage =
+      task{
         let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
 
         do! saveConversion newConversion
@@ -95,11 +66,48 @@ type Functions
 
         do! saveUserConversion userConversion
 
-        let message: Queue.DownloaderMessage =
-          { ConversionId = newConversion.Id
-            File = Queue.File.Document(fileId, fileName) }
+        let message = getDownloaderMessage newConversion.Id
 
         return! sendDownloaderMessage message
+      }
+
+    let processLinks links =
+      let sendUrlToQueue (url: string) =
+        task{
+          let! sentMessageId = replyToMessage (tranf (Resources.LinkDownload, [|url|]))
+
+          let getDownloaderMessage : string -> Queue.DownloaderMessage =
+            fun conversionId ->
+              { ConversionId = conversionId
+                File = Queue.File.Link url }
+
+          return! saveAndQueueConversion sentMessageId getDownloaderMessage
+        }
+
+      links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.ignore
+
+    let processDocument fileId fileName =
+      task {
+        let! sentMessageId = replyToMessage (tranf (Resources.DocumentDownload, [|fileName|]))
+
+        let getDownloaderMessage : string -> Queue.DownloaderMessage =
+          fun conversionId ->
+            { ConversionId = conversionId
+              File = Queue.File.Document(fileId, fileName) }
+
+        return! saveAndQueueConversion sentMessageId getDownloaderMessage
+      }
+
+    let processVideo fileId fileName =
+      task {
+        let! sentMessageId = replyToMessage (tranf (Resources.VideoDownload, [|fileName|]))
+
+        let getDownloaderMessage : string -> Queue.DownloaderMessage =
+          fun conversionId ->
+            { ConversionId = conversionId
+              File = Queue.File.Document(fileId, fileName) }
+
+        return! saveAndQueueConversion sentMessageId getDownloaderMessage
       }
 
     let processCommand =
@@ -108,6 +116,7 @@ type Functions
         sendMessage (tran Resources.Welcome)
       | Links links -> processLinks links
       | Document(fileId, fileName) -> processDocument fileId fileName
+      | Video(fileId, fileName) -> processVideo fileId fileName
 
     let processMessage' =
       function

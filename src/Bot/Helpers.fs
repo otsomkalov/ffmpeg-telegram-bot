@@ -20,7 +20,14 @@ let (|Document|_|) (mimeTypes: string seq) (message: Message) =
   |> Option.ofObj
   |> Option.filter (fun m -> String.IsNullOrEmpty m.Caption || (match m.Caption with | Contains "!nsfw" -> false | _ -> true))
   |> Option.bind (fun m -> m.Document |> Option.ofObj)
-  |> Option.filter(fun m -> mimeTypes |> Seq.contains m.MimeType )
+  |> Option.filter(fun d -> mimeTypes |> Seq.contains d.MimeType)
+
+let (|Video|_|) (mimeTypes: string seq) (message: Message) =
+  message
+  |> Option.ofObj
+  |> Option.filter (fun m -> String.IsNullOrEmpty m.Caption || (match m.Caption with | Contains "!nsfw" -> false | _ -> true))
+  |> Option.bind (fun m -> m.Video |> Option.ofObj)
+  |> Option.filter (fun v -> mimeTypes |> Seq.contains v.MimeType)
 
 let (|FromBot|_|) (message: Message) =
   message.From

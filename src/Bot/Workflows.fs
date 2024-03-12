@@ -67,5 +67,7 @@ let parseCommand (settings: Settings.InputValidationSettings) : ParseCommand =
       None |> Task.FromResult
   | Document settings.MimeTypes doc ->
     Command.Document(doc.FileId, doc.FileName) |> Some |> Task.FromResult
+  | Video settings.MimeTypes vid ->
+    Command.Video(vid.FileId, vid.FileName) |> Some |> Task.FromResult
   | _ ->
     None |> Task.FromResult
