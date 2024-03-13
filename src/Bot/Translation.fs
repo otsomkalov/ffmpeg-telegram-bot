@@ -16,7 +16,7 @@ module Translation =
 
   type GetLocaleTranslations = string -> GetTranslation * FormatTranslation
 
-  type DefaultLocaleTranslations = GetTranslation * FormatTranslation
+  type GetDefaultLocaleTranslations = unit -> GetTranslation * FormatTranslation
 
   [<RequireQualifiedAccess>]
   module Resources =

@@ -191,10 +191,11 @@ module Translation =
 
   let getLocaleTranslations
     (db: IMongoDatabase)
-    ((tran, tranf): Translation.DefaultLocaleTranslations)
+    (getDefaultLocaleTranslations: Translation.GetDefaultLocaleTranslations)
     : Translation.GetLocaleTranslations =
     fun lang ->
       let collection = db.GetCollection "resources"
+      let tran, tranf = getDefaultLocaleTranslations()
 
       if lang = Translation.DefaultLang then
         (tran, tranf)
@@ -209,15 +210,16 @@ module Translation =
 
         (getTranslation, formatTranslation)
 
-  let defaultTranslations (db: IMongoDatabase) : Translation.DefaultLocaleTranslations =
+  let defaultTranslations (db: IMongoDatabase) : Translation.GetDefaultLocaleTranslations =
     let collection = db.GetCollection "resources"
 
-    let translations = loadTranslationsMap collection Translation.DefaultLang
+    fun () ->
+      let translations = loadTranslationsMap collection Translation.DefaultLang
 
-    let getTranslation =
-      fun key -> translations |> Map.tryFind key |> Option.defaultValue key
+      let getTranslation =
+        fun key -> translations |> Map.tryFind key |> Option.defaultValue key
 
-    let formatTranslation =
-      fun (key, args) -> formatWithFallback translations key (key, args)
+      let formatTranslation =
+        fun (key, args) -> formatWithFallback translations key (key, args)
 
-    (getTranslation, formatTranslation)
+      (getTranslation, formatTranslation)

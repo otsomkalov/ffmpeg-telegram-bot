@@ -30,7 +30,7 @@ type Functions
     sendUserMessage: SendUserMessage,
     replyToUserMessage: ReplyToUserMessage,
     editBotMessage: EditBotMessage,
-    defaultLocaleTranslations: DefaultLocaleTranslations,
+    getDefaultLocaleTranslations: GetDefaultLocaleTranslations,
     inputValidationSettings: Settings.InputValidationSettings
   ) =
 
@@ -47,7 +47,7 @@ type Functions
     let tran, tranf =
       match message.From |> Option.ofObj |> Option.map (_.LanguageCode) with
       | Some lang -> getLocaleTranslations lang
-      | None -> defaultLocaleTranslations
+      | None -> getDefaultLocaleTranslations()
     let ensureUserExists = User.ensureExists _db
     let parseCommand = Workflows.parseCommand inputValidationSettings
 
@@ -173,7 +173,7 @@ type Functions
       let! tran, _ =
         match userConversion.UserId with
         | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
-        | None -> defaultLocaleTranslations |> Task.FromResult
+        | None -> getDefaultLocaleTranslations() |> Task.FromResult
 
       let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
@@ -227,7 +227,7 @@ type Functions
       let! tran, _ =
         match userConversion.UserId with
         | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
-        | None -> defaultLocaleTranslations |> Task.FromResult
+        | None -> getDefaultLocaleTranslations() |> Task.FromResult
 
       let! conversion = loadPreparedOrThumbnailed message.Id
 
@@ -282,7 +282,7 @@ type Functions
       let! tran, _ =
         match userConversion.UserId with
         | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
-        | None -> defaultLocaleTranslations |> Task.FromResult
+        | None -> getDefaultLocaleTranslations() |> Task.FromResult
 
       let! conversion = loadPreparedOrConverted message.Id
 

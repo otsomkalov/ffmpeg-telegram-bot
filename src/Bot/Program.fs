@@ -90,8 +90,8 @@ module Startup =
       .BuildSingleton<ITelegramBotClient, Settings.TelegramSettings, HttpClient>(fun settings client ->
         let options = TelegramBotClientOptions(settings.Token, settings.ApiUrl)
         TelegramBotClient(options, client) :> ITelegramBotClient)
-      .BuildSingleton<Translation.DefaultLocaleTranslations, IMongoDatabase>(Translation.defaultTranslations)
-      .BuildSingleton<Translation.GetLocaleTranslations, IMongoDatabase, Translation.DefaultLocaleTranslations>(
+      .BuildSingleton<Translation.GetDefaultLocaleTranslations, IMongoDatabase>(Translation.defaultTranslations)
+      .BuildSingleton<Translation.GetLocaleTranslations, IMongoDatabase, Translation.GetDefaultLocaleTranslations>(
         Translation.getLocaleTranslations
       )
 
