@@ -34,7 +34,7 @@ module User =
       let filter = Builders<Database.User>.Filter.Eq((fun u -> u.Id), userId')
       let setOnInsert =
         [Builders<Database.User>.Update.SetOnInsert((fun u -> u.Id), userId')
-         Builders<Database.User>.Update.SetOnInsert((fun u -> u.Lang), user.Lang)]
+         Builders<Database.User>.Update.SetOnInsert((fun u -> u.Lang), (user.Lang |> Option.toObj))]
 
       task { do! (collection.UpdateOneAsync(filter, Builders.Update.Combine(setOnInsert), UpdateOptions(IsUpsert = true)) |> Task.ignore) }
 

@@ -45,9 +45,12 @@ type Functions
     let saveUserConversion = UserConversion.save _db
     let saveConversion = Conversion.New.save _db
     let tran, tranf =
-      match message.From |> Option.ofObj |> Option.map (_.LanguageCode) with
-      | Some lang -> getLocaleTranslations lang
-      | None -> getDefaultLocaleTranslations()
+      message.From
+      |> Option.ofObj
+      |> Option.map (_.LanguageCode)
+      |> Option.map getLocaleTranslations
+      |> Option.defaultValue (getDefaultLocaleTranslations())
+
     let ensureUserExists = User.ensureExists _db
     let parseCommand = Workflows.parseCommand inputValidationSettings
 
@@ -171,9 +174,11 @@ type Functions
     task {
       let! userConversion = loadUserConversion message.ConversionId
       let! tran, _ =
-        match userConversion.UserId with
-        | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
-        | None -> getDefaultLocaleTranslations() |> Task.FromResult
+        userConversion.UserId
+        |> Option.taskMap loadUser
+        |> Task.map (Option.bind (fun u -> u.Lang))
+        |> Task.map (Option.map getLocaleTranslations)
+        |> Task.map (Option.defaultValue (getDefaultLocaleTranslations()))
 
       let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
@@ -225,9 +230,11 @@ type Functions
       let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
       let! tran, _ =
-        match userConversion.UserId with
-        | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
-        | None -> getDefaultLocaleTranslations() |> Task.FromResult
+        userConversion.UserId
+        |> Option.taskMap loadUser
+        |> Task.map (Option.bind (fun u -> u.Lang))
+        |> Task.map (Option.map getLocaleTranslations)
+        |> Task.map (Option.defaultValue (getDefaultLocaleTranslations()))
 
       let! conversion = loadPreparedOrThumbnailed message.Id
 
@@ -280,9 +287,11 @@ type Functions
       let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
       let! tran, _ =
-        match userConversion.UserId with
-        | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
-        | None -> getDefaultLocaleTranslations() |> Task.FromResult
+        userConversion.UserId
+        |> Option.taskMap loadUser
+        |> Task.map (Option.bind (fun u -> u.Lang))
+        |> Task.map (Option.map getLocaleTranslations)
+        |> Task.map (Option.defaultValue (getDefaultLocaleTranslations()))
 
       let! conversion = loadPreparedOrConverted message.Id
 

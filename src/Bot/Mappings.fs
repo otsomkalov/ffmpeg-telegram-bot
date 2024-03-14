@@ -5,14 +5,14 @@ open otsom.fs.Telegram.Bot.Core
 
 [<RequireQualifiedAccess>]
 module User =
-  let fromDb (user: Database.User) : Domain.User = { Id = UserId user.Id; Lang = user.Lang }
+  let fromDb (user: Database.User) : Domain.User = { Id = UserId user.Id; Lang = (user.Lang |> Option.ofObj) }
 
   let toDb (user: Domain.User) : Database.User =
-    Database.User(Id = (user.Id |> UserId.value), Lang = user.Lang)
+    Database.User(Id = (user.Id |> UserId.value), Lang = (user.Lang |> Option.toObj))
 
   let fromTg (user: Telegram.Bot.Types.User) : Domain.User =
     { Id = UserId user.Id
-      Lang = user.LanguageCode }
+      Lang = Option.ofObj user.LanguageCode }
 
 [<RequireQualifiedAccess>]
 module UserConversion =
