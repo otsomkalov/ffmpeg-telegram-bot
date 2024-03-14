@@ -189,30 +189,7 @@ module Translation =
       | Some fmt -> String.Format(fmt, args)
       | None -> fallback
 
-  let getLocaleTranslations
-    (db: IMongoDatabase)
-    (getDefaultLocaleTranslations: Translation.GetDefaultLocaleTranslations)
-    : Translation.GetLocaleTranslations =
-    fun lang ->
-      let collection = db.GetCollection "resources"
-      let tran, tranf = getDefaultLocaleTranslations()
-
-      if lang = Translation.DefaultLang then
-        (tran, tranf)
-      else
-        let localeTranslations = loadTranslationsMap collection lang
-
-        let getTranslation: Translation.GetTranslation =
-          fun key -> localeTranslations |> Map.tryFind key |> Option.defaultValue (tran key)
-
-        let formatTranslation: Translation.FormatTranslation =
-          fun (key, args) -> formatWithFallback localeTranslations (tranf (key, args)) (key, args)
-
-        (getTranslation, formatTranslation)
-
-  let defaultTranslations (db: IMongoDatabase) : Translation.GetDefaultLocaleTranslations =
-    let collection = db.GetCollection "resources"
-
+  let private defaultTranslations (collection: IMongoCollection<_>) =
     fun () ->
       let translations = loadTranslationsMap collection Translation.DefaultLang
 
@@ -223,3 +200,24 @@ module Translation =
         fun (key, args) -> formatWithFallback translations key (key, args)
 
       (getTranslation, formatTranslation)
+
+  let getLocaleTranslations
+    (db: IMongoDatabase)
+    : Translation.GetLocaleTranslations =
+    let collection = db.GetCollection "resources"
+    let getDefaultLocaleTranslations = defaultTranslations collection
+    let tran, tranf = getDefaultLocaleTranslations()
+
+    function
+    | Some l when l <> Translation.DefaultLang ->
+      let localeTranslations = loadTranslationsMap collection l
+
+      let getTranslation: Translation.GetTranslation =
+        fun key -> localeTranslations |> Map.tryFind key |> Option.defaultValue (tran key)
+
+      let formatTranslation: Translation.FormatTranslation =
+        fun (key, args) -> formatWithFallback localeTranslations (tranf (key, args)) (key, args)
+
+      (getTranslation, formatTranslation)
+    | _ ->
+      (tran, tranf)

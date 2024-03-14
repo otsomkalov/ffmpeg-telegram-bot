@@ -30,7 +30,6 @@ type Functions
     sendUserMessage: SendUserMessage,
     replyToUserMessage: ReplyToUserMessage,
     editBotMessage: EditBotMessage,
-    getDefaultLocaleTranslations: GetDefaultLocaleTranslations,
     inputValidationSettings: Settings.InputValidationSettings
   ) =
 
@@ -48,8 +47,7 @@ type Functions
       message.From
       |> Option.ofObj
       |> Option.map (_.LanguageCode)
-      |> Option.map getLocaleTranslations
-      |> Option.defaultValue (getDefaultLocaleTranslations())
+      |> getLocaleTranslations
 
     let ensureUserExists = User.ensureExists _db
     let parseCommand = Workflows.parseCommand inputValidationSettings
@@ -177,8 +175,7 @@ type Functions
         userConversion.UserId
         |> Option.taskMap loadUser
         |> Task.map (Option.bind (fun u -> u.Lang))
-        |> Task.map (Option.map getLocaleTranslations)
-        |> Task.map (Option.defaultValue (getDefaultLocaleTranslations()))
+        |> Task.map getLocaleTranslations
 
       let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
@@ -233,8 +230,7 @@ type Functions
         userConversion.UserId
         |> Option.taskMap loadUser
         |> Task.map (Option.bind (fun u -> u.Lang))
-        |> Task.map (Option.map getLocaleTranslations)
-        |> Task.map (Option.defaultValue (getDefaultLocaleTranslations()))
+        |> Task.map getLocaleTranslations
 
       let! conversion = loadPreparedOrThumbnailed message.Id
 
@@ -290,8 +286,7 @@ type Functions
         userConversion.UserId
         |> Option.taskMap loadUser
         |> Task.map (Option.bind (fun u -> u.Lang))
-        |> Task.map (Option.map getLocaleTranslations)
-        |> Task.map (Option.defaultValue (getDefaultLocaleTranslations()))
+        |> Task.map getLocaleTranslations
 
       let! conversion = loadPreparedOrConverted message.Id
 

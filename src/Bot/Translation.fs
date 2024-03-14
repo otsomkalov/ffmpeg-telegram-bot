@@ -14,9 +14,7 @@ module Translation =
   type GetTranslation = string -> string
   type FormatTranslation = string * obj array -> string
 
-  type GetLocaleTranslations = string -> GetTranslation * FormatTranslation
-
-  type GetDefaultLocaleTranslations = unit -> GetTranslation * FormatTranslation
+  type GetLocaleTranslations = string option -> GetTranslation * FormatTranslation
 
   [<RequireQualifiedAccess>]
   module Resources =
