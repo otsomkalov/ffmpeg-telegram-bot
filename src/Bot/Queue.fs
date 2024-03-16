@@ -3,6 +3,8 @@ module Bot.Queue
 
 open Azure.Storage.Queues
 open Bot.Helpers
+open DnsClient.Internal
+open FSharp
 open otsom.fs.Extensions
 
 type File =
@@ -12,7 +14,9 @@ type File =
 [<CLIMutable>]
 type DownloaderMessage = { ConversionId: string; File: File }
 
-let sendDownloaderMessage (workersSettings: Settings.WorkersSettings) =
+let sendDownloaderMessage (workersSettings: Settings.WorkersSettings) logger =
+  Logf.logfi logger "Sending queue message to downloader"
+
   fun (message: DownloaderMessage) ->
     let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
 

@@ -30,10 +30,11 @@ type Functions
     sendUserMessage: SendUserMessage,
     replyToUserMessage: ReplyToUserMessage,
     editBotMessage: EditBotMessage,
-    inputValidationSettings: Settings.InputValidationSettings
+    inputValidationSettings: Settings.InputValidationSettings,
+    loggerFactory: ILoggerFactory
   ) =
 
-  let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
+  let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings _logger
 
   let processMessage (message: Message) =
 
@@ -49,8 +50,8 @@ type Functions
       |> Option.map (_.LanguageCode)
       |> getLocaleTranslations
 
-    let ensureUserExists = User.ensureExists _db
-    let parseCommand = Workflows.parseCommand inputValidationSettings
+    let ensureUserExists = User.ensureExists _db loggerFactory
+    let parseCommand = Workflows.parseCommand inputValidationSettings loggerFactory
 
     let saveAndQueueConversion sentMessageId getDownloaderMessage =
       task{
@@ -85,9 +86,13 @@ type Functions
           return! saveAndQueueConversion sentMessageId getDownloaderMessage
         }
 
+      Logf.logfi _logger "Processing links from the message"
+
       links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.ignore
 
     let processDocument fileId fileName =
+      Logf.logfi _logger "Processing document from the message"
+
       task {
         let! sentMessageId = replyToMessage (tranf (Resources.DocumentDownload, [|fileName|]))
 
@@ -100,6 +105,8 @@ type Functions
       }
 
     let processVideo fileId fileName =
+      Logf.logfi _logger "Processing video from the message"
+
       task {
         let! sentMessageId = replyToMessage (tranf (Resources.VideoDownload, [|fileName|]))
 
@@ -121,7 +128,9 @@ type Functions
 
     let processMessage' =
       function
-      | None -> Task.FromResult()
+      | None ->
+        Logf.logfi _logger "Incoming message didn't contain known command"
+        Task.FromResult()
       | Some cmd ->
         match message.From |> Option.ofObj with
         | Some sender ->
@@ -133,15 +142,23 @@ type Functions
 
   let handleUpdate (update: Update) =
     match update.Type with
-    | UpdateType.Message -> processMessage update.Message
-    | UpdateType.ChannelPost -> processMessage update.ChannelPost
+    | UpdateType.Message ->
+      Logf.logfi _logger "Processing incoming message"
+      processMessage update.Message
+    | UpdateType.ChannelPost ->
+      Logf.logfi _logger "Processing incoming channel post"
+      processMessage update.ChannelPost
     | _ -> Task.FromResult()
 
   [<Function("HandleUpdate")>]
   member this.HandleUpdate([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update) : Task<unit> =
     task {
       try
+        Logf.logfi _logger "Processing incoming update"
+
         do! handleUpdate update
+
+        Logf.logfi _logger "Incoming update processed"
 
         return ()
       with e ->

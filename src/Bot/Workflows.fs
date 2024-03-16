@@ -3,8 +3,9 @@
 open System.Text.RegularExpressions
 open Bot.Domain
 open System.Threading.Tasks
+open FSharp
 open Helpers
-open Microsoft.Extensions.Options
+open Microsoft.Extensions.Logging
 open otsom.fs.Telegram.Bot.Core
 
 [<RequireQualifiedAccess>]
@@ -51,23 +52,27 @@ module Conversion =
     type Load = string -> Conversion.Completed Task
     type Save = Conversion.Completed -> unit Task
 
-let parseCommand (settings: Settings.InputValidationSettings) : ParseCommand =
+let parseCommand (settings: Settings.InputValidationSettings) (loggerFactory: ILoggerFactory) : ParseCommand =
+  let logger = loggerFactory.CreateLogger(nameof(ParseCommand))
   let linkRegex = Regex(settings.LinkRegex)
 
-  function
-  | FromBot ->
-    None |> Task.FromResult
-  | Text messageText ->
-    match messageText with
-    | StartsWith "/start" ->
-      Command.Start |> Some |> Task.FromResult
-    | Regex linkRegex matches ->
-      matches |> Command.Links |> Some |> Task.FromResult
+  fun message ->
+    Logf.logfi logger "Parsing input command from message"
+
+    match message with
+    | FromBot ->
+      None |> Task.FromResult
+    | Text messageText ->
+      match messageText with
+      | StartsWith "/start" ->
+        Command.Start |> Some |> Task.FromResult
+      | Regex linkRegex matches ->
+        matches |> Command.Links |> Some |> Task.FromResult
+      | _ ->
+        None |> Task.FromResult
+    | Document settings.MimeTypes doc ->
+      Command.Document(doc.FileId, doc.FileName) |> Some |> Task.FromResult
+    | Video settings.MimeTypes vid ->
+      Command.Video(vid.FileId, vid.FileName) |> Some |> Task.FromResult
     | _ ->
       None |> Task.FromResult
-  | Document settings.MimeTypes doc ->
-    Command.Document(doc.FileId, doc.FileName) |> Some |> Task.FromResult
-  | Video settings.MimeTypes vid ->
-    Command.Video(vid.FileId, vid.FileName) |> Some |> Task.FromResult
-  | _ ->
-    None |> Task.FromResult

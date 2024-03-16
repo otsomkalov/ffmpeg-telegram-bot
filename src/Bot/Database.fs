@@ -1,5 +1,7 @@
 ﻿module Bot.Database
 
+open FSharp
+open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open otsom.fs.Extensions
 open Bot.Workflows
@@ -25,10 +27,12 @@ module User =
       let entity = conversion |> Mappings.User.toDb
       task { do! collection.InsertOneAsync(entity) }
 
-  let ensureExists (db: IMongoDatabase) : User.EnsureExists =
+  let ensureExists (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : User.EnsureExists =
+    let logger = loggerFactory.CreateLogger(nameof(User.EnsureExists))
     let collection = db.GetCollection "users"
 
     fun user ->
+      Logf.logfi logger "Creating new user"
       let userId' = user.Id |> UserId.value
 
       let filter = Builders<Database.User>.Filter.Eq((fun u -> u.Id), userId')
@@ -189,7 +193,7 @@ module Translation =
       | Some fmt -> String.Format(fmt, args)
       | None -> fallback
 
-  let private defaultTranslations (collection: IMongoCollection<_>) =
+  let private loadDefaultTranslations (collection: IMongoCollection<_>) =
     fun () ->
       let translations = loadTranslationsMap collection Translation.DefaultLang
 
@@ -205,8 +209,8 @@ module Translation =
     (db: IMongoDatabase)
     : Translation.GetLocaleTranslations =
     let collection = db.GetCollection "resources"
-    let getDefaultLocaleTranslations = defaultTranslations collection
-    let tran, tranf = getDefaultLocaleTranslations()
+    let getDefaultTranslations = loadDefaultTranslations collection
+    let tran, tranf = getDefaultTranslations()
 
     function
     | Some l when l <> Translation.DefaultLang ->
