@@ -193,9 +193,11 @@ module Translation =
       | Some fmt -> String.Format(fmt, args)
       | None -> fallback
 
-  let private loadDefaultTranslations (collection: IMongoCollection<_>) =
+  let private loadDefaultTranslations (collection: IMongoCollection<_>) logger =
     fun () ->
+      Logf.logfi logger "Loading default translations"
       let translations = loadTranslationsMap collection Translation.DefaultLang
+      Logf.logfi logger "Default translations map loaded from DB"
 
       let getTranslation =
         fun key -> translations |> Map.tryFind key |> Option.defaultValue key
@@ -207,14 +209,20 @@ module Translation =
 
   let getLocaleTranslations
     (db: IMongoDatabase)
+    (loggerFactory: ILoggerFactory)
     : Translation.GetLocaleTranslations =
+    let logger = loggerFactory.CreateLogger(nameof(Translation.GetLocaleTranslations))
     let collection = db.GetCollection "resources"
-    let getDefaultTranslations = loadDefaultTranslations collection
+    let getDefaultTranslations = loadDefaultTranslations collection logger
     let tran, tranf = getDefaultTranslations()
 
     function
     | Some l when l <> Translation.DefaultLang ->
+      Logf.logfi logger "Loading translations for lang %s" l
+
       let localeTranslations = loadTranslationsMap collection l
+
+      Logf.logfi logger "Translations for lang %s is loaded" l
 
       let getTranslation: Translation.GetTranslation =
         fun key -> localeTranslations |> Map.tryFind key |> Option.defaultValue (tran key)
