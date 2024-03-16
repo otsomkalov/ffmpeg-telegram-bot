@@ -37,6 +37,7 @@ type Functions
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings _logger
 
   let processMessage (message: Message) =
+    Logf.logfi _logger "Building processMessage deps"
 
     let chatId = message.Chat.Id |> UserId
     let userId = message.From |> Option.ofObj |> Option.map (_.Id >> UserId)
@@ -137,6 +138,8 @@ type Functions
           ensureUserExists (Mappings.User.fromTg sender)
           |> Task.bind(fun () -> processCommand cmd)
         | None -> processCommand cmd
+
+    Logf.logfi _logger "Parsing command and processing message"
 
     parseCommand message |> Task.bind processMessage'
 
