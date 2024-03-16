@@ -45,11 +45,16 @@ type Functions
     let replyToMessage = replyToUserMessage chatId message.MessageId
     let saveUserConversion = UserConversion.save _db
     let saveConversion = Conversion.New.save _db
+
+    Logf.logfi _logger "Loading translations"
+
     let tran, tranf =
       message.From
       |> Option.ofObj
       |> Option.map (_.LanguageCode)
       |> getLocaleTranslations
+
+    Logf.logfi _logger "Translations loaded"
 
     let ensureUserExists = User.ensureExists _db loggerFactory
     let parseCommand = Workflows.parseCommand inputValidationSettings loggerFactory
@@ -135,9 +140,14 @@ type Functions
       | Some cmd ->
         match message.From |> Option.ofObj with
         | Some sender ->
+          Logf.logfi _logger "Processing command from user"
+
           ensureUserExists (Mappings.User.fromTg sender)
           |> Task.bind(fun () -> processCommand cmd)
-        | None -> processCommand cmd
+        | None ->
+          Logf.logfi _logger "Processing command from channel"
+
+          processCommand cmd
 
     Logf.logfi _logger "Parsing command and processing message"
 
