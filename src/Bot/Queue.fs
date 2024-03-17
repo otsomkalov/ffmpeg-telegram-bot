@@ -15,9 +15,8 @@ type File =
 type DownloaderMessage = { ConversionId: string; File: File }
 
 let sendDownloaderMessage (workersSettings: Settings.WorkersSettings) logger =
-  Logf.logfi logger "Sending queue message to downloader"
-
   fun (message: DownloaderMessage) ->
+    Logf.logfi logger "Sending queue message to downloader"
     let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
 
     let queueClient =

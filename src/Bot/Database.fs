@@ -32,7 +32,7 @@ module User =
     let collection = db.GetCollection "users"
 
     fun user ->
-      Logf.logfi logger "Creating new user"
+      Logf.logfi logger "Upserting user"
       let userId' = user.Id |> UserId.value
 
       let filter = Builders<Database.User>.Filter.Eq((fun u -> u.Id), userId')
@@ -218,11 +218,11 @@ module Translation =
 
     function
     | Some l when l <> Translation.DefaultLang ->
-      Logf.logfi logger "Loading translations for lang %s" l
+      Logf.logfi logger "Loading translations for lang %s{Lang}" l
 
       let localeTranslations = loadTranslationsMap collection l
 
-      Logf.logfi logger "Translations for lang %s is loaded" l
+      Logf.logfi logger "Translations for lang %s{Lang} is loaded" l
 
       let getTranslation: Translation.GetTranslation =
         fun key -> localeTranslations |> Map.tryFind key |> Option.defaultValue (tran key)

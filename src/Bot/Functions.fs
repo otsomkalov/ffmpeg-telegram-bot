@@ -51,7 +51,7 @@ type Functions
     let tran, tranf =
       message.From
       |> Option.ofObj
-      |> Option.map (_.LanguageCode)
+      |> Option.bind (_.LanguageCode >> Option.ofObj)
       |> getLocaleTranslations
 
     Logf.logfi _logger "Translations loaded"
