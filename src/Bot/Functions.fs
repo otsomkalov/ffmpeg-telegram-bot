@@ -26,7 +26,6 @@ type Functions
     _db: IMongoDatabase,
     _httpClientFactory: IHttpClientFactory,
     _logger: ILogger<Functions>,
-    getLocaleTranslations: GetLocaleTranslations,
     sendUserMessage: SendUserMessage,
     replyToUserMessage: ReplyToUserMessage,
     editBotMessage: EditBotMessage,
@@ -45,6 +44,7 @@ type Functions
     let replyToMessage = replyToUserMessage chatId message.MessageId
     let saveUserConversion = UserConversion.save _db
     let saveConversion = Conversion.New.save _db
+    let getLocaleTranslations = Translation.getLocaleTranslations _db loggerFactory
 
     Logf.logfi _logger "Loading translations"
 
@@ -195,6 +195,7 @@ type Functions
     let downloadFile = Telegram.downloadDocument _bot workersSettings
     let savePreparedConversion = Conversion.Prepared.save _db
     let loadUser = User.load _db
+    let getLocaleTranslations = Translation.getLocaleTranslations _db loggerFactory
 
     let downloadFile file =
       match file with
@@ -252,6 +253,7 @@ type Functions
     let saveCompletedConversion = Conversion.Completed.save _db
     let sendUploaderMessage = Queue.sendUploaderMessage workersSettings
     let loadUser = User.load _db
+    let getLocaleTranslations = Translation.getLocaleTranslations _db loggerFactory
 
     task {
       let! userConversion = loadUserConversion message.Id
@@ -308,6 +310,7 @@ type Functions
     let saveCompletedConversion = Conversion.Completed.save _db
     let sendUploaderMessage = Queue.sendUploaderMessage workersSettings
     let loadUser = User.load _db
+    let getLocaleTranslations = Translation.getLocaleTranslations _db loggerFactory
 
     task {
       let! userConversion = loadUserConversion message.Id
