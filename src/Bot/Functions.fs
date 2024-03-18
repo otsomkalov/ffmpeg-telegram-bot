@@ -125,6 +125,8 @@ type Functions
       }
 
     let processCommand =
+      Logf.logfi _logger "Processing command"
+
       function
       | Start ->
         sendMessage (tran Resources.Welcome)

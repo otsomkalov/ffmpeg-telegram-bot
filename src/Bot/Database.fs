@@ -40,7 +40,7 @@ module User =
         [Builders<Database.User>.Update.SetOnInsert((fun u -> u.Id), userId')
          Builders<Database.User>.Update.SetOnInsert((fun u -> u.Lang), (user.Lang |> Option.toObj))]
 
-      task { do! (collection.UpdateOneAsync(filter, Builders.Update.Combine(setOnInsert), UpdateOptions(IsUpsert = true)) |> Task.ignore) }
+      collection.UpdateOneAsync(filter, Builders.Update.Combine(setOnInsert), UpdateOptions(IsUpsert = true)) |> Task.ignore
 
 [<RequireQualifiedAccess>]
 module UserConversion =
