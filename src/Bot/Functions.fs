@@ -111,15 +111,11 @@ type Functions
         task {
           Logf.logfi _logger "Processing command"
 
-          Logf.logfi _logger "Loading translations"
-
           let! tran, tranf =
             message.From
             |> Option.ofObj
             |> Option.bind (_.LanguageCode >> Option.ofObj)
             |> getLocaleTranslations
-
-          Logf.logfi _logger "Translations loaded"
 
           return!
             match cmd with

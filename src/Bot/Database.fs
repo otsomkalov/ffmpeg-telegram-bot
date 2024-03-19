@@ -28,11 +28,9 @@ module User =
       task { do! collection.InsertOneAsync(entity) }
 
   let ensureExists (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : User.EnsureExists =
-    let logger = loggerFactory.CreateLogger(nameof (User.EnsureExists))
     let collection = db.GetCollection "users"
 
     fun user ->
-      Logf.logfi logger "Upserting user"
       let userId' = user.Id |> UserId.value
 
       let filter = Builders<Database.User>.Filter.Eq((fun u -> u.Id), userId')
