@@ -36,8 +36,6 @@ type Functions
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings _logger
 
   let processMessage (message: Message) =
-    Logf.logfi _logger "Building processMessage deps"
-
     let chatId = message.Chat.Id |> UserId
     let userId = message.From |> Option.ofObj |> Option.map (_.Id >> UserId)
     let sendMessage = sendUserMessage chatId
@@ -46,21 +44,11 @@ type Functions
     let saveConversion = Conversion.New.save _db
     let getLocaleTranslations = Translation.getLocaleTranslations _db loggerFactory
 
-    Logf.logfi _logger "Loading translations"
-
-    let tran, tranf =
-      message.From
-      |> Option.ofObj
-      |> Option.bind (_.LanguageCode >> Option.ofObj)
-      |> getLocaleTranslations
-
-    Logf.logfi _logger "Translations loaded"
-
     let ensureUserExists = User.ensureExists _db loggerFactory
     let parseCommand = Workflows.parseCommand inputValidationSettings loggerFactory
 
     let saveAndQueueConversion sentMessageId getDownloaderMessage =
-      task{
+      task {
         let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
 
         do! saveConversion newConversion
@@ -79,12 +67,12 @@ type Functions
         return! sendDownloaderMessage message
       }
 
-    let processLinks links =
+    let processLinks (_, tranf: FormatTranslation) links =
       let sendUrlToQueue (url: string) =
-        task{
-          let! sentMessageId = replyToMessage (tranf (Resources.LinkDownload, [|url|]))
+        task {
+          let! sentMessageId = replyToMessage (tranf (Resources.LinkDownload, [| url |]))
 
-          let getDownloaderMessage : string -> Queue.DownloaderMessage =
+          let getDownloaderMessage: string -> Queue.DownloaderMessage =
             fun conversionId ->
               { ConversionId = conversionId
                 File = Queue.File.Link url }
@@ -92,17 +80,13 @@ type Functions
           return! saveAndQueueConversion sentMessageId getDownloaderMessage
         }
 
-      Logf.logfi _logger "Processing links from the message"
-
       links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.ignore
 
-    let processDocument fileId fileName =
-      Logf.logfi _logger "Processing document from the message"
-
+    let processDocument (_, tranf: FormatTranslation) fileId fileName =
       task {
-        let! sentMessageId = replyToMessage (tranf (Resources.DocumentDownload, [|fileName|]))
+        let! sentMessageId = replyToMessage (tranf (Resources.DocumentDownload, [| fileName |]))
 
-        let getDownloaderMessage : string -> Queue.DownloaderMessage =
+        let getDownloaderMessage: string -> Queue.DownloaderMessage =
           fun conversionId ->
             { ConversionId = conversionId
               File = Queue.File.Document(fileId, fileName) }
@@ -110,13 +94,11 @@ type Functions
         return! saveAndQueueConversion sentMessageId getDownloaderMessage
       }
 
-    let processVideo fileId fileName =
-      Logf.logfi _logger "Processing video from the message"
-
+    let processVideo (_, tranf: FormatTranslation) fileId fileName =
       task {
-        let! sentMessageId = replyToMessage (tranf (Resources.VideoDownload, [|fileName|]))
+        let! sentMessageId = replyToMessage (tranf (Resources.VideoDownload, [| fileName |]))
 
-        let getDownloaderMessage : string -> Queue.DownloaderMessage =
+        let getDownloaderMessage: string -> Queue.DownloaderMessage =
           fun conversionId ->
             { ConversionId = conversionId
               File = Queue.File.Document(fileId, fileName) }
@@ -125,55 +107,51 @@ type Functions
       }
 
     let processCommand =
-      Logf.logfi _logger "Processing command"
+      fun cmd ->
+        task {
+          Logf.logfi _logger "Processing command"
 
-      function
-      | Start ->
-        sendMessage (tran Resources.Welcome)
-      | Links links -> processLinks links
-      | Document(fileId, fileName) -> processDocument fileId fileName
-      | Video(fileId, fileName) -> processVideo fileId fileName
+          Logf.logfi _logger "Loading translations"
+
+          let! tran, tranf =
+            message.From
+            |> Option.ofObj
+            |> Option.bind (_.LanguageCode >> Option.ofObj)
+            |> getLocaleTranslations
+
+          Logf.logfi _logger "Translations loaded"
+
+          return!
+            match cmd with
+            | Start -> sendMessage (tran Resources.Welcome)
+            | Links links -> processLinks (tran, tranf) links
+            | Document(fileId, fileName) -> processDocument (tran, tranf) fileId fileName
+            | Video(fileId, fileName) -> processVideo (tran, tranf) fileId fileName
+        }
 
     let processMessage' =
       function
-      | None ->
-        Logf.logfi _logger "Incoming message didn't contain known command"
-        Task.FromResult()
+      | None -> Task.FromResult()
       | Some cmd ->
         match message.From |> Option.ofObj with
         | Some sender ->
-          Logf.logfi _logger "Processing command from user"
-
           ensureUserExists (Mappings.User.fromTg sender)
-          |> Task.bind(fun () -> processCommand cmd)
-        | None ->
-          Logf.logfi _logger "Processing command from channel"
-
-          processCommand cmd
-
-    Logf.logfi _logger "Parsing command and processing message"
+          |> Task.bind (fun () -> processCommand cmd)
+        | None -> processCommand cmd
 
     parseCommand message |> Task.bind processMessage'
 
   let handleUpdate (update: Update) =
     match update.Type with
-    | UpdateType.Message ->
-      Logf.logfi _logger "Processing incoming message"
-      processMessage update.Message
-    | UpdateType.ChannelPost ->
-      Logf.logfi _logger "Processing incoming channel post"
-      processMessage update.ChannelPost
+    | UpdateType.Message -> processMessage update.Message
+    | UpdateType.ChannelPost -> processMessage update.ChannelPost
     | _ -> Task.FromResult()
 
   [<Function("HandleUpdate")>]
   member this.HandleUpdate([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update) : Task<unit> =
     task {
       try
-        Logf.logfi _logger "Processing incoming update"
-
         do! handleUpdate update
-
-        Logf.logfi _logger "Incoming update processed"
 
         return ()
       with e ->
@@ -195,7 +173,6 @@ type Functions
     let downloadFile = Telegram.downloadDocument _bot workersSettings
     let savePreparedConversion = Conversion.Prepared.save _db
     let loadUser = User.load _db
-    let getLocaleTranslations = Translation.getLocaleTranslations _db loggerFactory
 
     let downloadFile file =
       match file with
@@ -204,11 +181,13 @@ type Functions
 
     task {
       let! userConversion = loadUserConversion message.ConversionId
+      let getLocaleTranslations = Translation.getLocaleTranslations _db loggerFactory
+
       let! tran, _ =
         userConversion.UserId
         |> Option.taskMap loadUser
         |> Task.map (Option.bind (fun u -> u.Lang))
-        |> Task.map getLocaleTranslations
+        |> Task.bind getLocaleTranslations
 
       let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
@@ -264,7 +243,7 @@ type Functions
         userConversion.UserId
         |> Option.taskMap loadUser
         |> Task.map (Option.bind (fun u -> u.Lang))
-        |> Task.map getLocaleTranslations
+        |> Task.bind getLocaleTranslations
 
       let! conversion = loadPreparedOrThumbnailed message.Id
 
@@ -321,7 +300,7 @@ type Functions
         userConversion.UserId
         |> Option.taskMap loadUser
         |> Task.map (Option.bind (fun u -> u.Lang))
-        |> Task.map getLocaleTranslations
+        |> Task.bind getLocaleTranslations
 
       let! conversion = loadPreparedOrConverted message.Id
 
