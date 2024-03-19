@@ -1,5 +1,6 @@
 ﻿namespace Bot
 
+open System.Threading.Tasks
 open Microsoft.FSharp.Core
 
 type Translation ={
@@ -14,9 +15,7 @@ module Translation =
   type GetTranslation = string -> string
   type FormatTranslation = string * obj array -> string
 
-  type GetLocaleTranslations = string -> GetTranslation * FormatTranslation
-
-  type DefaultLocaleTranslations = GetTranslation * FormatTranslation
+  type GetLocaleTranslations = string option -> Task<GetTranslation * FormatTranslation>
 
   [<RequireQualifiedAccess>]
   module Resources =

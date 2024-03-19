@@ -1,10 +1,13 @@
 ﻿module Bot.Database
 
+open FSharp
+open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open otsom.fs.Extensions
 open Bot.Workflows
 open otsom.fs.Telegram.Bot.Core
 open System
+open System.Threading.Tasks
 
 [<RequireQualifiedAccess>]
 module User =
@@ -15,8 +18,7 @@ module User =
       let userId' = userId |> UserId.value
       let filter = Builders<Database.User>.Filter.Eq((fun c -> c.Id), userId')
 
-      collection.Find(filter).SingleOrDefaultAsync()
-      |> Task.map Mappings.User.fromDb
+      collection.Find(filter).SingleOrDefaultAsync() |> Task.map Mappings.User.fromDb
 
   let save (db: IMongoDatabase) : User.Save =
     let collection = db.GetCollection "users"
@@ -25,18 +27,21 @@ module User =
       let entity = conversion |> Mappings.User.toDb
       task { do! collection.InsertOneAsync(entity) }
 
-  let ensureExists (db: IMongoDatabase) : User.EnsureExists =
+  let ensureExists (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : User.EnsureExists =
     let collection = db.GetCollection "users"
 
     fun user ->
       let userId' = user.Id |> UserId.value
 
       let filter = Builders<Database.User>.Filter.Eq((fun u -> u.Id), userId')
-      let setOnInsert =
-        [Builders<Database.User>.Update.SetOnInsert((fun u -> u.Id), userId')
-         Builders<Database.User>.Update.SetOnInsert((fun u -> u.Lang), user.Lang)]
 
-      task { do! (collection.UpdateOneAsync(filter, Builders.Update.Combine(setOnInsert), UpdateOptions(IsUpsert = true)) |> Task.ignore) }
+      let setOnInsert =
+        [ Builders<Database.User>.Update.SetOnInsert((fun u -> u.Id), userId')
+          Builders<Database.User>.Update
+            .SetOnInsert((fun u -> u.Lang), (user.Lang |> Option.toObj)) ]
+
+      collection.UpdateOneAsync(filter, Builders.Update.Combine(setOnInsert), UpdateOptions(IsUpsert = true))
+      |> Task.ignore
 
 [<RequireQualifiedAccess>]
 module UserConversion =
@@ -178,10 +183,12 @@ module Conversion =
 module Translation =
 
   let private loadTranslationsMap (collection: IMongoCollection<Database.Translation>) key =
-    collection.Find(fun t -> t.Lang = key).ToList()
-    |> (Seq.groupBy (_.Key)
-        >> Seq.map (fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head))
-        >> Map.ofSeq)
+    collection.Find(fun t -> t.Lang = key).ToListAsync()
+    |> Task.map (
+      Seq.groupBy (_.Key)
+      >> Seq.map (fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head))
+      >> Map.ofSeq
+    )
 
   let private formatWithFallback formats fallback =
     fun (key, args) ->
@@ -189,17 +196,37 @@ module Translation =
       | Some fmt -> String.Format(fmt, args)
       | None -> fallback
 
-  let getLocaleTranslations
-    (db: IMongoDatabase)
-    ((tran, tranf): Translation.DefaultLocaleTranslations)
-    : Translation.GetLocaleTranslations =
-    fun lang ->
-      let collection = db.GetCollection "resources"
+  let private loadDefaultTranslations (collection: IMongoCollection<_>) logger =
+    fun () ->
+      task {
+        Logf.logfi logger "Loading default translations"
+        let! translations = loadTranslationsMap collection Translation.DefaultLang
+        Logf.logfi logger "Default translations map loaded from DB"
 
-      if lang = Translation.DefaultLang then
-        (tran, tranf)
-      else
-        let localeTranslations = loadTranslationsMap collection lang
+        let getTranslation =
+          fun key -> translations |> Map.tryFind key |> Option.defaultValue key
+
+        let formatTranslation =
+          fun (key, args) -> formatWithFallback translations key (key, args)
+
+        return (getTranslation, formatTranslation)
+      }
+
+  let getLocaleTranslations (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : Translation.GetLocaleTranslations =
+    let logger = loggerFactory.CreateLogger(nameof Translation.GetLocaleTranslations)
+    let collection = db.GetCollection "resources"
+    let getDefaultTranslations = loadDefaultTranslations collection logger
+
+    function
+    | Some l when l <> Translation.DefaultLang ->
+      task {
+        let! tran, tranf =  getDefaultTranslations()
+
+        Logf.logfi logger "Loading translations for lang %s{Lang}" l
+
+        let! localeTranslations = loadTranslationsMap collection l
+
+        Logf.logfi logger "Translations for lang %s{Lang} is loaded" l
 
         let getTranslation: Translation.GetTranslation =
           fun key -> localeTranslations |> Map.tryFind key |> Option.defaultValue (tran key)
@@ -207,17 +234,6 @@ module Translation =
         let formatTranslation: Translation.FormatTranslation =
           fun (key, args) -> formatWithFallback localeTranslations (tranf (key, args)) (key, args)
 
-        (getTranslation, formatTranslation)
-
-  let defaultTranslations (db: IMongoDatabase) : Translation.DefaultLocaleTranslations =
-    let collection = db.GetCollection "resources"
-
-    let translations = loadTranslationsMap collection Translation.DefaultLang
-
-    let getTranslation =
-      fun key -> translations |> Map.tryFind key |> Option.defaultValue key
-
-    let formatTranslation =
-      fun (key, args) -> formatWithFallback translations key (key, args)
-
-    (getTranslation, formatTranslation)
+        return (getTranslation, formatTranslation)
+      }
+    | _ -> getDefaultTranslations()

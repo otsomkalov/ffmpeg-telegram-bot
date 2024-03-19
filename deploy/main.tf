@@ -14,7 +14,7 @@ provider "azurerm" {
 locals {
   tags = {
     env  = var.env
-    name = "webm-to-mp4-tg-bot"
+    name = var.bot-name
   }
 }
 

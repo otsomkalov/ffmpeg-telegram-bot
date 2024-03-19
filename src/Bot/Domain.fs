@@ -6,7 +6,7 @@ open otsom.fs.Telegram.Bot.Core
 
 type ChatId = ChatId of int64
 
-type User = { Id: UserId; Lang: string }
+type User = { Id: UserId; Lang: string option }
 
 type UserConversion =
   { ReceivedMessageId: int

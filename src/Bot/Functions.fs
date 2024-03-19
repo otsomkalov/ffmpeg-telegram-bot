@@ -26,33 +26,29 @@ type Functions
     _db: IMongoDatabase,
     _httpClientFactory: IHttpClientFactory,
     _logger: ILogger<Functions>,
-    getLocaleTranslations: GetLocaleTranslations,
     sendUserMessage: SendUserMessage,
     replyToUserMessage: ReplyToUserMessage,
     editBotMessage: EditBotMessage,
-    defaultLocaleTranslations: DefaultLocaleTranslations,
-    inputValidationSettings: Settings.InputValidationSettings
+    inputValidationSettings: Settings.InputValidationSettings,
+    loggerFactory: ILoggerFactory
   ) =
 
-  let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings
+  let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings _logger
 
   let processMessage (message: Message) =
-
     let chatId = message.Chat.Id |> UserId
     let userId = message.From |> Option.ofObj |> Option.map (_.Id >> UserId)
     let sendMessage = sendUserMessage chatId
     let replyToMessage = replyToUserMessage chatId message.MessageId
     let saveUserConversion = UserConversion.save _db
     let saveConversion = Conversion.New.save _db
-    let tran, tranf =
-      match message.From |> Option.ofObj |> Option.map (_.LanguageCode) with
-      | Some lang -> getLocaleTranslations lang
-      | None -> defaultLocaleTranslations
-    let ensureUserExists = User.ensureExists _db
-    let parseCommand = Workflows.parseCommand inputValidationSettings
+    let getLocaleTranslations = Translation.getLocaleTranslations _db loggerFactory
+
+    let ensureUserExists = User.ensureExists _db loggerFactory
+    let parseCommand = Workflows.parseCommand inputValidationSettings loggerFactory
 
     let saveAndQueueConversion sentMessageId getDownloaderMessage =
-      task{
+      task {
         let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
 
         do! saveConversion newConversion
@@ -71,12 +67,12 @@ type Functions
         return! sendDownloaderMessage message
       }
 
-    let processLinks links =
+    let processLinks (_, tranf: FormatTranslation) links =
       let sendUrlToQueue (url: string) =
-        task{
-          let! sentMessageId = replyToMessage (tranf (Resources.LinkDownload, [|url|]))
+        task {
+          let! sentMessageId = replyToMessage (tranf (Resources.LinkDownload, [| url |]))
 
-          let getDownloaderMessage : string -> Queue.DownloaderMessage =
+          let getDownloaderMessage: string -> Queue.DownloaderMessage =
             fun conversionId ->
               { ConversionId = conversionId
                 File = Queue.File.Link url }
@@ -86,11 +82,11 @@ type Functions
 
       links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.ignore
 
-    let processDocument fileId fileName =
+    let processDocument (_, tranf: FormatTranslation) fileId fileName =
       task {
-        let! sentMessageId = replyToMessage (tranf (Resources.DocumentDownload, [|fileName|]))
+        let! sentMessageId = replyToMessage (tranf (Resources.DocumentDownload, [| fileName |]))
 
-        let getDownloaderMessage : string -> Queue.DownloaderMessage =
+        let getDownloaderMessage: string -> Queue.DownloaderMessage =
           fun conversionId ->
             { ConversionId = conversionId
               File = Queue.File.Document(fileId, fileName) }
@@ -98,11 +94,11 @@ type Functions
         return! saveAndQueueConversion sentMessageId getDownloaderMessage
       }
 
-    let processVideo fileId fileName =
+    let processVideo (_, tranf: FormatTranslation) fileId fileName =
       task {
-        let! sentMessageId = replyToMessage (tranf (Resources.VideoDownload, [|fileName|]))
+        let! sentMessageId = replyToMessage (tranf (Resources.VideoDownload, [| fileName |]))
 
-        let getDownloaderMessage : string -> Queue.DownloaderMessage =
+        let getDownloaderMessage: string -> Queue.DownloaderMessage =
           fun conversionId ->
             { ConversionId = conversionId
               File = Queue.File.Document(fileId, fileName) }
@@ -111,12 +107,23 @@ type Functions
       }
 
     let processCommand =
-      function
-      | Start ->
-        sendMessage (tran Resources.Welcome)
-      | Links links -> processLinks links
-      | Document(fileId, fileName) -> processDocument fileId fileName
-      | Video(fileId, fileName) -> processVideo fileId fileName
+      fun cmd ->
+        task {
+          Logf.logfi _logger "Processing command"
+
+          let! tran, tranf =
+            message.From
+            |> Option.ofObj
+            |> Option.bind (_.LanguageCode >> Option.ofObj)
+            |> getLocaleTranslations
+
+          return!
+            match cmd with
+            | Start -> sendMessage (tran Resources.Welcome)
+            | Links links -> processLinks (tran, tranf) links
+            | Document(fileId, fileName) -> processDocument (tran, tranf) fileId fileName
+            | Video(fileId, fileName) -> processVideo (tran, tranf) fileId fileName
+        }
 
     let processMessage' =
       function
@@ -125,7 +132,7 @@ type Functions
         match message.From |> Option.ofObj with
         | Some sender ->
           ensureUserExists (Mappings.User.fromTg sender)
-          |> Task.bind(fun () -> processCommand cmd)
+          |> Task.bind (fun () -> processCommand cmd)
         | None -> processCommand cmd
 
     parseCommand message |> Task.bind processMessage'
@@ -170,10 +177,13 @@ type Functions
 
     task {
       let! userConversion = loadUserConversion message.ConversionId
+      let getLocaleTranslations = Translation.getLocaleTranslations _db loggerFactory
+
       let! tran, _ =
-        match userConversion.UserId with
-        | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
-        | None -> defaultLocaleTranslations |> Task.FromResult
+        userConversion.UserId
+        |> Option.taskMap loadUser
+        |> Task.map (Option.bind (fun u -> u.Lang))
+        |> Task.bind getLocaleTranslations
 
       let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
@@ -218,6 +228,7 @@ type Functions
     let saveCompletedConversion = Conversion.Completed.save _db
     let sendUploaderMessage = Queue.sendUploaderMessage workersSettings
     let loadUser = User.load _db
+    let getLocaleTranslations = Translation.getLocaleTranslations _db loggerFactory
 
     task {
       let! userConversion = loadUserConversion message.Id
@@ -225,9 +236,10 @@ type Functions
       let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
       let! tran, _ =
-        match userConversion.UserId with
-        | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
-        | None -> defaultLocaleTranslations |> Task.FromResult
+        userConversion.UserId
+        |> Option.taskMap loadUser
+        |> Task.map (Option.bind (fun u -> u.Lang))
+        |> Task.bind getLocaleTranslations
 
       let! conversion = loadPreparedOrThumbnailed message.Id
 
@@ -273,6 +285,7 @@ type Functions
     let saveCompletedConversion = Conversion.Completed.save _db
     let sendUploaderMessage = Queue.sendUploaderMessage workersSettings
     let loadUser = User.load _db
+    let getLocaleTranslations = Translation.getLocaleTranslations _db loggerFactory
 
     task {
       let! userConversion = loadUserConversion message.Id
@@ -280,9 +293,10 @@ type Functions
       let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
       let! tran, _ =
-        match userConversion.UserId with
-        | Some id -> loadUser id |> Task.map (fun u -> getLocaleTranslations u.Lang)
-        | None -> defaultLocaleTranslations |> Task.FromResult
+        userConversion.UserId
+        |> Option.taskMap loadUser
+        |> Task.map (Option.bind (fun u -> u.Lang))
+        |> Task.bind getLocaleTranslations
 
       let! conversion = loadPreparedOrConverted message.Id
 
