@@ -4,16 +4,7 @@ open System.Threading.Tasks
 open Telegram.Bot.Types
 open otsom.fs.Telegram.Bot.Core
 
-type ChatId = ChatId of int64
-
 type User = { Id: UserId; Lang: string option }
-
-type UserConversion =
-  { ReceivedMessageId: int
-    SentMessageId: BotMessageId
-    ConversionId: string
-    UserId: UserId option
-    ChatId: UserId }
 
 [<RequireQualifiedAccess>]
 module Conversion =
@@ -28,11 +19,6 @@ module Conversion =
   type PreparedOrConverted = Choice<Prepared, Converted>
 
   type PreparedOrThumbnailed = Choice<Prepared, Thumbnailed>
-
-  type Completed =
-    { Id: string
-      OutputFile: string
-      ThumbnailFile: string }
 
 type Command =
   | Start

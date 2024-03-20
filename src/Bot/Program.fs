@@ -5,6 +5,7 @@ open System.Net.Http
 open System.Reflection
 open System.Text.Json
 open System.Text.Json.Serialization
+open Infrastructure.Settings
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
@@ -64,10 +65,10 @@ module Startup =
     services |> Startup.addTelegramBotCore
 
     services
-      .BuildSingleton<Settings.WorkersSettings, IConfiguration>(fun cfg ->
+      .BuildSingleton<WorkersSettings, IConfiguration>(fun cfg ->
         cfg
-          .GetSection(Settings.WorkersSettings.SectionName)
-          .Get<Settings.WorkersSettings>())
+          .GetSection(WorkersSettings.SectionName)
+          .Get<WorkersSettings>())
       .BuildSingleton<Settings.TelegramSettings, IConfiguration>(fun cfg ->
         cfg
           .GetSection(Settings.TelegramSettings.SectionName)

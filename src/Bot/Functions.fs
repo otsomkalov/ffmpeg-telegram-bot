@@ -6,7 +6,9 @@ open Bot
 open Bot.Domain
 open Bot.Database
 open Bot.Translation
+open Domain.Core
 open FSharp
+open Infrastructure.Settings
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
@@ -15,13 +17,16 @@ open MongoDB.Driver
 open Telegram.Bot
 open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
+open Telegram.Core
 open shortid
 open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
+open Infrastructure.Workflows
+open Telegram.Infrastructure
 
 type Functions
   (
-    workersSettings: Settings.WorkersSettings,
+    workersSettings: WorkersSettings,
     _bot: ITelegramBotClient,
     _db: IMongoDatabase,
     _httpClientFactory: IHttpClientFactory,
@@ -53,11 +58,11 @@ type Functions
 
         do! saveConversion newConversion
 
-        let userConversion: Domain.UserConversion =
+        let userConversion: UserConversion =
           { ConversionId = newConversion.Id
             UserId = userId
             SentMessageId = sentMessageId
-            ReceivedMessageId = message.MessageId
+            ReceivedMessageId = UserMessageId message.MessageId
             ChatId = chatId }
 
         do! saveUserConversion userConversion
@@ -162,7 +167,7 @@ type Functions
       _: FunctionContext
     ) : Task<unit> =
     let sendConverterMessage = Queue.sendConverterMessage workersSettings
-    let sendThumbnailerMessage = Queue.sendTumbnailerMessage workersSettings
+    let sendThumbnailerMessage = Queue.sendThumbnailerMessage workersSettings
     let loadUserConversion = UserConversion.load _db
     let loadNewConversion = Conversion.New.load _db
     let downloadLink = HTTP.downloadLink _httpClientFactory workersSettings
@@ -175,8 +180,10 @@ type Functions
       | Queue.File.Document(id, name) -> downloadFile id name |> Task.map Ok
       | Queue.File.Link link -> downloadLink link
 
+    let conversionId = ConversionId message.ConversionId
+
     task {
-      let! userConversion = loadUserConversion message.ConversionId
+      let! userConversion = loadUserConversion conversionId
       let getLocaleTranslations = Translation.getLocaleTranslations _db loggerFactory
 
       let! tran, _ =
@@ -230,8 +237,10 @@ type Functions
     let loadUser = User.load _db
     let getLocaleTranslations = Translation.getLocaleTranslations _db loggerFactory
 
+    let conversionId = ConversionId message.Id
+
     task {
-      let! userConversion = loadUserConversion message.Id
+      let! userConversion = loadUserConversion conversionId
 
       let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
@@ -257,7 +266,7 @@ type Functions
               do! editMessage (tran Resources.VideoConverted)
             }
           | Choice2Of2 thumbnailedConversion ->
-            let completedConversion: Domain.Conversion.Completed =
+            let completedConversion: Conversion.Completed =
               { Id = thumbnailedConversion.Id
                 OutputFile = file
                 ThumbnailFile = thumbnailedConversion.ThumbnailName }
@@ -286,9 +295,10 @@ type Functions
     let sendUploaderMessage = Queue.sendUploaderMessage workersSettings
     let loadUser = User.load _db
     let getLocaleTranslations = Translation.getLocaleTranslations _db loggerFactory
+    let conversionId = ConversionId message.Id
 
     task {
-      let! userConversion = loadUserConversion message.Id
+      let! userConversion = loadUserConversion conversionId
 
       let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
@@ -314,7 +324,7 @@ type Functions
               do! editMessage (tran Resources.ThumbnailGenerated)
             }
           | Choice2Of2 convertedConversion ->
-            let completedConversion: Domain.Conversion.Completed =
+            let completedConversion: Conversion.Completed =
               { Id = convertedConversion.Id
                 OutputFile = convertedConversion.OutputFile
                 ThumbnailFile = file }
@@ -338,26 +348,15 @@ type Functions
       [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.UploaderMessage,
       _: FunctionContext
     ) : Task =
+    let conversionId = message.ConversionId |> ConversionId
+
     let loadUserConversion = UserConversion.load _db
     let loadCompletedConversion = Conversion.Completed.load _db
+    let deleteBotMessage = Workflows.deleteBotMessage _bot
+    let replyWithVideo = Workflows.replyWithVideo workersSettings _bot
+    let deleteVideo = Conversion.Completed.deleteVideo workersSettings
+    let deleteThumbnail = Conversion.Completed.deleteThumbnail workersSettings
 
-    task {
-      let! userConversion = loadUserConversion message.ConversionId
+    let uploadSuccessfulConversion = Telegram.Workflows.uploadCompletedConversion loadUserConversion loadCompletedConversion deleteBotMessage replyWithVideo deleteVideo deleteThumbnail
 
-      let deleteMessage =
-        Telegram.deleteMessage _bot userConversion.ChatId userConversion.SentMessageId
-
-      let replyWithVideo =
-        Telegram.replyWithVideo workersSettings _bot userConversion.ChatId userConversion.ReceivedMessageId
-
-      let deleteVideo = Storage.deleteVideo workersSettings
-      let deleteThumbnail = Storage.deleteThumbnail workersSettings
-
-      let! conversion = loadCompletedConversion message.ConversionId
-
-      do! replyWithVideo conversion.OutputFile conversion.ThumbnailFile
-      do! deleteMessage ()
-
-      do! deleteVideo conversion.OutputFile
-      do! deleteThumbnail conversion.ThumbnailFile
-    }
+    uploadSuccessfulConversion conversionId
