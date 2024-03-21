@@ -6,6 +6,7 @@ open Domain.Workflows
 open Infrastructure.Settings
 open MongoDB.Driver
 open otsom.fs.Extensions
+open Domain.Deps
 
 module Workflows =
 

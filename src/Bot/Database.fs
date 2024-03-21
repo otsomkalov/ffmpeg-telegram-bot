@@ -8,6 +8,7 @@ open Bot.Workflows
 open otsom.fs.Telegram.Bot.Core
 open Domain.Workflows
 open Telegram.Workflows
+open Domain.Deps
 
 [<RequireQualifiedAccess>]
 module User =
@@ -138,20 +139,11 @@ module Conversion =
       let collection = db.GetCollection "conversions"
 
       fun conversionId ->
+        let (ConversionId conversionId) = conversionId
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
 
         collection.Find(filter).SingleOrDefaultAsync()
         |> Task.map Mappings.Conversion.PreparedOrThumbnailed.fromDb
-
-  [<RequireQualifiedAccess>]
-  module Completed =
-    let save (db: IMongoDatabase) : Conversion.Completed.Save =
-      let collection = db.GetCollection "conversions"
-
-      fun conversion ->
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
-        let entity = conversion |> Mappings.Conversion.Completed.toDb
-        collection.ReplaceOneAsync(filter, entity) |> Task.ignore
 
 [<RequireQualifiedAccess>]
 module Translation =

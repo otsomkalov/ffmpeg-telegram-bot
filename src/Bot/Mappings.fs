@@ -6,6 +6,7 @@ open Telegram.Core
 open otsom.fs.Telegram.Bot.Core
 open Telegram.Infrastructure.Core
 open Domain.Core
+open Domain.Deps
 
 [<RequireQualifiedAccess>]
 module User =
@@ -80,7 +81,7 @@ module Conversion =
 
   [<RequireQualifiedAccess>]
   module PreparedOrThumbnailed =
-    let fromDb (conversion: Database.Conversion) : Domain.Conversion.PreparedOrThumbnailed =
+    let fromDb (conversion: Database.Conversion) : Conversion.PreparedOrThumbnailed =
       match conversion.State with
       | Database.ConversionState.Prepared -> Prepared.fromDb conversion |> Choice1Of2
       | Database.ConversionState.Thumbnailed -> Thumbnailed.fromDb conversion |> Choice2Of2

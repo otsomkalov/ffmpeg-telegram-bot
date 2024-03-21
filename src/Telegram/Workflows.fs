@@ -6,6 +6,7 @@ open Domain.Workflows
 open Telegram.Core
 open otsom.fs.Telegram.Bot.Core
 open otsom.fs.Extensions
+open Domain.Deps
 
 module Workflows =
   type DeleteBotMessage = UserId -> BotMessageId -> Task
@@ -18,6 +19,48 @@ module Workflows =
   [<RequireQualifiedAccess>]
   module User =
     type Load = UserId -> Task<User>
+
+  let processConversionResult
+    (loadUserConversion: UserConversion.Load)
+    (editBotMessage: EditBotMessage)
+    (loadPreparedOrThumbnailed: Conversion.PreparedOrThumbnailed.Load)
+    (loadUser: User.Load)
+    (getLocaleTranslations: GetLocaleTranslations)
+    (saveVideo: Conversion.Prepared.SaveVideo)
+    (complete: Conversion.Thumbnailed.Complete)
+    (queueUpload: Conversion.Completed.QueueUpload)
+    : ProcessConversionResult =
+
+    let processResult editMessage tran conversion =
+      function
+      | ConversionResult.Success file ->
+        match conversion with
+        | Choice1Of2 preparedConversion ->
+          saveVideo preparedConversion file
+          |> Task.bind (fun _ -> editMessage (tran Resources.VideoConverted))
+        | Choice2Of2 thumbnailedConversion ->
+          complete thumbnailedConversion file
+          |> Task.bind queueUpload
+          |> Task.bind (fun _ -> editMessage (tran Resources.Uploading))
+      | ConversionResult.Error error -> editMessage error
+
+    fun conversionId result ->
+      task {
+        let! userConversion = loadUserConversion conversionId
+
+        let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
+
+        let! tran, _ =
+          userConversion.UserId
+          |> Option.taskMap loadUser
+          |> Task.map (Option.bind (_.Lang))
+          |> Task.bind getLocaleTranslations
+
+        let! conversion = loadPreparedOrThumbnailed conversionId
+
+        return! processResult editMessage tran conversion result
+      }
+
 
   let processThumbnailingResult
     (loadUserConversion: UserConversion.Load)

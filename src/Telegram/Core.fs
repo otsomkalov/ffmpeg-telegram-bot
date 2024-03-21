@@ -15,6 +15,7 @@ module Core =
     | Error of error: string
 
   type ProcessThumbnailingResult = ConversionId -> ConversionResult -> Task<unit>
+  type ProcessConversionResult = ConversionId -> ConversionResult -> Task<unit>
 
   type UserConversion =
     { ReceivedMessageId: UserMessageId

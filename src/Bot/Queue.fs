@@ -7,6 +7,7 @@ open FSharp
 open Infrastructure.Settings
 open Telegram.Core
 open otsom.fs.Extensions
+open Domain.Deps
 
 type File =
   | Link of url: string
@@ -58,7 +59,7 @@ let sendThumbnailerMessage (workersSettings: WorkersSettings) =
 [<CLIMutable>]
 type UploaderMessage = { ConversionId: string }
 
-let queueUpload (workersSettings: WorkersSettings) : Domain.Workflows.Conversion.Completed.QueueUpload =
+let queueUpload (workersSettings: WorkersSettings) : Conversion.Completed.QueueUpload =
   fun conversion ->
     let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
 

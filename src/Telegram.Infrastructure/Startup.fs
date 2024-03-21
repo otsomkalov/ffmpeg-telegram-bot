@@ -14,4 +14,5 @@ module Startup =
       .BuildSingleton<UserConversion.Load, IMongoDatabase>(UserConversion.load)
       .BuildSingleton<DeleteBotMessage, ITelegramBotClient>(deleteBotMessage)
       .BuildSingleton<ReplyWithVideo, WorkersSettings, ITelegramBotClient>(replyWithVideo)
+      .BuildSingleton<User.Load, IMongoDatabase>(User.load)
 
