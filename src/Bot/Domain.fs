@@ -1,24 +1,14 @@
 ﻿module Bot.Domain
 
 open System.Threading.Tasks
+open Domain.Core
 open Telegram.Bot.Types
-open otsom.fs.Telegram.Bot.Core
-
-type User = { Id: UserId; Lang: string option }
 
 [<RequireQualifiedAccess>]
 module Conversion =
   type New = { Id: string }
 
-  type Prepared = { Id: string; InputFile: string }
-
-  type Converted = { Id: string; OutputFile: string }
-
-  type Thumbnailed = { Id: string; ThumbnailName: string }
-
-  type PreparedOrConverted = Choice<Prepared, Converted>
-
-  type PreparedOrThumbnailed = Choice<Prepared, Thumbnailed>
+  type PreparedOrThumbnailed = Choice<Conversion.Prepared, Conversion.Thumbnailed>
 
 type Command =
   | Start

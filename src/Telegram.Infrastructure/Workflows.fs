@@ -54,3 +54,14 @@ module Workflows =
 
         collection.Find(filter).SingleOrDefaultAsync()
         |> Task.map Mappings.UserConversion.fromDb
+
+  [<RequireQualifiedAccess>]
+  module User =
+    let load (db: IMongoDatabase) : User.Load =
+      let collection = db.GetCollection "users"
+
+      fun userId ->
+        let userId' = userId |> UserId.value
+        let filter = Builders<Database.User>.Filter.Eq((fun c -> c.Id), userId')
+
+        collection.Find(filter).SingleOrDefaultAsync() |> Task.map Mappings.User.fromDb

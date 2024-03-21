@@ -8,11 +8,9 @@ open FSharp
 open Helpers
 open Microsoft.Extensions.Logging
 open Telegram.Core
-open otsom.fs.Telegram.Bot.Core
 
 [<RequireQualifiedAccess>]
 module User =
-  type Load = UserId -> Task<User>
   type Save = User -> Task<unit>
   type EnsureExists = User -> Task<unit>
 
@@ -37,20 +35,8 @@ module Conversion =
     type Save = Conversion.Converted -> unit Task
 
   [<RequireQualifiedAccess>]
-  module Thumbnailed =
-    type Save = Conversion.Thumbnailed -> unit Task
-
-  [<RequireQualifiedAccess>]
-  module PreparedOrConverted =
-    type Load = string -> Conversion.PreparedOrConverted Task
-
-  [<RequireQualifiedAccess>]
   module PreparedOrThumbnailed =
     type Load = string -> Conversion.PreparedOrThumbnailed Task
-
-  [<RequireQualifiedAccess>]
-  module Completed =
-    type Save = Conversion.Completed -> unit Task
 
 let parseCommand (settings: Settings.InputValidationSettings) (loggerFactory: ILoggerFactory) : ParseCommand =
   let logger = loggerFactory.CreateLogger(nameof(ParseCommand))
