@@ -3,7 +3,6 @@ module Bot.Queue
 
 open Azure.Storage.Queues
 open Bot.Helpers
-open DnsClient.Internal
 open FSharp
 open Infrastructure.Settings
 open otsom.fs.Extensions

@@ -47,16 +47,6 @@ module User =
 
 [<RequireQualifiedAccess>]
 module UserConversion =
-  let load (db: IMongoDatabase) : UserConversion.Load =
-    let collection = db.GetCollection "users-conversions"
-
-    fun conversionId ->
-      let (ConversionId conversionId) = conversionId
-      let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
-
-      collection.Find(filter).SingleOrDefaultAsync()
-      |> Task.map Mappings.UserConversion.fromDb
-
   let save (db: IMongoDatabase) : UserConversion.Save =
     let collection = db.GetCollection "users-conversions"
 
@@ -165,16 +155,6 @@ module Conversion =
 
   [<RequireQualifiedAccess>]
   module Completed =
-    let load (db: IMongoDatabase) : Conversion.Completed.Load =
-      let collection = db.GetCollection "conversions"
-
-      fun conversionId ->
-        let (ConversionId conversionId) = conversionId
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
-
-        collection.Find(filter).SingleOrDefaultAsync()
-        |> Task.map Mappings.Conversion.Completed.fromDb
-
     let save (db: IMongoDatabase) : Conversion.Completed.Save =
       let collection = db.GetCollection "conversions"
 

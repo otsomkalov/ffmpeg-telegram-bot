@@ -20,13 +20,6 @@ module User =
 
 [<RequireQualifiedAccess>]
 module UserConversion =
-  let fromDb (conversion: Database.Conversion) : UserConversion =
-    { ConversionId = conversion.Id
-      UserId = (conversion.UserId |> Option.ofNullable |> Option.map UserId)
-      ReceivedMessageId = (conversion.ReceivedMessageId |> UserMessageId)
-      SentMessageId = BotMessageId conversion.SentMessageId
-      ChatId = UserId conversion.ChatId }
-
   let toDb (conversion: UserConversion) : Database.Conversion =
     Database.Conversion(
       Id = conversion.ConversionId,
@@ -96,13 +89,6 @@ module Conversion =
 
   [<RequireQualifiedAccess>]
   module Completed =
-    let fromDb (conversion: Database.Conversion) : Conversion.Completed =
-      match conversion.State with
-      | Database.ConversionState.Completed ->
-        { Id = conversion.Id
-          OutputFile = conversion.OutputFileName
-          ThumbnailFile = conversion.ThumbnailFileName }
-
     let toDb (conversion: Conversion.Completed) : Database.Conversion =
       Database.Conversion(
         Id = conversion.Id,

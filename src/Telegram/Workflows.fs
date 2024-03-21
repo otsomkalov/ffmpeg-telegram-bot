@@ -7,7 +7,7 @@ open Telegram.Core
 open otsom.fs.Telegram.Bot.Core
 
 module Workflows =
-  type DeleteBotMessage = UserId -> BotMessageId -> Task<unit>
+  type DeleteBotMessage = UserId -> BotMessageId -> Task
   type ReplyWithVideo = UserId -> UserMessageId -> string -> string -> Task<unit>
 
   [<RequireQualifiedAccess>]

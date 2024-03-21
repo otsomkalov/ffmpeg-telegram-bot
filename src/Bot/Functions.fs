@@ -6,7 +6,9 @@ open Bot
 open Bot.Domain
 open Bot.Database
 open Bot.Translation
+open Bot.Workflows
 open Domain.Core
+open Domain.Workflows
 open FSharp
 open Infrastructure.Settings
 open Microsoft.AspNetCore.Http
@@ -18,11 +20,11 @@ open Telegram.Bot
 open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
 open Telegram.Core
+open Telegram.Workflows
 open shortid
 open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
 open Infrastructure.Workflows
-open Telegram.Infrastructure
 
 type Functions
   (
@@ -35,7 +37,13 @@ type Functions
     replyToUserMessage: ReplyToUserMessage,
     editBotMessage: EditBotMessage,
     inputValidationSettings: Settings.InputValidationSettings,
-    loggerFactory: ILoggerFactory
+    loggerFactory: ILoggerFactory,
+    loadUserConversion: UserConversion.Load,
+    loadCompletedConversion: Conversion.Completed.Load,
+    deleteBotMessage: DeleteBotMessage,
+    replyWithVideo: ReplyWithVideo,
+    deleteVideo: Conversion.Completed.DeleteVideo,
+    deleteThumbnail: Conversion.Completed.DeleteThumbnail
   ) =
 
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings _logger
@@ -168,7 +176,6 @@ type Functions
     ) : Task<unit> =
     let sendConverterMessage = Queue.sendConverterMessage workersSettings
     let sendThumbnailerMessage = Queue.sendThumbnailerMessage workersSettings
-    let loadUserConversion = UserConversion.load _db
     let loadNewConversion = Conversion.New.load _db
     let downloadLink = HTTP.downloadLink _httpClientFactory workersSettings
     let downloadFile = Telegram.downloadDocument _bot workersSettings
@@ -229,7 +236,6 @@ type Functions
       [<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage,
       _: FunctionContext
     ) : Task<unit> =
-    let loadUserConversion = UserConversion.load _db
     let loadPreparedOrThumbnailed = Conversion.PreparedOrThumbnailed.load _db
     let saveConvertedConversion = Conversion.Converted.save _db
     let saveCompletedConversion = Conversion.Completed.save _db
@@ -288,7 +294,6 @@ type Functions
       [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage,
       _: FunctionContext
     ) : Task<unit> =
-    let loadUserConversion = UserConversion.load _db
     let loadPreparedOrConverted = Conversion.PreparedOrConverted.load _db
     let saveThumbnailedConversion = Conversion.Thumbnailed.save _db
     let saveCompletedConversion = Conversion.Completed.save _db
@@ -350,13 +355,6 @@ type Functions
     ) : Task =
     let conversionId = message.ConversionId |> ConversionId
 
-    let loadUserConversion = UserConversion.load _db
-    let loadCompletedConversion = Conversion.Completed.load _db
-    let deleteBotMessage = Workflows.deleteBotMessage _bot
-    let replyWithVideo = Workflows.replyWithVideo workersSettings _bot
-    let deleteVideo = Conversion.Completed.deleteVideo workersSettings
-    let deleteThumbnail = Conversion.Completed.deleteThumbnail workersSettings
-
-    let uploadSuccessfulConversion = Telegram.Workflows.uploadCompletedConversion loadUserConversion loadCompletedConversion deleteBotMessage replyWithVideo deleteVideo deleteThumbnail
+    let uploadSuccessfulConversion = uploadCompletedConversion loadUserConversion loadCompletedConversion deleteBotMessage replyWithVideo deleteVideo deleteThumbnail
 
     uploadSuccessfulConversion conversionId

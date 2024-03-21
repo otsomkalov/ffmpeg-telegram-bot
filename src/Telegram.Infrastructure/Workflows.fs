@@ -1,7 +1,9 @@
 ﻿namespace Telegram.Infrastructure
 
 open Azure.Storage.Blobs
+open Domain.Core
 open Infrastructure.Settings
+open MongoDB.Driver
 open Telegram.Bot
 open Telegram.Bot.Types
 open Telegram.Workflows
@@ -12,7 +14,7 @@ open System.Threading.Tasks
 
 module Workflows =
   let deleteBotMessage (bot: ITelegramBotClient) : DeleteBotMessage =
-    fun userId messageId -> task { do! bot.DeleteMessageAsync((userId |> UserId.value |> ChatId), (messageId |> BotMessageId.value)) }
+    fun userId messageId -> bot.DeleteMessageAsync((userId |> UserId.value |> ChatId), (messageId |> BotMessageId.value))
 
   let replyWithVideo (workersSettings: WorkersSettings) (bot: ITelegramBotClient) : ReplyWithVideo =
     let blobServiceClient = BlobServiceClient(workersSettings.ConnectionString)
@@ -40,3 +42,15 @@ module Workflows =
             disableNotification = true
           ))
         |> Task.ignore
+
+  [<RequireQualifiedAccess>]
+  module UserConversion =
+    let load (db: IMongoDatabase) : UserConversion.Load =
+      let collection = db.GetCollection "users-conversions"
+
+      fun conversionId ->
+        let (ConversionId conversionId) = conversionId
+        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+
+        collection.Find(filter).SingleOrDefaultAsync()
+        |> Task.map Mappings.UserConversion.fromDb

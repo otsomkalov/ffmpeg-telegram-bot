@@ -1,8 +1,10 @@
 ﻿namespace Infrastructure
 
 open Azure.Storage.Blobs
+open Domain.Core
 open Domain.Workflows
 open Infrastructure.Settings
+open MongoDB.Driver
 open otsom.fs.Extensions
 
 module Workflows =
@@ -30,3 +32,13 @@ module Workflows =
         fun name ->
           let blob = container.GetBlobClient(name)
           blob.DeleteAsync() |> Task.ignore
+
+      let load (db: IMongoDatabase) : Conversion.Completed.Load =
+        let collection = db.GetCollection "conversions"
+
+        fun conversionId ->
+          let (ConversionId conversionId) = conversionId
+          let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+
+          collection.Find(filter).SingleOrDefaultAsync()
+          |> Task.map Mappings.Conversion.Completed.fromDb

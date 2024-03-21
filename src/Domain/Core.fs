@@ -1,6 +1,5 @@
 ﻿namespace Domain
 
-open otsom.fs.Telegram.Bot.Core
 
 module Core =
   type ConversionId = ConversionId of string
