@@ -10,5 +10,5 @@ module Workflows =
     [<RequireQualifiedAccess>]
     module Completed =
       type Load = ConversionId -> Task<Conversion.Completed>
-      type DeleteVideo = string -> Task<unit>
-      type DeleteThumbnail = string -> Task<unit>
+      type DeleteVideo = Video -> Task<unit>
+      type DeleteThumbnail = Thumbnail -> Task<unit>

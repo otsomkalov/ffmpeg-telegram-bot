@@ -8,7 +8,7 @@ open otsom.fs.Telegram.Bot.Core
 
 module Workflows =
   type DeleteBotMessage = UserId -> BotMessageId -> Task
-  type ReplyWithVideo = UserId -> UserMessageId -> string -> string -> Task<unit>
+  type ReplyWithVideo = UserId -> UserMessageId -> Video -> Thumbnail -> Task<unit>
 
   [<RequireQualifiedAccess>]
   module UserConversion =

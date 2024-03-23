@@ -20,6 +20,7 @@ module Conversion =
 
   type PreparedOrThumbnailed = Choice<Prepared, Thumbnailed>
 
+[<RequireQualifiedAccess>]
 type Command =
   | Start
   | Links of string seq

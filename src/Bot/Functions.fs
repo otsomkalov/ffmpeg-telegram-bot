@@ -7,7 +7,6 @@ open Bot.Domain
 open Bot.Database
 open Bot.Translation
 open Bot.Workflows
-open Domain.Core
 open Domain.Workflows
 open FSharp
 open Infrastructure.Settings
@@ -25,6 +24,7 @@ open shortid
 open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
 open Infrastructure.Workflows
+open Domain.Core
 
 type Functions
   (
@@ -132,10 +132,10 @@ type Functions
 
           return!
             match cmd with
-            | Start -> sendMessage (tran Resources.Welcome)
-            | Links links -> processLinks (tran, tranf) links
-            | Document(fileId, fileName) -> processDocument (tran, tranf) fileId fileName
-            | Video(fileId, fileName) -> processVideo (tran, tranf) fileId fileName
+            | Command.Start -> sendMessage (tran Resources.Welcome)
+            | Command.Links links -> processLinks (tran, tranf) links
+            | Command.Document(fileId, fileName) -> processDocument (tran, tranf) fileId fileName
+            | Command.Video(fileId, fileName) -> processVideo (tran, tranf) fileId fileName
         }
 
     let processMessage' =
@@ -274,8 +274,8 @@ type Functions
           | Choice2Of2 thumbnailedConversion ->
             let completedConversion: Conversion.Completed =
               { Id = thumbnailedConversion.Id
-                OutputFile = file
-                ThumbnailFile = thumbnailedConversion.ThumbnailName }
+                OutputFile = (file |> Video)
+                ThumbnailFile = (thumbnailedConversion.ThumbnailName |> Thumbnail) }
 
             let uploaderMessage: Queue.UploaderMessage =
               { ConversionId = thumbnailedConversion.Id }
@@ -331,8 +331,8 @@ type Functions
           | Choice2Of2 convertedConversion ->
             let completedConversion: Conversion.Completed =
               { Id = convertedConversion.Id
-                OutputFile = convertedConversion.OutputFile
-                ThumbnailFile = file }
+                OutputFile = (convertedConversion.OutputFile |> Video)
+                ThumbnailFile = (file |> Thumbnail) }
 
             let uploaderMessage: Queue.UploaderMessage =
               { ConversionId = convertedConversion.Id }
