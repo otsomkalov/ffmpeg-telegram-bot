@@ -44,7 +44,7 @@ type Functions
     replyWithVideo: ReplyWithVideo,
     deleteVideo: Conversion.Completed.DeleteVideo,
     deleteThumbnail: Conversion.Completed.DeleteThumbnail,
-    getLocaleTranslations: GetLocaleTranslations,
+    getLocaleTranslations: Translation.GetLocaleTranslations,
     queueUpload: Conversion.Completed.QueueUpload
   ) =
 
@@ -81,7 +81,7 @@ type Functions
         return! sendDownloaderMessage message
       }
 
-    let processLinks (_, tranf: FormatTranslation) links =
+    let processLinks (_, tranf: Translation.FormatTranslation) links =
       let sendUrlToQueue (url: string) =
         task {
           let! sentMessageId = replyToMessage (tranf (Telegram.Resources.LinkDownload, [| url |]))
@@ -96,7 +96,7 @@ type Functions
 
       links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.ignore
 
-    let processDocument (_, tranf: FormatTranslation) fileId fileName =
+    let processDocument (_, tranf: Translation.FormatTranslation) fileId fileName =
       task {
         let! sentMessageId = replyToMessage (tranf (Telegram.Resources.DocumentDownload, [| fileName |]))
 
@@ -108,7 +108,7 @@ type Functions
         return! saveAndQueueConversion sentMessageId getDownloaderMessage
       }
 
-    let processVideo (_, tranf: FormatTranslation) fileId fileName =
+    let processVideo (_, tranf: Translation.FormatTranslation) fileId fileName =
       task {
         let! sentMessageId = replyToMessage (tranf (Telegram.Resources.VideoDownload, [| fileName |]))
 

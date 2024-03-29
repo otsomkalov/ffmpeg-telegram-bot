@@ -24,7 +24,7 @@ module Workflows =
     (editBotMessage: EditBotMessage)
     (loadPreparedOrConverted: Conversion.PreparedOrConverted.Load)
     (loadUser: User.Load)
-    (getLocaleTranslations: GetLocaleTranslations)
+    (getLocaleTranslations: Translation.GetLocaleTranslations)
     (saveThumbnail: Conversion.Prepared.SaveThumbnail)
     (complete: Conversion.Converted.Complete)
     (queueUpload: Conversion.Completed.QueueUpload)

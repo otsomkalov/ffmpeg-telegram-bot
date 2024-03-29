@@ -25,12 +25,13 @@ module Core =
 
   type Translation = { Key: string; Value: string }
 
+  [<RequireQualifiedAccess>]
   module Translation =
     [<Literal>]
     let DefaultLang = "en"
 
-  type GetTranslation = string -> string
-  type FormatTranslation = string * obj array -> string
+    type GetTranslation = string -> string
+    type FormatTranslation = string * obj array -> string
 
-  type GetLocaleTranslations = string option -> Task<GetTranslation * FormatTranslation>
+    type GetLocaleTranslations = string option -> Task<GetTranslation * FormatTranslation>
 

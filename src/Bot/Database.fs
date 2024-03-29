@@ -152,16 +152,3 @@ module Conversion =
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
         let entity = conversion |> Mappings.Conversion.Completed.toDb
         collection.ReplaceOneAsync(filter, entity) |> Task.ignore
-
-[<RequireQualifiedAccess>]
-module Translation =
-
-  let private loadTranslationsMap (collection: IMongoCollection<Database.Translation>) key =
-    collection.Find(fun t -> t.Lang = key).ToListAsync()
-    |> Task.map (
-      Seq.groupBy (_.Key)
-      >> Seq.map (fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head))
-      >> Map.ofSeq
-    )
-
-
