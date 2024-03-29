@@ -4,6 +4,7 @@ module Bot.Queue
 open Azure.Storage.Queues
 open Bot.Helpers
 open FSharp
+open Infrastructure.Helpers
 open Infrastructure.Settings
 open Telegram.Core
 open otsom.fs.Extensions
@@ -52,18 +53,5 @@ let sendThumbnailerMessage (workersSettings: WorkersSettings) =
       queueServiceClient.GetQueueClient(workersSettings.Thumbnailer.Input.Queue)
 
     let messageBody = JSON.serialize message
-
-    queueClient.SendMessageAsync(messageBody) |> Task.ignore
-
-[<CLIMutable>]
-type UploaderMessage = { ConversionId: string }
-
-let queueUpload (workersSettings: WorkersSettings) : Domain.Workflows.Conversion.Completed.QueueUpload =
-  fun conversion ->
-    let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
-
-    let queueClient = queueServiceClient.GetQueueClient(workersSettings.Uploader.Queue)
-
-    let messageBody = JSON.serialize { ConversionId = conversion.Id }
 
     queueClient.SendMessageAsync(messageBody) |> Task.ignore
