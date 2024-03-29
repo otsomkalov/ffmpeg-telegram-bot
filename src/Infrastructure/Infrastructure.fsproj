@@ -6,20 +6,25 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Core.fs"/>
     <Compile Include="Settings.fs"/>
-    <Compile Include="Mappings.fs" />
+    <Compile Include="Mappings.fs"/>
+    <Compile Include="Helpers.fs" />
     <Compile Include="Workflows.fs"/>
-    <Compile Include="Storage.fs" />
-    <Compile Include="Startup.fs" />
+    <Compile Include="Storage.fs"/>
+    <Compile Include="Queue.fs"/>
+    <Compile Include="Startup.fs"/>
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1"/>
-    <PackageReference Include="MongoDB.Driver" Version="2.24.0" />
+    <PackageReference Include="Azure.Storage.Queues" Version="12.17.1"/>
+    <PackageReference Include="MongoDB.Driver" Version="2.24.0"/>
+    <PackageReference Include="FSharp.SystemTextJson" Version="1.2.42"/>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Database\Database.csproj" />
+    <ProjectReference Include="..\Database\Database.csproj"/>
     <ProjectReference Include="..\Domain\Domain.fsproj"/>
   </ItemGroup>
 

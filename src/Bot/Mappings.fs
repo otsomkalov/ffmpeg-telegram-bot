@@ -7,6 +7,7 @@ open otsom.fs.Telegram.Bot.Core
 open Telegram.Infrastructure.Core
 open Domain.Core
 open Domain.Deps
+open Infrastructure.Core
 
 [<RequireQualifiedAccess>]
 module User =
@@ -91,8 +92,8 @@ module Conversion =
     let toDb (conversion: Conversion.Completed) : Database.Conversion =
       Database.Conversion(
         Id = conversion.Id,
-        OutputFileName = conversion.OutputFile,
-        ThumbnailFileName = conversion.ThumbnailFile,
+        OutputFileName = (conversion.OutputFile |> Conversion.Video.value),
+        ThumbnailFileName = (conversion.ThumbnailFile |> Conversion.Thumbnail.value),
         State = Database.ConversionState.Completed
       )
 

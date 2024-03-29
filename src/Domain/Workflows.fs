@@ -8,6 +8,23 @@ module Workflows =
 
   [<RequireQualifiedAccess>]
   module Conversion =
+    [<RequireQualifiedAccess>]
+    module Completed =
+      type Save = Conversion.Completed -> Task<unit>
+
+      type Load = ConversionId -> Task<Conversion.Completed>
+      type DeleteVideo = Conversion.Video -> Task<unit>
+      type DeleteThumbnail = Conversion.Thumbnail -> Task<unit>
+
+      type QueueUpload = Conversion.Completed -> Task<unit>
+
+    [<RequireQualifiedAccess>]
+    module PreparedOrConverted =
+      type Load = ConversionId -> Task<Conversion.PreparedOrConverted>
+
+    [<RequireQualifiedAccess>]
+    module Thumbnailed =
+      type Save = Conversion.Thumbnailed -> Task<unit>
 
     [<RequireQualifiedAccess>]
     module Prepared =
@@ -35,8 +52,8 @@ module Workflows =
         fun conversion thumbnail ->
           let completedConversion: Conversion.Completed =
             { Id = conversion.Id
-              OutputFile = conversion.OutputFile
-              ThumbnailFile = thumbnail }
+              OutputFile = (conversion.OutputFile |> Conversion.Video)
+              ThumbnailFile = (thumbnail |> Conversion.Thumbnail) }
 
           saveCompletedConversion completedConversion
           |> Task.map (fun _ -> completedConversion)

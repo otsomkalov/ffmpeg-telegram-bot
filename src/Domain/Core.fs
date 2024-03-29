@@ -18,10 +18,14 @@ module Core =
     type PreparedOrConverted = Choice<Prepared, Converted>
     type PreparedOrThumbnailed = Choice<Prepared, Thumbnailed>
 
+
+    type Video = Video of string
+    type Thumbnail = Thumbnail of string
+
     type Completed =
       { Id: string
-        OutputFile: string
-        ThumbnailFile: string }
+        OutputFile: Video
+        ThumbnailFile: Thumbnail }
 
     [<RequireQualifiedAccess>]
     module Prepared =

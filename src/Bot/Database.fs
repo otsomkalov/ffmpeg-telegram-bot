@@ -145,15 +145,12 @@ module Conversion =
         collection.Find(filter).SingleOrDefaultAsync()
         |> Task.map Mappings.Conversion.PreparedOrThumbnailed.fromDb
 
-[<RequireQualifiedAccess>]
-module Translation =
+  [<RequireQualifiedAccess>]
+  module Completed =
+    let save (db: IMongoDatabase) : Conversion.Completed.Save =
+      let collection = db.GetCollection "conversions"
 
-  let private loadTranslationsMap (collection: IMongoCollection<Database.Translation>) key =
-    collection.Find(fun t -> t.Lang = key).ToListAsync()
-    |> Task.map (
-      Seq.groupBy (_.Key)
-      >> Seq.map (fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head))
-      >> Map.ofSeq
-    )
-
-
+      fun conversion ->
+        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
+        let entity = conversion |> Mappings.Conversion.Completed.toDb
+        collection.ReplaceOneAsync(filter, entity) |> Task.ignore

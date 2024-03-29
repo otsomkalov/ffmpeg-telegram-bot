@@ -6,9 +6,9 @@ open Bot
 open Bot.Domain
 open Bot.Database
 open Bot.Workflows
-open Domain.Core
 open Domain.Workflows
 open FSharp
+open Infrastructure.Queue
 open Infrastructure.Settings
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
@@ -26,6 +26,7 @@ open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
 open Infrastructure.Workflows
 open Domain.Deps
+open Domain.Core
 
 type Functions
   (
@@ -45,7 +46,7 @@ type Functions
     replyWithVideo: ReplyWithVideo,
     deleteVideo: Conversion.Completed.DeleteVideo,
     deleteThumbnail: Conversion.Completed.DeleteThumbnail,
-    getLocaleTranslations: GetLocaleTranslations,
+    getLocaleTranslations: Translation.GetLocaleTranslations,
     queueUpload: Conversion.Completed.QueueUpload,
     loadUser: User.Load,
     saveCompletedConversion: Conversion.Completed.Save
@@ -84,7 +85,7 @@ type Functions
         return! sendDownloaderMessage message
       }
 
-    let processLinks (_, tranf: FormatTranslation) links =
+    let processLinks (_, tranf: Translation.FormatTranslation) links =
       let sendUrlToQueue (url: string) =
         task {
           let! sentMessageId = replyToMessage (tranf (Telegram.Resources.LinkDownload, [| url |]))
@@ -99,7 +100,7 @@ type Functions
 
       links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.ignore
 
-    let processDocument (_, tranf: FormatTranslation) fileId fileName =
+    let processDocument (_, tranf: Translation.FormatTranslation) fileId fileName =
       task {
         let! sentMessageId = replyToMessage (tranf (Telegram.Resources.DocumentDownload, [| fileName |]))
 
@@ -111,7 +112,7 @@ type Functions
         return! saveAndQueueConversion sentMessageId getDownloaderMessage
       }
 
-    let processVideo (_, tranf: FormatTranslation) fileId fileName =
+    let processVideo (_, tranf: Translation.FormatTranslation) fileId fileName =
       task {
         let! sentMessageId = replyToMessage (tranf (Telegram.Resources.VideoDownload, [| fileName |]))
 
@@ -136,10 +137,10 @@ type Functions
 
           return!
             match cmd with
-            | Start -> sendMessage (tran Telegram.Resources.Welcome)
-            | Links links -> processLinks (tran, tranf) links
-            | Document(fileId, fileName) -> processDocument (tran, tranf) fileId fileName
-            | Video(fileId, fileName) -> processVideo (tran, tranf) fileId fileName
+            | Command.Start -> sendMessage (tran Telegram.Resources.Welcome)
+            | Command.Links links -> processLinks (tran, tranf) links
+            | Command.Document(fileId, fileName) -> processDocument (tran, tranf) fileId fileName
+            | Command.Video(fileId, fileName) -> processVideo (tran, tranf) fileId fileName
         }
 
     let processMessage' =
@@ -285,7 +286,7 @@ type Functions
   [<Function("Uploader")>]
   member this.Upload
     (
-      [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.UploaderMessage,
+      [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>] message: UploaderMessage,
       _: FunctionContext
     ) : Task =
     let conversionId = message.ConversionId |> ConversionId

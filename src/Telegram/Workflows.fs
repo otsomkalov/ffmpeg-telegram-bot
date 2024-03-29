@@ -10,7 +10,7 @@ open Domain.Deps
 
 module Workflows =
   type DeleteBotMessage = UserId -> BotMessageId -> Task
-  type ReplyWithVideo = UserId -> UserMessageId -> string -> string -> Task<unit>
+  type ReplyWithVideo = UserId -> UserMessageId -> Conversion.Video -> Conversion.Thumbnail -> Task<unit>
 
   [<RequireQualifiedAccess>]
   module UserConversion =
@@ -67,7 +67,7 @@ module Workflows =
     (editBotMessage: EditBotMessage)
     (loadPreparedOrConverted: Conversion.PreparedOrConverted.Load)
     (loadUser: User.Load)
-    (getLocaleTranslations: GetLocaleTranslations)
+    (getLocaleTranslations: Translation.GetLocaleTranslations)
     (saveThumbnail: Conversion.Prepared.SaveThumbnail)
     (complete: Conversion.Converted.Complete)
     (queueUpload: Conversion.Completed.QueueUpload)
