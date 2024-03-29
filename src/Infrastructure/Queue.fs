@@ -8,7 +8,7 @@ open otsom.fs.Extensions
 
 module Queue =
   [<CLIMutable>]
-  type private UploaderMessage = { ConversionId: string }
+  type UploaderMessage = { ConversionId: string }
 
   [<RequireQualifiedAccess>]
   module Conversion =

@@ -8,6 +8,7 @@ open Bot.Database
 open Bot.Workflows
 open Domain.Workflows
 open FSharp
+open Infrastructure.Queue
 open Infrastructure.Settings
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
@@ -239,10 +240,7 @@ type Functions
     let loadPreparedOrThumbnailed = Conversion.PreparedOrThumbnailed.load _db
     let saveConvertedConversion = Conversion.Converted.save _db
     let saveCompletedConversion = Conversion.Completed.save _db
-    let sendUploaderMessage = Queue.queueUpload workersSettings
     let loadUser = User.load _db
-
-    let conversionId = ConversionId message.Id
 
     let conversionId = ConversionId message.Id
 
@@ -280,7 +278,7 @@ type Functions
 
             task {
               do! saveCompletedConversion completedConversion
-              do! sendUploaderMessage completedConversion
+              do! queueUpload completedConversion
               do! editMessage (tran Telegram.Resources.Uploading)
             }
         | ConversionResult.Error error -> editMessage error
@@ -306,7 +304,7 @@ type Functions
   [<Function("Uploader")>]
   member this.Upload
     (
-      [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.UploaderMessage,
+      [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>] message: UploaderMessage,
       _: FunctionContext
     ) : Task =
     let conversionId = message.ConversionId |> ConversionId
