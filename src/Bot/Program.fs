@@ -5,13 +5,13 @@ open System.Net.Http
 open System.Reflection
 open System.Text.Json
 open System.Text.Json.Serialization
+open Infrastructure.Settings
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.ApplicationInsights
-open Microsoft.Extensions.Options
 open MongoDB.ApplicationInsights
 open MongoDB.Driver
 open Polly.Extensions.Http
@@ -20,8 +20,9 @@ open MongoDB.ApplicationInsights.DependencyInjection
 open Polly
 open otsom.fs.Extensions.DependencyInjection
 open Helpers
-open Database
 open otsom.fs.Telegram.Bot
+open Infrastructure
+open Telegram.Infrastructure
 
 #nowarn "20"
 
@@ -61,13 +62,16 @@ module Startup =
     services.AddApplicationInsightsTelemetryWorkerService()
     services.ConfigureFunctionsApplicationInsights()
 
-    services |> Startup.addTelegramBotCore
+    services
+    |> Startup.addTelegramBotCore
+    |> Startup.addDomain
+    |> Startup.addTelegram
 
     services
-      .BuildSingleton<Settings.WorkersSettings, IConfiguration>(fun cfg ->
+      .BuildSingleton<WorkersSettings, IConfiguration>(fun cfg ->
         cfg
-          .GetSection(Settings.WorkersSettings.SectionName)
-          .Get<Settings.WorkersSettings>())
+          .GetSection(WorkersSettings.SectionName)
+          .Get<WorkersSettings>())
       .BuildSingleton<Settings.TelegramSettings, IConfiguration>(fun cfg ->
         cfg
           .GetSection(Settings.TelegramSettings.SectionName)

@@ -1,7 +1,6 @@
 ﻿module Bot.Helpers
 
 open System
-open System.IO
 open System.Text.Json
 open System.Text.Json.Serialization
 open System.Text.RegularExpressions

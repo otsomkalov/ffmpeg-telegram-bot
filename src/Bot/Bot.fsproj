@@ -9,7 +9,6 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App"/>
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1"/>
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="1.2.1"/>
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Queues" Version="5.3.0"/>
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.17.2"/>
@@ -23,9 +22,7 @@
     <PackageReference Include="MongoDB.ApplicationInsights.DependencyInjection" Version="1.0.34"/>
     <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="8.0.3"/>
     <PackageReference Include="otsom.fs.Extensions" Version="0.0.18"/>
-    <PackageReference Include="otsom.fs.Telegram.Bot" Version="0.0.15"/>
     <PackageReference Include="FSharp.Logf" Version="1.2.2"/>
-    <PackageReference Include="MongoDB.ApplicationInsights.DependencyInjection" Version="1.0.34"/>
   </ItemGroup>
 
   <ItemGroup>
@@ -37,7 +34,6 @@
     <Compile Include="Mappings.fs"/>
     <Compile Include="Queue.fs"/>
     <Compile Include="Telegram.fs"/>
-    <Compile Include="Storage.fs"/>
     <Compile Include="Database.fs"/>
     <Compile Include="HTTP.fs"/>
     <Compile Include="Functions.fs"/>
@@ -55,6 +51,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Database\Database.csproj"/>
+    <ProjectReference Include="..\Infrastructure\Infrastructure.fsproj" />
+    <ProjectReference Include="..\Telegram.Infrastructure\Telegram.Infrastructure.fsproj" />
   </ItemGroup>
 </Project>

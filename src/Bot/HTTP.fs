@@ -5,6 +5,7 @@ open System
 open System.Net
 open System.Net.Http
 open System.Threading.Tasks
+open Infrastructure.Settings
 
 type DownloadLinkError =
   | Unauthorized
@@ -13,7 +14,7 @@ type DownloadLinkError =
 
 type DownloadLink = string -> Task<Result<string, DownloadLinkError>>
 
-let downloadLink (httpClientFactory: IHttpClientFactory) (workersSettings: Settings.WorkersSettings) : DownloadLink =
+let downloadLink (httpClientFactory: IHttpClientFactory) (workersSettings: WorkersSettings) : DownloadLink =
   let getBlobStream = Telegram.getBlobStream workersSettings
 
   fun link ->

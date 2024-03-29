@@ -3,9 +3,11 @@
 open System.Text.RegularExpressions
 open Bot.Domain
 open System.Threading.Tasks
+open Domain.Core
 open FSharp
 open Helpers
 open Microsoft.Extensions.Logging
+open Telegram.Core
 open otsom.fs.Telegram.Bot.Core
 
 [<RequireQualifiedAccess>]
@@ -16,7 +18,6 @@ module User =
 
 [<RequireQualifiedAccess>]
 module UserConversion =
-  type Load = string -> UserConversion Task
   type Save = UserConversion -> unit Task
 
 [<RequireQualifiedAccess>]
@@ -49,7 +50,6 @@ module Conversion =
 
   [<RequireQualifiedAccess>]
   module Completed =
-    type Load = string -> Conversion.Completed Task
     type Save = Conversion.Completed -> unit Task
 
 let parseCommand (settings: Settings.InputValidationSettings) (loggerFactory: ILoggerFactory) : ParseCommand =

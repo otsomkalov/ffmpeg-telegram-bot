@@ -3,8 +3,8 @@ module Bot.Queue
 
 open Azure.Storage.Queues
 open Bot.Helpers
-open DnsClient.Internal
 open FSharp
+open Infrastructure.Settings
 open otsom.fs.Extensions
 
 type File =
@@ -14,7 +14,7 @@ type File =
 [<CLIMutable>]
 type DownloaderMessage = { ConversionId: string; File: File }
 
-let sendDownloaderMessage (workersSettings: Settings.WorkersSettings) logger =
+let sendDownloaderMessage (workersSettings: WorkersSettings) logger =
   fun (message: DownloaderMessage) ->
     Logf.logfi logger "Sending queue message to downloader"
     let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
@@ -29,7 +29,7 @@ let sendDownloaderMessage (workersSettings: Settings.WorkersSettings) logger =
 [<CLIMutable>]
 type ConverterMessage = { Id: string; Name: string }
 
-let sendConverterMessage (workersSettings: Settings.WorkersSettings) =
+let sendConverterMessage (workersSettings: WorkersSettings) =
   fun (message: ConverterMessage) ->
     let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
 
@@ -47,7 +47,7 @@ type ConversionResult =
 type ConverterResultMessage =
   { Id: string; Result: ConversionResult }
 
-let sendTumbnailerMessage (workersSettings: Settings.WorkersSettings) =
+let sendThumbnailerMessage (workersSettings: WorkersSettings) =
   fun (message: ConverterMessage) ->
     let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
 
@@ -61,7 +61,7 @@ let sendTumbnailerMessage (workersSettings: Settings.WorkersSettings) =
 [<CLIMutable>]
 type UploaderMessage = { ConversionId: string }
 
-let sendUploaderMessage (workersSettings: Settings.WorkersSettings) =
+let sendUploaderMessage (workersSettings: WorkersSettings) =
   fun (message: UploaderMessage) ->
     let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
 

@@ -1,7 +1,11 @@
 ﻿[<RequireQualifiedAccess>]
 module Bot.Mappings
 
+open Bot.Workflows
+open Telegram.Core
 open otsom.fs.Telegram.Bot.Core
+open Telegram.Infrastructure.Core
+open Domain.Core
 
 [<RequireQualifiedAccess>]
 module User =
@@ -16,18 +20,11 @@ module User =
 
 [<RequireQualifiedAccess>]
 module UserConversion =
-  let fromDb (conversion: Database.Conversion) : Domain.UserConversion =
-    { ConversionId = conversion.Id
-      UserId = (conversion.UserId |> Option.ofNullable |> Option.map UserId)
-      ReceivedMessageId = conversion.ReceivedMessageId
-      SentMessageId = BotMessageId conversion.SentMessageId
-      ChatId = UserId conversion.ChatId }
-
-  let toDb (conversion: Domain.UserConversion) : Database.Conversion =
+  let toDb (conversion: UserConversion) : Database.Conversion =
     Database.Conversion(
       Id = conversion.ConversionId,
       UserId = (conversion.UserId |> Option.map UserId.value |> Option.toNullable),
-      ReceivedMessageId = conversion.ReceivedMessageId,
+      ReceivedMessageId = (conversion.ReceivedMessageId |> UserMessageId.value),
       SentMessageId = (conversion.SentMessageId |> BotMessageId.value),
       ChatId = (conversion.ChatId |> UserId.value)
     )
@@ -92,18 +89,11 @@ module Conversion =
 
   [<RequireQualifiedAccess>]
   module Completed =
-    let fromDb (conversion: Database.Conversion) : Domain.Conversion.Completed =
-      match conversion.State with
-      | Database.ConversionState.Completed ->
-        { Id = conversion.Id
-          OutputFile = conversion.OutputFileName
-          ThumbnailFile = conversion.ThumbnailFileName }
-
-    let toDb (conversion: Domain.Conversion.Completed) : Database.Conversion =
+    let toDb (conversion: Conversion.Completed) : Database.Conversion =
       Database.Conversion(
         Id = conversion.Id,
-        OutputFileName = conversion.OutputFile,
-        ThumbnailFileName = conversion.ThumbnailFile,
+        OutputFileName = (conversion.OutputFile |> Video.value),
+        ThumbnailFileName = (conversion.ThumbnailFile |> Thumbnail.value),
         State = Database.ConversionState.Completed
       )
 
