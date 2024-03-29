@@ -18,8 +18,16 @@ module Core =
     type PreparedOrConverted = Choice<Prepared, Converted>
     type Completed =
       { Id: string
-        OutputFile: string
-        ThumbnailFile: string }
+        OutputFile: Video
+        ThumbnailFile: Thumbnail }
+
+    [<RequireQualifiedAccess>]
+    module Video =
+      let value (Video video) = video
+
+    [<RequireQualifiedAccess>]
+    module Thumbnail =
+      let value (Thumbnail thumbnail) = thumbnail
 
     [<RequireQualifiedAccess>]
     module Prepared =

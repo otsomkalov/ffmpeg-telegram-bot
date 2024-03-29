@@ -8,6 +8,7 @@ open FSharp
 open Helpers
 open Microsoft.Extensions.Logging
 open Telegram.Core
+open Telegram.Core
 
 [<RequireQualifiedAccess>]
 module User =

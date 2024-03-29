@@ -7,7 +7,6 @@
 
     <ItemGroup>
       <Compile Include="Core.fs" />
-      <Compile Include="Resources.fs" />
       <Compile Include="Workflows.fs" />
     </ItemGroup>
 

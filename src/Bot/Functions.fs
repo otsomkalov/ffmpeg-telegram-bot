@@ -133,10 +133,10 @@ type Functions
 
           return!
             match cmd with
-            | Start -> sendMessage (tran Telegram.Resources.Welcome)
-            | Links links -> processLinks (tran, tranf) links
-            | Document(fileId, fileName) -> processDocument (tran, tranf) fileId fileName
-            | Video(fileId, fileName) -> processVideo (tran, tranf) fileId fileName
+            | Command.Start -> sendMessage (tran Telegram.Resources.Welcome)
+            | Command.Links links -> processLinks (tran, tranf) links
+            | Command.Document(fileId, fileName) -> processDocument (tran, tranf) fileId fileName
+            | Command.Video(fileId, fileName) -> processVideo (tran, tranf) fileId fileName
         }
 
     let processMessage' =
@@ -244,6 +244,8 @@ type Functions
 
     let conversionId = ConversionId message.Id
 
+    let conversionId = ConversionId message.Id
+
     task {
       let! userConversion = loadUserConversion conversionId
 
@@ -273,8 +275,8 @@ type Functions
           | Choice2Of2 thumbnailedConversion ->
             let completedConversion: Conversion.Completed =
               { Id = thumbnailedConversion.Id
-                OutputFile = file
-                ThumbnailFile = thumbnailedConversion.ThumbnailName }
+                OutputFile = (file |> Video)
+                ThumbnailFile = (thumbnailedConversion.ThumbnailName |> Thumbnail) }
 
             task {
               do! saveCompletedConversion completedConversion

@@ -10,6 +10,7 @@ module Conversion =
 
   type PreparedOrThumbnailed = Choice<Conversion.Prepared, Conversion.Thumbnailed>
 
+[<RequireQualifiedAccess>]
 type Command =
   | Start
   | Links of string seq
