@@ -9,9 +9,6 @@ module Core =
 
   type ConversionId = ConversionId of string
 
-  type Video = Video of string
-  type Thumbnail = Thumbnail of string
-
   [<RequireQualifiedAccess>]
   module Conversion =
     type Prepared = { Id: string; InputFile: string }
@@ -19,18 +16,14 @@ module Core =
     type Thumbnailed = { Id: string; ThumbnailName: string }
 
     type PreparedOrConverted = Choice<Prepared, Converted>
+
+    type Video = Video of string
+    type Thumbnail = Thumbnail of string
+
     type Completed =
       { Id: string
         OutputFile: Video
         ThumbnailFile: Thumbnail }
-
-    [<RequireQualifiedAccess>]
-    module Video =
-      let value (Video video) = video
-
-    [<RequireQualifiedAccess>]
-    module Thumbnail =
-      let value (Thumbnail thumbnail) = thumbnail
 
     [<RequireQualifiedAccess>]
     module Prepared =

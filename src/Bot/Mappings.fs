@@ -6,6 +6,7 @@ open Telegram.Core
 open otsom.fs.Telegram.Bot.Core
 open Telegram.Infrastructure.Core
 open Domain.Core
+open Infrastructure.Core
 
 [<RequireQualifiedAccess>]
 module User =

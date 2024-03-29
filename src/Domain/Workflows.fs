@@ -13,8 +13,8 @@ module Workflows =
       type Save = Conversion.Completed -> Task<unit>
 
       type Load = ConversionId -> Task<Conversion.Completed>
-      type DeleteVideo = Video -> Task<unit>
-      type DeleteThumbnail = Thumbnail -> Task<unit>
+      type DeleteVideo = Conversion.Video -> Task<unit>
+      type DeleteThumbnail = Conversion.Thumbnail -> Task<unit>
 
       type QueueUpload = Conversion.Completed -> Task<unit>
 
@@ -43,8 +43,8 @@ module Workflows =
         fun conversion thumbnail ->
           let completedConversion: Conversion.Completed =
             { Id = conversion.Id
-              OutputFile = (conversion.OutputFile |> Video)
-              ThumbnailFile = (thumbnail |> Thumbnail) }
+              OutputFile = (conversion.OutputFile |> Conversion.Video)
+              ThumbnailFile = (thumbnail |> Conversion.Thumbnail) }
 
           saveCompletedConversion completedConversion
           |> Task.map (fun _ -> completedConversion)

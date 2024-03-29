@@ -275,8 +275,8 @@ type Functions
           | Choice2Of2 thumbnailedConversion ->
             let completedConversion: Conversion.Completed =
               { Id = thumbnailedConversion.Id
-                OutputFile = (file |> Video)
-                ThumbnailFile = (thumbnailedConversion.ThumbnailName |> Thumbnail) }
+                OutputFile = (file |> Conversion.Video)
+                ThumbnailFile = (thumbnailedConversion.ThumbnailName |> Conversion.Thumbnail) }
 
             task {
               do! saveCompletedConversion completedConversion

@@ -21,8 +21,8 @@ module Workflows =
 
     fun userId messageId ->
       fun video thumbnail ->
-        let (Video video) = video
-        let (Thumbnail thumbnail) = thumbnail
+        let (Conversion.Video video) = video
+        let (Conversion.Thumbnail thumbnail) = thumbnail
 
         let videoContainer =
           blobServiceClient.GetBlobContainerClient workersSettings.Converter.Output.Container
