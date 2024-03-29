@@ -1,17 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
-        <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
 
-    <ItemGroup>
-      <Compile Include="Core.fs" />
-      <Compile Include="Workflows.fs" />
-    </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Core.fs"/>
+    <Compile Include="Resources.fs" />
+    <Compile Include="Workflows.fs"/>
+  </ItemGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\Domain\Domain.fsproj" />
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Domain\Domain.fsproj"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="otsom.fs.Extensions" Version="0.0.18"/>
+  </ItemGroup>
 
 </Project>

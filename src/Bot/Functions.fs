@@ -6,7 +6,6 @@ open Bot
 open Bot.Domain
 open Bot.Database
 open Bot.Workflows
-open Domain.Core
 open Domain.Workflows
 open FSharp
 open Infrastructure.Settings
@@ -25,6 +24,7 @@ open shortid
 open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
 open Infrastructure.Workflows
+open Domain.Core
 
 type Functions
   (

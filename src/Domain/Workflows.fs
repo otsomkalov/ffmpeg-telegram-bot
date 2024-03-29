@@ -43,8 +43,8 @@ module Workflows =
         fun conversion thumbnail ->
           let completedConversion: Conversion.Completed =
             { Id = conversion.Id
-              OutputFile = conversion.OutputFile
-              ThumbnailFile = thumbnail }
+              OutputFile = (conversion.OutputFile |> Video)
+              ThumbnailFile = (thumbnail |> Thumbnail) }
 
           saveCompletedConversion completedConversion
           |> Task.map (fun _ -> completedConversion)

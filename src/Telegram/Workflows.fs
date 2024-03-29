@@ -5,6 +5,7 @@ open Domain.Core
 open Domain.Workflows
 open Telegram.Core
 open otsom.fs.Telegram.Bot.Core
+open otsom.fs.Extensions
 
 module Workflows =
   type DeleteBotMessage = UserId -> BotMessageId -> Task

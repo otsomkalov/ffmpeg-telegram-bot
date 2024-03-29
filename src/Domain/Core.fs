@@ -9,6 +9,9 @@ module Core =
 
   type ConversionId = ConversionId of string
 
+  type Video = Video of string
+  type Thumbnail = Thumbnail of string
+
   [<RequireQualifiedAccess>]
   module Conversion =
     type Prepared = { Id: string; InputFile: string }

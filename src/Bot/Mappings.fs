@@ -90,8 +90,8 @@ module Conversion =
     let toDb (conversion: Conversion.Completed) : Database.Conversion =
       Database.Conversion(
         Id = conversion.Id,
-        OutputFileName = (conversion.OutputFile |> Video.value),
-        ThumbnailFileName = (conversion.ThumbnailFile |> Thumbnail.value),
+        OutputFileName = (conversion.OutputFile |> Conversion.Video.value),
+        ThumbnailFileName = (conversion.ThumbnailFile |> Conversion.Thumbnail.value),
         State = Database.ConversionState.Completed
       )
 
