@@ -25,7 +25,7 @@ open shortid
 open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
 open Infrastructure.Workflows
-open Domain.Deps
+open Domain.Repos
 open Domain.Core
 
 type Functions

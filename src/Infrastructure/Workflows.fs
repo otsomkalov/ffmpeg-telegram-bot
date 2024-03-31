@@ -6,7 +6,7 @@ open Domain.Workflows
 open Infrastructure.Settings
 open MongoDB.Driver
 open otsom.fs.Extensions
-open Domain.Deps
+open Domain.Repos
 
 module Workflows =
 
@@ -45,3 +45,11 @@ module Workflows =
 
           collection.Find(filter).SingleOrDefaultAsync()
           |> Task.map Mappings.Conversion.Completed.fromDb
+
+      let save (db: IMongoDatabase) : Conversion.Completed.Save =
+        let collection = db.GetCollection "conversions"
+
+        fun conversion ->
+          let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
+          let entity = conversion |> Mappings.Conversion.Completed.toDb
+          collection.ReplaceOneAsync(filter, entity) |> Task.ignore

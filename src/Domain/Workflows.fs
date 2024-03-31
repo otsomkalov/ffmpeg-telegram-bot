@@ -1,30 +1,27 @@
 ﻿namespace Domain
 
+open System.Threading.Tasks
 open Domain.Core
 open otsom.fs.Extensions
-open Domain.Deps
+open Domain.Repos
 
 module Workflows =
 
   [<RequireQualifiedAccess>]
   module Conversion =
     [<RequireQualifiedAccess>]
-    module Completed =
-      type Save = Conversion.Completed -> Task<unit>
-
-      type Load = ConversionId -> Task<Conversion.Completed>
-      type DeleteVideo = Conversion.Video -> Task<unit>
-      type DeleteThumbnail = Conversion.Thumbnail -> Task<unit>
-
-      type QueueUpload = Conversion.Completed -> Task<unit>
-
-    [<RequireQualifiedAccess>]
-    module PreparedOrConverted =
-      type Load = ConversionId -> Task<Conversion.PreparedOrConverted>
-
-    [<RequireQualifiedAccess>]
     module Thumbnailed =
       type Save = Conversion.Thumbnailed -> Task<unit>
+
+      let complete (saveCompletedConversion: Conversion.Completed.Save) : Conversion.Thumbnailed.Complete =
+        fun conversion video ->
+          let completedConversion: Conversion.Completed =
+            { Id = conversion.Id
+              OutputFile = video |> Conversion.Video
+              ThumbnailFile = conversion.ThumbnailName |> Conversion.Thumbnail }
+
+          saveCompletedConversion completedConversion
+          |> Task.map (fun _ -> completedConversion)
 
     [<RequireQualifiedAccess>]
     module Prepared =
@@ -54,18 +51,6 @@ module Workflows =
             { Id = conversion.Id
               OutputFile = (conversion.OutputFile |> Conversion.Video)
               ThumbnailFile = (thumbnail |> Conversion.Thumbnail) }
-
-          saveCompletedConversion completedConversion
-          |> Task.map (fun _ -> completedConversion)
-
-    [<RequireQualifiedAccess>]
-    module Thumbnailed =
-      let complete (saveCompletedConversion: Conversion.Completed.Save) : Conversion.Thumbnailed.Complete =
-        fun conversion video ->
-          let completedConversion: Conversion.Completed =
-            { Id = conversion.Id
-              OutputFile = video
-              ThumbnailFile = conversion.ThumbnailName }
 
           saveCompletedConversion completedConversion
           |> Task.map (fun _ -> completedConversion)

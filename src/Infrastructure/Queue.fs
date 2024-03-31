@@ -5,6 +5,7 @@ open Domain.Workflows
 open Infrastructure.Helpers
 open Infrastructure.Settings
 open otsom.fs.Extensions
+open Domain.Repos
 
 module Queue =
   [<CLIMutable>]

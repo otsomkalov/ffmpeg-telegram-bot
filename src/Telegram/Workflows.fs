@@ -6,7 +6,7 @@ open Domain.Workflows
 open Telegram.Core
 open otsom.fs.Telegram.Bot.Core
 open otsom.fs.Extensions
-open Domain.Deps
+open Domain.Repos
 
 module Workflows =
   type DeleteBotMessage = UserId -> BotMessageId -> Task
@@ -25,7 +25,7 @@ module Workflows =
     (editBotMessage: EditBotMessage)
     (loadPreparedOrThumbnailed: Conversion.PreparedOrThumbnailed.Load)
     (loadUser: User.Load)
-    (getLocaleTranslations: GetLocaleTranslations)
+    (getLocaleTranslations: Translation.GetLocaleTranslations)
     (saveVideo: Conversion.Prepared.SaveVideo)
     (complete: Conversion.Thumbnailed.Complete)
     (queueUpload: Conversion.Completed.QueueUpload)
