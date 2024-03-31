@@ -13,6 +13,30 @@ module Workflows =
   [<RequireQualifiedAccess>]
   module Conversion =
     [<RequireQualifiedAccess>]
+    module PreparedOrConverted =
+      let load (db: IMongoDatabase) : Conversion.PreparedOrConverted.Load =
+        let collection = db.GetCollection "conversions"
+
+        fun conversionId ->
+          let (ConversionId conversionId) = conversionId
+          let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+
+          collection.Find(filter).SingleOrDefaultAsync()
+          |> Task.map Mappings.Conversion.PreparedOrConverted.fromDb
+
+    [<RequireQualifiedAccess>]
+    module PreparedOrThumbnailed =
+      let load (db: IMongoDatabase) : Conversion.PreparedOrThumbnailed.Load =
+        let collection = db.GetCollection "conversions"
+
+        fun conversionId ->
+          let (ConversionId conversionId) = conversionId
+          let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+
+          collection.Find(filter).SingleOrDefaultAsync()
+          |> Task.map Mappings.Conversion.PreparedOrThumbnailed.fromDb
+
+    [<RequireQualifiedAccess>]
     module Completed =
       let deleteVideo (settings: WorkersSettings) : Conversion.Completed.DeleteVideo =
         let blobServiceClient = BlobServiceClient(settings.ConnectionString)

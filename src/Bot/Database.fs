@@ -9,6 +9,7 @@ open otsom.fs.Telegram.Bot.Core
 open Domain.Workflows
 open Telegram.Workflows
 open Domain.Repos
+open Infrastructure.Mappings
 
 [<RequireQualifiedAccess>]
 module User =
@@ -73,14 +74,14 @@ module Conversion =
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
 
         collection.Find(filter).SingleOrDefaultAsync()
-        |> Task.map Mappings.Conversion.Prepared.fromDb
+        |> Task.map Conversion.Prepared.fromDb
 
     let save (db: IMongoDatabase) : Conversion.Prepared.Save =
       let collection = db.GetCollection "conversions"
 
       fun conversion ->
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
-        let entity = conversion |> Mappings.Conversion.Prepared.toDb
+        let entity = conversion |> Conversion.Prepared.toDb
         collection.ReplaceOneAsync(filter, entity) |> Task.ignore
 
   [<RequireQualifiedAccess>]
@@ -92,14 +93,14 @@ module Conversion =
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
 
         collection.Find(filter).SingleOrDefaultAsync()
-        |> Task.map Mappings.Conversion.Converted.fromDb
+        |> Task.map Conversion.Converted.fromDb
 
     let save (db: IMongoDatabase) : Conversion.Converted.Save =
       let collection = db.GetCollection "conversions"
 
       fun conversion ->
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
-        let entity = conversion |> Mappings.Conversion.Converted.toDb
+        let entity = conversion |> Conversion.Converted.toDb
         collection.ReplaceOneAsync(filter, entity) |> Task.ignore
 
   [<RequireQualifiedAccess>]
@@ -111,36 +112,12 @@ module Conversion =
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
 
         collection.Find(filter).SingleOrDefaultAsync()
-        |> Task.map Mappings.Conversion.Thumbnailed.fromDb
+        |> Task.map Conversion.Thumbnailed.fromDb
 
     let save (db: IMongoDatabase) : Conversion.Thumbnailed.Save =
       let collection = db.GetCollection "conversions"
 
       fun conversion ->
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
-        let entity = conversion |> Mappings.Conversion.Thumbnailed.toDb
+        let entity = conversion |> Conversion.Thumbnailed.toDb
         collection.ReplaceOneAsync(filter, entity) |> Task.ignore
-
-  [<RequireQualifiedAccess>]
-  module PreparedOrConverted =
-    let load (db: IMongoDatabase) : Conversion.PreparedOrConverted.Load =
-      let collection = db.GetCollection "conversions"
-
-      fun conversionId ->
-        let (ConversionId conversionId) = conversionId
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
-
-        collection.Find(filter).SingleOrDefaultAsync()
-        |> Task.map Mappings.Conversion.PreparedOrConverted.fromDb
-
-  [<RequireQualifiedAccess>]
-  module PreparedOrThumbnailed =
-    let load (db: IMongoDatabase) : Conversion.PreparedOrThumbnailed.Load =
-      let collection = db.GetCollection "conversions"
-
-      fun conversionId ->
-        let (ConversionId conversionId) = conversionId
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
-
-        collection.Find(filter).SingleOrDefaultAsync()
-        |> Task.map Mappings.Conversion.PreparedOrThumbnailed.fromDb

@@ -49,7 +49,10 @@ type Functions
     getLocaleTranslations: Translation.GetLocaleTranslations,
     queueUpload: Conversion.Completed.QueueUpload,
     loadUser: User.Load,
-    saveCompletedConversion: Conversion.Completed.Save
+    completeThumbnailedConversion: Conversion.Thumbnailed.Complete,
+    completeConvertedConversion: Conversion.Converted.Complete,
+    loadPreparedOrThumbnailed: Conversion.PreparedOrThumbnailed.Load,
+    loadPreparedOrConverted: Conversion.PreparedOrConverted.Load
   ) =
 
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings _logger
@@ -239,10 +242,8 @@ type Functions
       [<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage,
       _: FunctionContext
     ) : Task<unit> =
-    let loadPreparedOrThumbnailed = Conversion.PreparedOrThumbnailed.load _db
     let saveConvertedConversion = Conversion.Converted.save _db
     let saveVideo = Conversion.Prepared.saveVideo saveConvertedConversion
-    let complete = Conversion.Thumbnailed.complete saveCompletedConversion
 
     let conversionId = ConversionId message.Id
 
@@ -254,7 +255,7 @@ type Functions
         loadUser
         getLocaleTranslations
         saveVideo
-        complete
+        completeThumbnailedConversion
         queueUpload
 
     processConversionResult conversionId message.Result
@@ -265,10 +266,8 @@ type Functions
       [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage,
       _: FunctionContext
     ) : Task<unit> =
-    let loadPreparedOrConverted = Conversion.PreparedOrConverted.load _db
     let saveThumbnailedConversion = Conversion.Thumbnailed.save _db
     let saveThumbnail = Conversion.Prepared.saveThumbnail saveThumbnailedConversion
-    let complete = Conversion.Converted.complete saveCompletedConversion
 
     let processThumbnailingResult =
       processThumbnailingResult
@@ -278,7 +277,7 @@ type Functions
         loadUser
         getLocaleTranslations
         saveThumbnail
-        complete
+        completeConvertedConversion
         queueUpload
 
     processThumbnailingResult (ConversionId message.Id) message.Result
