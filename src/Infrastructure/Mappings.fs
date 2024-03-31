@@ -11,5 +11,5 @@ module Mappings =
         match conversion.State with
         | Database.ConversionState.Completed ->
           { Id = conversion.Id
-            OutputFile = (conversion.OutputFileName |> Video)
-            ThumbnailFile = (conversion.ThumbnailFileName |> Thumbnail) }
+            OutputFile = (conversion.OutputFileName |> Conversion.Video)
+            ThumbnailFile = (conversion.ThumbnailFileName |> Conversion.Thumbnail) }

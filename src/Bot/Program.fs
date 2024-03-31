@@ -5,6 +5,7 @@ open System.Net.Http
 open System.Reflection
 open System.Text.Json
 open System.Text.Json.Serialization
+open Infrastructure.Helpers
 open Infrastructure.Settings
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
@@ -19,7 +20,6 @@ open Telegram.Bot
 open MongoDB.ApplicationInsights.DependencyInjection
 open Polly
 open otsom.fs.Extensions.DependencyInjection
-open Helpers
 open otsom.fs.Telegram.Bot
 open Infrastructure
 open Telegram.Infrastructure

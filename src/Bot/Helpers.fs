@@ -47,13 +47,3 @@ let (|Regex|_|) (regex: Regex) (text: string) =
     None
   else
     matches |> Seq.map (fun m -> m.Value) |> Some
-
-[<RequireQualifiedAccess>]
-module JSON =
-  let options =
-    JsonFSharpOptions.Default().WithUnionUntagged().WithUnionUnwrapRecordCases()
-
-  let private options' = options.ToJsonSerializerOptions()
-
-  let serialize value =
-    JsonSerializer.Serialize(value, options')

@@ -20,7 +20,7 @@ module Workflows =
           blobServiceClient.GetBlobContainerClient settings.Converter.Output.Container
 
         fun name ->
-          let (Video name) = name
+          let (Conversion.Video name) = name
           let blob = container.GetBlobClient(name)
           blob.DeleteAsync() |> Task.ignore
 
@@ -31,7 +31,7 @@ module Workflows =
           blobServiceClient.GetBlobContainerClient settings.Thumbnailer.Output.Container
 
         fun name ->
-          let (Thumbnail name) = name
+          let (Conversion.Thumbnail name) = name
           let blob = container.GetBlobClient(name)
           blob.DeleteAsync() |> Task.ignore
 
