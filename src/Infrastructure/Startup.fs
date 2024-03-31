@@ -22,3 +22,4 @@ module Startup =
       .BuildSingleton<Conversion.PreparedOrThumbnailed.Load, IMongoDatabase>(Conversion.PreparedOrThumbnailed.load)
 
       .BuildSingleton<Conversion.Thumbnailed.Complete, Conversion.Completed.Save>(Conversion.Thumbnailed.complete)
+      .BuildSingleton<Conversion.Converted.Complete, Conversion.Completed.Save>(Conversion.Converted.complete)
