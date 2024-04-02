@@ -11,17 +11,12 @@ module Workflows =
   module Conversion =
     [<RequireQualifiedAccess>]
     module Thumbnailed =
-      type Save = Conversion.Thumbnailed -> Task<unit>
-
       let complete (saveCompletedConversion: Conversion.Completed.Save) : Conversion.Thumbnailed.Complete =
         fun conversion video ->
-          let completedConversion: Conversion.Completed =
+          saveCompletedConversion
             { Id = conversion.Id
               OutputFile = video |> Conversion.Video
               ThumbnailFile = conversion.ThumbnailName |> Conversion.Thumbnail }
-
-          saveCompletedConversion completedConversion
-          |> Task.map (fun _ -> completedConversion)
 
     [<RequireQualifiedAccess>]
     module Prepared =
@@ -47,10 +42,7 @@ module Workflows =
     module Converted =
       let complete (saveCompletedConversion: Conversion.Completed.Save) : Conversion.Converted.Complete =
         fun conversion thumbnail ->
-          let completedConversion: Conversion.Completed =
+          saveCompletedConversion
             { Id = conversion.Id
               OutputFile = (conversion.OutputFile |> Conversion.Video)
               ThumbnailFile = (thumbnail |> Conversion.Thumbnail) }
-
-          saveCompletedConversion completedConversion
-          |> Task.map (fun _ -> completedConversion)

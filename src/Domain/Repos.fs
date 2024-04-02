@@ -8,7 +8,7 @@ module Repos =
   module Conversion =
     [<RequireQualifiedAccess>]
     module Completed =
-      type Save = Conversion.Completed -> Task<unit>
+      type Save = Conversion.Completed -> Task<Conversion.Completed>
 
       type Load = ConversionId -> Task<Conversion.Completed>
       type DeleteVideo = Conversion.Video -> Task<unit>

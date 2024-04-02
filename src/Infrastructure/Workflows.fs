@@ -43,7 +43,7 @@ module Workflows =
           let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
 
           collection.Find(filter).SingleOrDefaultAsync()
-          |> Task.map Mappings.Conversion.PreparedOrConverted.fromDb
+          |> Task.map Conversion.PreparedOrConverted.fromDb
 
     [<RequireQualifiedAccess>]
     module PreparedOrThumbnailed =
@@ -55,7 +55,7 @@ module Workflows =
           let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
 
           collection.Find(filter).SingleOrDefaultAsync()
-          |> Task.map Mappings.Conversion.PreparedOrThumbnailed.fromDb
+          |> Task.map Conversion.PreparedOrThumbnailed.fromDb
 
     [<RequireQualifiedAccess>]
     module Completed =
@@ -89,12 +89,14 @@ module Workflows =
           let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
 
           collection.Find(filter).SingleOrDefaultAsync()
-          |> Task.map Mappings.Conversion.Completed.fromDb
+          |> Task.map Conversion.Completed.fromDb
 
       let save (db: IMongoDatabase) : Conversion.Completed.Save =
         let collection = db.GetCollection "conversions"
 
         fun conversion ->
           let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
-          let entity = conversion |> Mappings.Conversion.Completed.toDb
-          collection.ReplaceOneAsync(filter, entity) |> Task.ignore
+          let entity = conversion |> Conversion.Completed.toDb
+
+          collection.ReplaceOneAsync(filter, entity)
+          |> Task.map (fun _ -> conversion)
