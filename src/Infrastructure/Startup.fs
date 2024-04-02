@@ -21,5 +21,11 @@ module Startup =
       .BuildSingleton<Conversion.PreparedOrConverted.Load, IMongoDatabase>(Conversion.PreparedOrConverted.load)
       .BuildSingleton<Conversion.PreparedOrThumbnailed.Load, IMongoDatabase>(Conversion.PreparedOrThumbnailed.load)
 
+      .BuildSingleton<Conversion.Converted.Save, IMongoDatabase>(Conversion.Converted.save)
+      .BuildSingleton<Conversion.Thumbnailed.Save, IMongoDatabase>(Conversion.Thumbnailed.save)
+
+      .BuildSingleton<Conversion.Prepared.SaveVideo, Conversion.Converted.Save>(Conversion.Prepared.saveVideo)
+      .BuildSingleton<Conversion.Prepared.SaveThumbnail, Conversion.Thumbnailed.Save>(Conversion.Prepared.saveThumbnail)
+
       .BuildSingleton<Conversion.Thumbnailed.Complete, Conversion.Completed.Save>(Conversion.Thumbnailed.complete)
       .BuildSingleton<Conversion.Converted.Complete, Conversion.Completed.Save>(Conversion.Converted.complete)

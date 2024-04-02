@@ -52,7 +52,9 @@ type Functions
     completeThumbnailedConversion: Conversion.Thumbnailed.Complete,
     completeConvertedConversion: Conversion.Converted.Complete,
     loadPreparedOrThumbnailed: Conversion.PreparedOrThumbnailed.Load,
-    loadPreparedOrConverted: Conversion.PreparedOrConverted.Load
+    loadPreparedOrConverted: Conversion.PreparedOrConverted.Load,
+    saveVideo: Conversion.Prepared.SaveVideo,
+    saveThumbnail: Conversion.Prepared.SaveThumbnail
   ) =
 
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings _logger
@@ -242,11 +244,6 @@ type Functions
       [<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage,
       _: FunctionContext
     ) : Task<unit> =
-    let saveConvertedConversion = Conversion.Converted.save _db
-    let saveVideo = Conversion.Prepared.saveVideo saveConvertedConversion
-
-    let conversionId = ConversionId message.Id
-
     let processConversionResult =
       processConversionResult
         loadUserConversion
@@ -258,7 +255,7 @@ type Functions
         completeThumbnailedConversion
         queueUpload
 
-    processConversionResult conversionId message.Result
+    processConversionResult (ConversionId message.Id) message.Result
 
   [<Function("SaveThumbnailingResult")>]
   member this.SaveThumbnailingResult
@@ -266,9 +263,6 @@ type Functions
       [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage,
       _: FunctionContext
     ) : Task<unit> =
-    let saveThumbnailedConversion = Conversion.Thumbnailed.save _db
-    let saveThumbnail = Conversion.Prepared.saveThumbnail saveThumbnailedConversion
-
     let processThumbnailingResult =
       processThumbnailingResult
         loadUserConversion

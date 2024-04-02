@@ -95,14 +95,6 @@ module Conversion =
         collection.Find(filter).SingleOrDefaultAsync()
         |> Task.map Conversion.Converted.fromDb
 
-    let save (db: IMongoDatabase) : Conversion.Converted.Save =
-      let collection = db.GetCollection "conversions"
-
-      fun conversion ->
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
-        let entity = conversion |> Conversion.Converted.toDb
-        collection.ReplaceOneAsync(filter, entity) |> Task.ignore
-
   [<RequireQualifiedAccess>]
   module Thumbnailed =
     let load (db: IMongoDatabase) =
@@ -113,11 +105,3 @@ module Conversion =
 
         collection.Find(filter).SingleOrDefaultAsync()
         |> Task.map Conversion.Thumbnailed.fromDb
-
-    let save (db: IMongoDatabase) : Conversion.Thumbnailed.Save =
-      let collection = db.GetCollection "conversions"
-
-      fun conversion ->
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
-        let entity = conversion |> Conversion.Thumbnailed.toDb
-        collection.ReplaceOneAsync(filter, entity) |> Task.ignore

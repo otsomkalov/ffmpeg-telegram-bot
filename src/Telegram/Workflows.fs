@@ -61,7 +61,6 @@ module Workflows =
         return! processResult editMessage tran conversion result
       }
 
-
   let processThumbnailingResult
     (loadUserConversion: UserConversion.Load)
     (editBotMessage: EditBotMessage)
