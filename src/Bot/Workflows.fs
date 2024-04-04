@@ -4,10 +4,8 @@ open System.Text.RegularExpressions
 open Bot.Domain
 open System.Threading.Tasks
 open Domain.Core
-open FSharp
 open Helpers
 open Microsoft.Extensions.Logging
-open Telegram.Core
 open Telegram.Core
 
 [<RequireQualifiedAccess>]
@@ -29,13 +27,10 @@ module Conversion =
   module Prepared =
     type Load = string -> Conversion.Prepared Task
 
-let parseCommand (settings: Settings.InputValidationSettings) (loggerFactory: ILoggerFactory) : ParseCommand =
-  let logger = loggerFactory.CreateLogger(nameof(ParseCommand))
+let parseCommand (settings: Settings.InputValidationSettings) : ParseCommand =
   let linkRegex = Regex(settings.LinkRegex)
 
   fun message ->
-    Logf.logfi logger "Parsing input command from message"
-
     match message with
     | FromBot ->
       None |> Task.FromResult

@@ -67,7 +67,7 @@ type Functions
     let saveConversion = Conversion.New.save _db
 
     let ensureUserExists = User.ensureExists _db loggerFactory
-    let parseCommand = Workflows.parseCommand inputValidationSettings loggerFactory
+    let parseCommand = Workflows.parseCommand inputValidationSettings
 
     let saveAndQueueConversion sentMessageId getDownloaderMessage =
       task {
@@ -154,6 +154,8 @@ type Functions
       function
       | None -> Task.FromResult()
       | Some cmd ->
+        Logf.logfi _logger "Processing message command"
+
         match message.From |> Option.ofObj with
         | Some sender ->
           ensureUserExists (Mappings.User.fromTg sender)
