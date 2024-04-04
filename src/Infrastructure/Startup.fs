@@ -13,6 +13,7 @@ open Queue
 open Domain.Repos
 open Polly
 open Infrastructure.Repos
+open Infrastructure.Workflows
 
 module Startup =
   [<Literal>]
