@@ -23,13 +23,11 @@ module UserConversion =
 module Conversion =
   [<RequireQualifiedAccess>]
   module New =
-    type Load = string -> Conversion.New Task
     type Save = Conversion.New -> unit Task
 
   [<RequireQualifiedAccess>]
   module Prepared =
     type Load = string -> Conversion.Prepared Task
-    type Save = Conversion.Prepared -> unit Task
 
 let parseCommand (settings: Settings.InputValidationSettings) (loggerFactory: ILoggerFactory) : ParseCommand =
   let logger = loggerFactory.CreateLogger(nameof(ParseCommand))

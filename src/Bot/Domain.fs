@@ -5,12 +5,6 @@ open Domain.Core
 open Telegram.Bot.Types
 
 [<RequireQualifiedAccess>]
-module Conversion =
-  type New = { Id: string }
-
-  type PreparedOrThumbnailed = Choice<Conversion.Prepared, Conversion.Thumbnailed>
-
-[<RequireQualifiedAccess>]
 type Command =
   | Start
   | Links of string seq

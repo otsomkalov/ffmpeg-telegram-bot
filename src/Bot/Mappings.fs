@@ -22,7 +22,7 @@ module User =
 module UserConversion =
   let toDb (conversion: UserConversion) : Database.Conversion =
     Database.Conversion(
-      Id = conversion.ConversionId,
+      Id = (conversion.ConversionId |> ConversionId.value),
       UserId = (conversion.UserId |> Option.map UserId.value |> Option.toNullable),
       ReceivedMessageId = (conversion.ReceivedMessageId |> UserMessageId.value),
       SentMessageId = (conversion.SentMessageId |> BotMessageId.value),
@@ -33,12 +33,8 @@ module UserConversion =
 module Conversion =
   [<RequireQualifiedAccess>]
   module New =
-    let fromDb (conversion: Database.Conversion) : Domain.Conversion.New =
-      match conversion.State with
-      | Database.ConversionState.New -> { Id = conversion.Id }
-
-    let toDb (conversion: Domain.Conversion.New) : Database.Conversion =
-      Database.Conversion(Id = conversion.Id, State = Database.ConversionState.New)
+    let toDb (conversion: Conversion.New) : Database.Conversion =
+      Database.Conversion(Id = (conversion.Id |> ConversionId.value), State = Database.ConversionState.New)
 
 [<RequireQualifiedAccess>]
 module Translation =

@@ -3,7 +3,6 @@
 open System.Threading.Tasks
 open otsom.fs.Telegram.Bot.Core
 
-
 module Core =
   type User = { Id: UserId; Lang: string option }
 
@@ -11,21 +10,43 @@ module Core =
 
   [<RequireQualifiedAccess>]
   module Conversion =
-    type Prepared = { Id: string; InputFile: string }
-    type Converted = { Id: string; OutputFile: string }
-    type Thumbnailed = { Id: string; ThumbnailName: string }
+    type New = { Id: ConversionId }
+    type Prepared = { Id: ConversionId; InputFile: string }
+
+    type Converted =
+      { Id: ConversionId; OutputFile: string }
+
+    type Thumbnailed =
+      { Id: ConversionId
+        ThumbnailName: string }
 
     type PreparedOrConverted = Choice<Prepared, Converted>
     type PreparedOrThumbnailed = Choice<Prepared, Thumbnailed>
-
 
     type Video = Video of string
     type Thumbnail = Thumbnail of string
 
     type Completed =
-      { Id: string
+      { Id: ConversionId
         OutputFile: Video
         ThumbnailFile: Thumbnail }
+
+    [<RequireQualifiedAccess>]
+    module New =
+      type InputLink = { Url: string }
+      type InputDocument = { Id: string; Name: string }
+
+      type InputFile =
+        | Link of InputLink
+        | Document of InputDocument
+
+      [<RequireQualifiedAccess>]
+      type DownloadLinkError =
+        | Unauthorized
+        | NotFound
+        | ServerError
+
+      type Prepare = ConversionId -> InputFile -> Task<Result<Prepared, DownloadLinkError>>
 
     [<RequireQualifiedAccess>]
     module Prepared =

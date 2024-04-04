@@ -15,10 +15,8 @@ open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.ApplicationInsights
 open MongoDB.ApplicationInsights
 open MongoDB.Driver
-open Polly.Extensions.Http
 open Telegram.Bot
 open MongoDB.ApplicationInsights.DependencyInjection
-open Polly
 open otsom.fs.Extensions.DependencyInjection
 open otsom.fs.Telegram.Bot
 open Infrastructure
@@ -42,15 +40,6 @@ module Startup =
     builder.AddFilter<ApplicationInsightsLoggerProvider>(String.Empty, LogLevel.Information)
 
     ()
-
-  [<Literal>]
-  let chromeUserAgent =
-    "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36"
-
-  let private retryPolicy =
-    HttpPolicyExtensions
-      .HandleTransientHttpError()
-      .WaitAndRetryAsync(5, (fun retryAttempt -> TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))))
 
   let private configureMongoClient (factory: IMongoClientFactory) (settings: Settings.DatabaseSettings) =
     factory.GetClient(settings.ConnectionString)
@@ -94,10 +83,6 @@ module Startup =
       .BuildSingleton<ITelegramBotClient, Settings.TelegramSettings, HttpClient>(fun settings client ->
         let options = TelegramBotClientOptions(settings.Token, settings.ApiUrl)
         TelegramBotClient(options, client) :> ITelegramBotClient)
-
-    services
-      .AddHttpClient(fun (client: HttpClient) -> client.DefaultRequestHeaders.UserAgent.ParseAdd(chromeUserAgent))
-      .AddPolicyHandler(retryPolicy)
 
     services.AddMvcCore().AddNewtonsoftJson()
 

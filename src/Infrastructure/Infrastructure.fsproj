@@ -10,17 +10,19 @@
     <Compile Include="Settings.fs"/>
     <Compile Include="Mappings.fs"/>
     <Compile Include="Helpers.fs" />
-    <Compile Include="Workflows.fs"/>
-    <Compile Include="Storage.fs"/>
+    <Compile Include="Workflows.fs" />
     <Compile Include="Queue.fs"/>
+    <Compile Include="Repos.fs" />
     <Compile Include="Startup.fs"/>
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1"/>
     <PackageReference Include="Azure.Storage.Queues" Version="12.17.1"/>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
     <PackageReference Include="MongoDB.Driver" Version="2.24.0"/>
     <PackageReference Include="FSharp.SystemTextJson" Version="1.2.42"/>
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="8.0.3"/>
   </ItemGroup>
 
   <ItemGroup>

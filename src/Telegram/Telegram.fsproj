@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="otsom.fs.Extensions" Version="0.0.18"/>
+    <PackageReference Include="otsom.fs.Extensions" Version="0.0.19"/>
   </ItemGroup>
 
 </Project>

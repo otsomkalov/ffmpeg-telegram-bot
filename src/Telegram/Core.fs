@@ -14,13 +14,15 @@ module Core =
     | Success of name: string
     | Error of error: string
 
+  type DownloadFileAndQueueConversion = ConversionId -> Conversion.New.InputFile -> Task<unit>
+
   type ProcessThumbnailingResult = ConversionId -> ConversionResult -> Task<unit>
   type ProcessConversionResult = ConversionId -> ConversionResult -> Task<unit>
 
   type UserConversion =
     { ReceivedMessageId: UserMessageId
       SentMessageId: BotMessageId
-      ConversionId: string
+      ConversionId: ConversionId
       UserId: UserId option
       ChatId: UserId }
 

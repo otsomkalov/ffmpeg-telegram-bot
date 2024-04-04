@@ -2,7 +2,6 @@
 
 open System.Threading.Tasks
 open Domain.Core
-open Domain.Workflows
 open Telegram.Core
 open otsom.fs.Telegram.Bot.Core
 open otsom.fs.Extensions
@@ -19,6 +18,42 @@ module Workflows =
   [<RequireQualifiedAccess>]
   module User =
     type Load = UserId -> Task<User>
+
+  let downloadFileAndQueueConversion
+    (editBotMessage: EditBotMessage)
+    (loadUserConversion: UserConversion.Load)
+    (loadUser: User.Load)
+    (getLocaleTranslations: Translation.GetLocaleTranslations)
+    (prepareConversion: Conversion.New.Prepare)
+    : DownloadFileAndQueueConversion =
+
+    let onSuccess editMessage tran =
+      fun _ -> editMessage (tran Resources.ConversionInProgress)
+
+    let onError editMessage tran =
+      fun error ->
+        match error with
+        | Conversion.New.DownloadLinkError.Unauthorized -> editMessage (tran Resources.NotAuthorized)
+        | Conversion.New.DownloadLinkError.NotFound -> editMessage (tran Resources.NotFound)
+        | Conversion.New.DownloadLinkError.ServerError -> editMessage (tran Resources.ServerError)
+
+    fun conversionId file ->
+      task {
+        let! userConversion = loadUserConversion conversionId
+
+        let! tran, _ =
+          userConversion.UserId
+          |> Option.taskMap loadUser
+          |> Task.map (Option.bind (_.Lang))
+          |> Task.bind getLocaleTranslations
+
+        let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
+
+        let onSuccess = (onSuccess editMessage tran)
+        let onError = (onError editMessage tran)
+
+        return! prepareConversion conversionId file |> TaskResult.taskEither onSuccess onError
+      }
 
   let processConversionResult
     (loadUserConversion: UserConversion.Load)

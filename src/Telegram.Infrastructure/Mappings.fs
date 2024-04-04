@@ -9,7 +9,7 @@ module Mappings =
   [<RequireQualifiedAccess>]
   module UserConversion =
     let fromDb (conversion: Database.Conversion) : UserConversion =
-      { ConversionId = conversion.Id
+      { ConversionId = (conversion.Id |> ConversionId)
         UserId = (conversion.UserId |> Option.ofNullable |> Option.map UserId)
         ReceivedMessageId = (conversion.ReceivedMessageId |> UserMessageId)
         SentMessageId = BotMessageId conversion.SentMessageId

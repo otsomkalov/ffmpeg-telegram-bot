@@ -1,5 +1,6 @@
 ﻿namespace Telegram.Infrastructure
 
+open Domain.Repos
 open Infrastructure.Settings
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
@@ -18,4 +19,4 @@ module Startup =
       .BuildSingleton<ReplyWithVideo, WorkersSettings, ITelegramBotClient>(replyWithVideo)
       .BuildSingleton<Translation.GetLocaleTranslations, IMongoDatabase, ILoggerFactory>(Translation.getLocaleTranslations)
       .BuildSingleton<User.Load, IMongoDatabase>(User.load)
-
+      .BuildSingleton<Conversion.New.InputFile.DownloadDocument, ITelegramBotClient, WorkersSettings>(Conversion.New.InputFile.downloadDocument)
