@@ -16,6 +16,8 @@ module Core =
     type Thumbnailed = { Id: string; ThumbnailName: string }
 
     type PreparedOrConverted = Choice<Prepared, Converted>
+    type PreparedOrThumbnailed = Choice<Prepared, Thumbnailed>
+
 
     type Video = Video of string
     type Thumbnail = Thumbnail of string
@@ -28,7 +30,12 @@ module Core =
     [<RequireQualifiedAccess>]
     module Prepared =
       type SaveThumbnail = Prepared -> string -> Task<Thumbnailed>
+      type SaveVideo = Prepared -> string -> Task<Converted>
 
     [<RequireQualifiedAccess>]
     module Converted =
       type Complete = Converted -> string -> Task<Completed>
+
+    [<RequireQualifiedAccess>]
+    module Thumbnailed =
+      type Complete = Thumbnailed -> string -> Task<Completed>

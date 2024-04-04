@@ -31,14 +31,6 @@ module Conversion =
     type Load = string -> Conversion.Prepared Task
     type Save = Conversion.Prepared -> unit Task
 
-  [<RequireQualifiedAccess>]
-  module Converted =
-    type Save = Conversion.Converted -> unit Task
-
-  [<RequireQualifiedAccess>]
-  module PreparedOrThumbnailed =
-    type Load = string -> Conversion.PreparedOrThumbnailed Task
-
 let parseCommand (settings: Settings.InputValidationSettings) (loggerFactory: ILoggerFactory) : ParseCommand =
   let logger = loggerFactory.CreateLogger(nameof(ParseCommand))
   let linkRegex = Regex(settings.LinkRegex)

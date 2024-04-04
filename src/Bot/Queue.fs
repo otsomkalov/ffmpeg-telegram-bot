@@ -8,6 +8,7 @@ open Infrastructure.Helpers
 open Infrastructure.Settings
 open Telegram.Core
 open otsom.fs.Extensions
+open Domain.Repos
 
 type File =
   | Link of url: string

@@ -25,6 +25,7 @@ open shortid
 open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
 open Infrastructure.Workflows
+open Domain.Repos
 open Domain.Core
 
 type Functions
@@ -46,7 +47,14 @@ type Functions
     deleteVideo: Conversion.Completed.DeleteVideo,
     deleteThumbnail: Conversion.Completed.DeleteThumbnail,
     getLocaleTranslations: Translation.GetLocaleTranslations,
-    queueUpload: Conversion.Completed.QueueUpload
+    queueUpload: Conversion.Completed.QueueUpload,
+    loadUser: User.Load,
+    completeThumbnailedConversion: Conversion.Thumbnailed.Complete,
+    completeConvertedConversion: Conversion.Converted.Complete,
+    loadPreparedOrThumbnailed: Conversion.PreparedOrThumbnailed.Load,
+    loadPreparedOrConverted: Conversion.PreparedOrConverted.Load,
+    saveVideo: Conversion.Prepared.SaveVideo,
+    saveThumbnail: Conversion.Prepared.SaveThumbnail
   ) =
 
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings _logger
@@ -182,7 +190,6 @@ type Functions
     let downloadLink = HTTP.downloadLink _httpClientFactory workersSettings
     let downloadFile = Telegram.downloadDocument _bot workersSettings
     let savePreparedConversion = Conversion.Prepared.save _db
-    let loadUser = User.load _db
 
     let downloadFile file =
       match file with
@@ -237,52 +244,18 @@ type Functions
       [<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage,
       _: FunctionContext
     ) : Task<unit> =
-    let loadPreparedOrThumbnailed = Conversion.PreparedOrThumbnailed.load _db
-    let saveConvertedConversion = Conversion.Converted.save _db
-    let saveCompletedConversion = Conversion.Completed.save _db
-    let loadUser = User.load _db
+    let processConversionResult =
+      processConversionResult
+        loadUserConversion
+        editBotMessage
+        loadPreparedOrThumbnailed
+        loadUser
+        getLocaleTranslations
+        saveVideo
+        completeThumbnailedConversion
+        queueUpload
 
-    let conversionId = ConversionId message.Id
-
-    task {
-      let! userConversion = loadUserConversion conversionId
-
-      let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
-
-      let! tran, _ =
-        userConversion.UserId
-        |> Option.taskMap loadUser
-        |> Task.map (Option.bind (fun u -> u.Lang))
-        |> Task.bind getLocaleTranslations
-
-      let! conversion = loadPreparedOrThumbnailed message.Id
-
-      return!
-        match message.Result with
-        | ConversionResult.Success file ->
-          match conversion with
-          | Choice1Of2 preparedConversion ->
-            let convertedConversion: Conversion.Converted =
-              { Id = preparedConversion.Id
-                OutputFile = file }
-
-            task {
-              do! saveConvertedConversion convertedConversion
-              do! editMessage (tran Telegram.Resources.VideoConverted)
-            }
-          | Choice2Of2 thumbnailedConversion ->
-            let completedConversion: Conversion.Completed =
-              { Id = thumbnailedConversion.Id
-                OutputFile = (file |> Conversion.Video)
-                ThumbnailFile = (thumbnailedConversion.ThumbnailName |> Conversion.Thumbnail) }
-
-            task {
-              do! saveCompletedConversion completedConversion
-              do! queueUpload completedConversion
-              do! editMessage (tran Telegram.Resources.Uploading)
-            }
-        | ConversionResult.Error error -> editMessage error
-    }
+    processConversionResult (ConversionId message.Id) message.Result
 
   [<Function("SaveThumbnailingResult")>]
   member this.SaveThumbnailingResult
@@ -290,14 +263,16 @@ type Functions
       [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.ConverterResultMessage,
       _: FunctionContext
     ) : Task<unit> =
-    let loadPreparedOrConverted = Conversion.PreparedOrConverted.load _db
-    let saveThumbnailedConversion = Conversion.Thumbnailed.save _db
-    let saveCompletedConversion = Conversion.Completed.save _db
-    let loadUser = User.load _db
-    let saveThumbnail = Conversion.Prepared.saveThumbnail saveThumbnailedConversion
-    let complete = Conversion.Converted.complete saveCompletedConversion
-
-    let processThumbnailingResult = processThumbnailingResult loadUserConversion editBotMessage loadPreparedOrConverted loadUser getLocaleTranslations saveThumbnail complete queueUpload
+    let processThumbnailingResult =
+      processThumbnailingResult
+        loadUserConversion
+        editBotMessage
+        loadPreparedOrConverted
+        loadUser
+        getLocaleTranslations
+        saveThumbnail
+        completeConvertedConversion
+        queueUpload
 
     processThumbnailingResult (ConversionId message.Id) message.Result
 
@@ -309,6 +284,7 @@ type Functions
     ) : Task =
     let conversionId = message.ConversionId |> ConversionId
 
-    let uploadSuccessfulConversion = uploadCompletedConversion loadUserConversion loadCompletedConversion deleteBotMessage replyWithVideo deleteVideo deleteThumbnail
+    let uploadSuccessfulConversion =
+      uploadCompletedConversion loadUserConversion loadCompletedConversion deleteBotMessage replyWithVideo deleteVideo deleteThumbnail
 
     uploadSuccessfulConversion conversionId

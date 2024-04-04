@@ -8,6 +8,7 @@ open Microsoft.Extensions.DependencyInjection
 open MongoDB.Driver
 open otsom.fs.Extensions.DependencyInjection
 open Queue
+open Domain.Repos
 
 module Startup =
   let addDomain (services: IServiceCollection) =
@@ -15,4 +16,16 @@ module Startup =
       .BuildSingleton<Conversion.Completed.Load, IMongoDatabase>(Conversion.Completed.load)
       .BuildSingleton<Conversion.Completed.DeleteVideo, WorkersSettings>(Conversion.Completed.deleteVideo)
       .BuildSingleton<Conversion.Completed.DeleteThumbnail, WorkersSettings>(Conversion.Completed.deleteThumbnail)
+      .BuildSingleton<Conversion.Completed.Save, IMongoDatabase>(Conversion.Completed.save)
       .BuildSingleton<Conversion.Completed.QueueUpload, WorkersSettings>(Conversion.Completed.queueUpload)
+      .BuildSingleton<Conversion.PreparedOrConverted.Load, IMongoDatabase>(Conversion.PreparedOrConverted.load)
+      .BuildSingleton<Conversion.PreparedOrThumbnailed.Load, IMongoDatabase>(Conversion.PreparedOrThumbnailed.load)
+
+      .BuildSingleton<Conversion.Converted.Save, IMongoDatabase>(Conversion.Converted.save)
+      .BuildSingleton<Conversion.Thumbnailed.Save, IMongoDatabase>(Conversion.Thumbnailed.save)
+
+      .BuildSingleton<Conversion.Prepared.SaveVideo, Conversion.Converted.Save>(Conversion.Prepared.saveVideo)
+      .BuildSingleton<Conversion.Prepared.SaveThumbnail, Conversion.Thumbnailed.Save>(Conversion.Prepared.saveThumbnail)
+
+      .BuildSingleton<Conversion.Thumbnailed.Complete, Conversion.Completed.Save>(Conversion.Thumbnailed.complete)
+      .BuildSingleton<Conversion.Converted.Complete, Conversion.Completed.Save>(Conversion.Converted.complete)
