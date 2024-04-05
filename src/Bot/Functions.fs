@@ -158,8 +158,10 @@ type Functions
 
         match message.From |> Option.ofObj with
         | Some sender ->
-          ensureUserExists (Mappings.User.fromTg sender)
-          |> Task.bind (fun () -> processCommand cmd)
+          task {
+            do! ensureUserExists (Mappings.User.fromTg sender)
+            do! processCommand cmd
+          }
         | None -> processCommand cmd
 
     parseCommand message |> Task.bind processMessage'
