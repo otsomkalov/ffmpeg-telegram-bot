@@ -2,10 +2,27 @@
 
 open System.Threading.Tasks
 open Domain.Core
+open otsom.fs.Extensions
 
 module Repos =
   [<RequireQualifiedAccess>]
   module Conversion =
+    [<RequireQualifiedAccess>]
+    module New =
+      type Load = ConversionId -> Task<Conversion.New>
+
+      [<RequireQualifiedAccess>]
+      module InputFile =
+        type DownloadLink = Conversion.New.InputLink -> Task<Result<string, Conversion.New.DownloadLinkError>>
+        type DownloadDocument = Conversion.New.InputDocument -> Task<string>
+
+    [<RequireQualifiedAccess>]
+    module Prepared =
+      type Save = Conversion.Prepared -> Task<unit>
+
+      type QueueConversion = Conversion.Prepared -> Task<unit>
+      type QueueThumbnailing = Conversion.Prepared -> Task<unit>
+
     [<RequireQualifiedAccess>]
     module Completed =
       type Save = Conversion.Completed -> Task<Conversion.Completed>

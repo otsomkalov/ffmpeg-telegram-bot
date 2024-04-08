@@ -4,12 +4,13 @@ open Domain.Core
 open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open otsom.fs.Extensions
-open Bot.Workflows
 open otsom.fs.Telegram.Bot.Core
 open Domain.Workflows
 open Telegram.Workflows
 open Domain.Repos
 open Infrastructure.Mappings
+open Infrastructure.Core
+open Bot.Workflows
 
 [<RequireQualifiedAccess>]
 module User =
@@ -49,15 +50,6 @@ module UserConversion =
 module Conversion =
   [<RequireQualifiedAccess>]
   module New =
-    let load (db: IMongoDatabase) : Conversion.New.Load =
-      let collection = db.GetCollection "conversions"
-
-      fun conversionId ->
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
-
-        collection.Find(filter).SingleOrDefaultAsync()
-        |> Task.map Mappings.Conversion.New.fromDb
-
     let save (db: IMongoDatabase) : Conversion.New.Save =
       let collection = db.GetCollection "conversions"
 
@@ -75,14 +67,6 @@ module Conversion =
 
         collection.Find(filter).SingleOrDefaultAsync()
         |> Task.map Conversion.Prepared.fromDb
-
-    let save (db: IMongoDatabase) : Conversion.Prepared.Save =
-      let collection = db.GetCollection "conversions"
-
-      fun conversion ->
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversion.Id)
-        let entity = conversion |> Conversion.Prepared.toDb
-        collection.ReplaceOneAsync(filter, entity) |> Task.ignore
 
   [<RequireQualifiedAccess>]
   module Converted =

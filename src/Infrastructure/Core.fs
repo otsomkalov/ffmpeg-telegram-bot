@@ -12,3 +12,7 @@ module Core =
     [<RequireQualifiedAccess>]
     module Thumbnail =
       let value (Conversion.Thumbnail thumbnail) = thumbnail
+
+  [<RequireQualifiedAccess>]
+  module ConversionId =
+    let value (ConversionId id) = id

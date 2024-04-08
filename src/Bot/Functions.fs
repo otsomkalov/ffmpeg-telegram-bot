@@ -1,6 +1,5 @@
 ﻿namespace Bot.Functions
 
-open System.Net.Http
 open System.Threading.Tasks
 open Bot
 open Bot.Domain
@@ -8,6 +7,7 @@ open Bot.Database
 open Bot.Workflows
 open Domain.Workflows
 open FSharp
+open Infrastructure.Core
 open Infrastructure.Queue
 open Infrastructure.Settings
 open Microsoft.AspNetCore.Http
@@ -15,25 +15,20 @@ open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
 open Microsoft.Extensions.Logging
 open MongoDB.Driver
-open Telegram.Bot
 open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
 open Telegram.Core
-open Telegram.Infrastructure.Workflows
 open Telegram.Workflows
 open shortid
 open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
-open Infrastructure.Workflows
 open Domain.Repos
 open Domain.Core
 
 type Functions
   (
     workersSettings: WorkersSettings,
-    _bot: ITelegramBotClient,
     _db: IMongoDatabase,
-    _httpClientFactory: IHttpClientFactory,
     _logger: ILogger<Functions>,
     sendUserMessage: SendUserMessage,
     replyToUserMessage: ReplyToUserMessage,
@@ -54,7 +49,11 @@ type Functions
     loadPreparedOrThumbnailed: Conversion.PreparedOrThumbnailed.Load,
     loadPreparedOrConverted: Conversion.PreparedOrConverted.Load,
     saveVideo: Conversion.Prepared.SaveVideo,
-    saveThumbnail: Conversion.Prepared.SaveThumbnail
+    saveThumbnail: Conversion.Prepared.SaveThumbnail,
+    downloadLink: Conversion.New.InputFile.DownloadLink,
+    downloadDocument: Conversion.New.InputFile.DownloadDocument,
+    savePreparedConversion: Conversion.Prepared.Save,
+    loadNewConversion: Conversion.New.Load
   ) =
 
   let sendDownloaderMessage = Queue.sendDownloaderMessage workersSettings _logger
@@ -68,11 +67,11 @@ type Functions
     let saveConversion = Conversion.New.save _db
 
     let ensureUserExists = User.ensureExists _db loggerFactory
-    let parseCommand = Workflows.parseCommand inputValidationSettings loggerFactory
+    let parseCommand = Workflows.parseCommand inputValidationSettings
 
     let saveAndQueueConversion sentMessageId getDownloaderMessage =
       task {
-        let newConversion: Domain.Conversion.New = { Id = ShortId.Generate() }
+        let newConversion: Conversion.New = { Id = ShortId.Generate() |> ConversionId }
 
         do! saveConversion newConversion
 
@@ -95,10 +94,11 @@ type Functions
         task {
           let! sentMessageId = replyToMessage (tranf (Telegram.Resources.LinkDownload, [| url |]))
 
-          let getDownloaderMessage: string -> Queue.DownloaderMessage =
+          let getDownloaderMessage =
             fun conversionId ->
               { ConversionId = conversionId
-                File = Queue.File.Link url }
+                File = Conversion.New.InputFile.Link { Url = url } }
+              : Queue.DownloaderMessage
 
           return! saveAndQueueConversion sentMessageId getDownloaderMessage
         }
@@ -109,10 +109,11 @@ type Functions
       task {
         let! sentMessageId = replyToMessage (tranf (Telegram.Resources.DocumentDownload, [| fileName |]))
 
-        let getDownloaderMessage: string -> Queue.DownloaderMessage =
+        let getDownloaderMessage =
           fun conversionId ->
             { ConversionId = conversionId
-              File = Queue.File.Document(fileId, fileName) }
+              File = Conversion.New.InputFile.Document { Id = fileId; Name = fileName } }
+            : Queue.DownloaderMessage
 
         return! saveAndQueueConversion sentMessageId getDownloaderMessage
       }
@@ -121,10 +122,11 @@ type Functions
       task {
         let! sentMessageId = replyToMessage (tranf (Telegram.Resources.VideoDownload, [| fileName |]))
 
-        let getDownloaderMessage: string -> Queue.DownloaderMessage =
+        let getDownloaderMessage =
           fun conversionId ->
             { ConversionId = conversionId
-              File = Queue.File.Document(fileId, fileName) }
+              File = Conversion.New.InputFile.Document { Id = fileId; Name = fileName } }
+            : Queue.DownloaderMessage
 
         return! saveAndQueueConversion sentMessageId getDownloaderMessage
       }
@@ -152,10 +154,14 @@ type Functions
       function
       | None -> Task.FromResult()
       | Some cmd ->
+        Logf.logfi _logger "Processing message command"
+
         match message.From |> Option.ofObj with
         | Some sender ->
-          ensureUserExists (Mappings.User.fromTg sender)
-          |> Task.bind (fun () -> processCommand cmd)
+          task {
+            do! ensureUserExists (Mappings.User.fromTg sender)
+            do! processCommand cmd
+          }
         | None -> processCommand cmd
 
     parseCommand message |> Task.bind processMessage'
@@ -184,59 +190,16 @@ type Functions
       [<QueueTrigger("%Workers:Downloader:Queue%", Connection = "Workers:ConnectionString")>] message: Queue.DownloaderMessage,
       _: FunctionContext
     ) : Task<unit> =
-    let sendConverterMessage = Queue.sendConverterMessage workersSettings
-    let sendThumbnailerMessage = Queue.sendThumbnailerMessage workersSettings
-    let loadNewConversion = Conversion.New.load _db
-    let downloadLink = HTTP.downloadLink _httpClientFactory workersSettings
-    let downloadFile = Telegram.downloadDocument _bot workersSettings
-    let savePreparedConversion = Conversion.Prepared.save _db
+    let queueConversion = Conversion.Prepared.queueConversion workersSettings
+    let queueThumbnailing = Conversion.Prepared.queueThumbnailing workersSettings
 
-    let downloadFile file =
-      match file with
-      | Queue.File.Document(id, name) -> downloadFile id name |> Task.map Ok
-      | Queue.File.Link link -> downloadLink link
+    let prepareConversion =
+      Conversion.New.prepare downloadLink downloadDocument savePreparedConversion queueConversion queueThumbnailing
 
-    let conversionId = ConversionId message.ConversionId
+    let downloadFileAndQueueConversion =
+      downloadFileAndQueueConversion editBotMessage loadUserConversion loadUser getLocaleTranslations prepareConversion
 
-    task {
-      let! userConversion = loadUserConversion conversionId
-
-      let! tran, _ =
-        userConversion.UserId
-        |> Option.taskMap loadUser
-        |> Task.map (Option.bind (fun u -> u.Lang))
-        |> Task.bind getLocaleTranslations
-
-      let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
-
-      let! conversion = loadNewConversion message.ConversionId
-
-      return!
-        message.File
-        |> downloadFile
-        |> Task.bind (function
-          | Ok file ->
-            task {
-              let preparedConversion: Conversion.Prepared =
-                { Id = message.ConversionId
-                  InputFile = file }
-
-              do! savePreparedConversion preparedConversion
-
-              let converterMessage: Queue.ConverterMessage = { Id = conversion.Id; Name = file }
-
-              do! sendConverterMessage converterMessage
-
-              let thumbnailerMessage: Queue.ConverterMessage = { Id = conversion.Id; Name = file }
-
-              do! sendThumbnailerMessage thumbnailerMessage
-
-              do! editMessage (tran Telegram.Resources.ConversionInProgress)
-            }
-          | Result.Error(HTTP.DownloadLinkError.Unauthorized) -> editMessage (tran Telegram.Resources.NotAuthorized)
-          | Result.Error(HTTP.DownloadLinkError.NotFound) -> editMessage (tran Telegram.Resources.NotFound)
-          | Result.Error(HTTP.DownloadLinkError.ServerError) -> editMessage (tran Telegram.Resources.ServerError))
-    }
+    downloadFileAndQueueConversion message.ConversionId message.File
 
   [<Function("SaveConversionResult")>]
   member this.SaveConversionResult
