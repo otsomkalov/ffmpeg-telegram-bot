@@ -40,6 +40,27 @@ module Workflows =
           |> TaskResult.taskTap queueThumbnailing
 
     [<RequireQualifiedAccess>]
+    module New =
+      let prepare
+        (downloadLink: Conversion.New.InputFile.DownloadLink)
+        (downloadDocument: Conversion.New.InputFile.DownloadDocument)
+        (savePreparedConversion: Conversion.Prepared.Save)
+        (queueConversion: Conversion.Prepared.QueueConversion)
+        (queueThumbnailing: Conversion.Prepared.QueueThumbnailing)
+        : Conversion.New.Prepare =
+        fun conversionId file ->
+          match file with
+          | Conversion.New.Link l -> downloadLink l
+          | Conversion.New.Document d -> downloadDocument d |> Task.map Ok
+          |> TaskResult.map (fun downloadedFile ->
+            { Id = conversionId
+              InputFile = downloadedFile }
+            : Conversion.Prepared)
+          |> TaskResult.taskTap savePreparedConversion
+          |> TaskResult.taskTap queueConversion
+          |> TaskResult.taskTap queueThumbnailing
+
+    [<RequireQualifiedAccess>]
     module Thumbnailed =
       let complete (saveCompletedConversion: Conversion.Completed.Save) : Conversion.Thumbnailed.Complete =
         fun conversion video ->
