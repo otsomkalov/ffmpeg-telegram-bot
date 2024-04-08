@@ -1,11 +1,15 @@
-﻿namespace Infrastructure
+﻿#nowarn "20"
+
+namespace Infrastructure
 
 open System
 open System.Net.Http
 open Domain.Core
 open Domain.Workflows
 open Infrastructure.Settings
+open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
+open MongoDB.ApplicationInsights
 open MongoDB.Driver
 open Polly.Extensions.Http
 open otsom.fs.Extensions.DependencyInjection
@@ -14,6 +18,7 @@ open Domain.Repos
 open Polly
 open Infrastructure.Repos
 open Infrastructure.Workflows
+open MongoDB.ApplicationInsights.DependencyInjection
 
 module Startup =
   [<Literal>]
@@ -25,13 +30,38 @@ module Startup =
       .HandleTransientHttpError()
       .WaitAndRetryAsync(5, (fun retryAttempt -> TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))))
 
+  let private configureMongoClient (factory: IMongoClientFactory) (settings: DatabaseSettings) =
+    factory.GetClient(settings.ConnectionString)
+
+  let private configureMongoDatabase (settings: DatabaseSettings) (mongoClient: IMongoClient) =
+    mongoClient.GetDatabase(settings.Name)
+
   let addDomain (services: IServiceCollection) =
     services
       .AddHttpClient(fun (client: HttpClient) -> client.DefaultRequestHeaders.UserAgent.ParseAdd(chromeUserAgent))
       .AddPolicyHandler(retryPolicy)
 
     services
+      .AddMongoClientFactory()
+      .BuildSingleton<IMongoClient, IMongoClientFactory, DatabaseSettings>(configureMongoClient)
+      .BuildSingleton<IMongoDatabase, DatabaseSettings, IMongoClient>(configureMongoDatabase)
+
+    services
+      .BuildSingleton<WorkersSettings, IConfiguration>(fun cfg ->
+        cfg
+          .GetSection(WorkersSettings.SectionName)
+          .Get<WorkersSettings>())
+      .BuildSingleton<DatabaseSettings, IConfiguration>(fun cfg ->
+        cfg
+          .GetSection(DatabaseSettings.SectionName)
+          .Get<DatabaseSettings>())
+
+    services
+      .BuildSingleton<Conversion.Create, Conversion.New.Save>(Conversion.create)
+
       .BuildSingleton<Conversion.New.Load, IMongoDatabase>(Conversion.New.load)
+      .BuildSingleton<Conversion.New.Save, IMongoDatabase>(Conversion.New.save)
+      .BuildSingleton<Conversion.New.QueuePreparation, WorkersSettings>(Conversion.New.queuePreparation)
       .BuildSingleton<Conversion.New.InputFile.DownloadLink, IHttpClientFactory, WorkersSettings>(Conversion.New.InputFile.downloadLink)
 
       // TODO: Functions of same type. How to register?
