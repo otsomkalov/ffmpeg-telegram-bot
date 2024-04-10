@@ -2,7 +2,6 @@
 
 open System.Threading.Tasks
 open Domain.Core
-open otsom.fs.Extensions
 
 module Repos =
   [<RequireQualifiedAccess>]
@@ -10,6 +9,7 @@ module Repos =
     [<RequireQualifiedAccess>]
     module New =
       type Load = ConversionId -> Task<Conversion.New>
+      type Save = Conversion.New -> Task<unit>
 
       [<RequireQualifiedAccess>]
       module InputFile =
