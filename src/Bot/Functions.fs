@@ -43,13 +43,13 @@ type Functions
     saveThumbnail: Conversion.Prepared.SaveThumbnail,
     downloadLink: Conversion.New.InputFile.DownloadLink,
     downloadDocument: Conversion.New.InputFile.DownloadDocument,
-    savePreparedConversion: Conversion.Prepared.Save,
     saveUserConversion: UserConversion.Save,
     ensureUserExists: User.EnsureExists,
     queueConversionPreparation: Conversion.New.QueuePreparation,
     parseCommand: ParseCommand,
     createConversion: Conversion.Create,
-    loadConversion: Conversion.Load
+    loadConversion: Conversion.Load,
+    saveConversion: Conversion.Save
   ) =
 
   [<Function("HandleUpdate")>]
@@ -85,7 +85,7 @@ type Functions
     let queueThumbnailing = Conversion.Prepared.queueThumbnailing workersSettings
 
     let prepareConversion =
-      Conversion.New.prepare downloadLink downloadDocument savePreparedConversion queueConversion queueThumbnailing
+      Conversion.New.prepare downloadLink downloadDocument saveConversion queueConversion queueThumbnailing
 
     let downloadFileAndQueueConversion =
       downloadFileAndQueueConversion editBotMessage loadUserConversion loadUser getLocaleTranslations prepareConversion

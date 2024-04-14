@@ -1,5 +1,6 @@
 ﻿namespace Infrastructure
 
+open Domain.Core
 open MongoDB.Driver
 open Domain.Repos
 open Infrastructure.Mappings
@@ -9,24 +10,30 @@ open otsom.fs.Extensions
 module Repos =
   [<RequireQualifiedAccess>]
   module Conversion =
-    [<RequireQualifiedAccess>]
-    module New =
-      let save (db: IMongoDatabase) : Conversion.New.Save =
-        let collection = db.GetCollection "conversions"
+    let load (db: IMongoDatabase) : Conversion.Load =
+      let collection = db.GetCollection "conversions"
 
-        fun conversion ->
-          let entity = conversion |> Mappings.Conversion.New.toDb
-          task { do! collection.InsertOneAsync(entity) }
+      fun conversionId ->
+        let (ConversionId conversionId) = conversionId
+        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
 
-    [<RequireQualifiedAccess>]
-    module Prepared =
-      let save (db: IMongoDatabase) : Conversion.Prepared.Save =
-        let collection = db.GetCollection "conversions"
+        collection.Find(filter).SingleOrDefaultAsync()
+        |> Task.map Conversion.fromDb
 
-        fun conversion ->
-          let filter =
-            Builders<Database.Conversion>.Filter
-              .Eq((fun c -> c.Id), (conversion.Id |> ConversionId.value))
+    let save (db: IMongoDatabase) : Conversion.Save =
+      let collection = db.GetCollection "conversions"
 
-          let entity = conversion |> Conversion.Prepared.toDb
-          collection.ReplaceOneAsync(filter, entity) |> Task.ignore
+      fun conversion ->
+        let filter =
+          Builders<Database.Conversion>.Filter
+            .Eq((fun c -> c.Id), (conversion.Id |> ConversionId.value))
+
+        let entity =
+          match conversion with
+          | Conversion.New conversion -> conversion |> Mappings.Conversion.New.toDb
+          | Conversion.Prepared conversion -> conversion |> Mappings.Conversion.Prepared.toDb
+          | Conversion.Converted conversion -> conversion |> Mappings.Conversion.Converted.toDb
+          | Conversion.Thumbnailed conversion -> conversion |> Mappings.Conversion.Thumbnailed.toDb
+          | Conversion.Completed conversion -> conversion |> Mappings.Conversion.Completed.toDb
+
+        collection.ReplaceOneAsync(filter, entity, ReplaceOptions(IsUpsert = true)) |> Task.ignore

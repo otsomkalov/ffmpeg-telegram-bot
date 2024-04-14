@@ -66,3 +66,10 @@ module Core =
     | Thumbnailed of Conversion.Thumbnailed
     | Completed of Conversion.Completed
 
+    member this.Id =
+      match this with
+      | New { Id = id }
+      | Prepared { Id = id }
+      | Converted { Id = id }
+      | Thumbnailed { Id = id }
+      | Completed { Id = id } -> id

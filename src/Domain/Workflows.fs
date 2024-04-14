@@ -9,12 +9,12 @@ open shortid
 module Workflows =
   [<RequireQualifiedAccess>]
   module Conversion =
-    let create (saveNewConversion: Conversion.New.Save) : Conversion.Create =
+    let create (saveConversion: Conversion.Save) : Create =
       fun () ->
         task {
           let newConversion: Conversion.New = { Id = ShortId.Generate() |> ConversionId }
 
-          do! saveNewConversion newConversion
+          do! saveConversion (Conversion.New newConversion)
 
           return newConversion
         }
@@ -24,7 +24,7 @@ module Workflows =
       let prepare
         (downloadLink: Conversion.New.InputFile.DownloadLink)
         (downloadDocument: Conversion.New.InputFile.DownloadDocument)
-        (savePreparedConversion: Conversion.Prepared.Save)
+        (saveConversion: Conversion.Save)
         (queueConversion: Conversion.Prepared.QueueConversion)
         (queueThumbnailing: Conversion.Prepared.QueueThumbnailing)
         : Conversion.New.Prepare =
@@ -34,46 +34,51 @@ module Workflows =
           | New.Document d -> downloadDocument d |> Task.map Ok
           |> TaskResult.map (fun downloadedFile ->
             { Id = conversionId
-              InputFile = downloadedFile }
-            : Conversion.Prepared)
-          |> TaskResult.taskTap savePreparedConversion
+              InputFile = downloadedFile })
+          |> TaskResult.taskTap (Conversion.Prepared >> saveConversion)
           |> TaskResult.taskTap queueConversion
           |> TaskResult.taskTap queueThumbnailing
 
     [<RequireQualifiedAccess>]
     module Thumbnailed =
-      let complete (saveCompletedConversion: Conversion.Completed.Save) : Conversion.Thumbnailed.Complete =
+      let complete (saveConversion: Conversion.Save) : Thumbnailed.Complete =
         fun conversion video ->
-          saveCompletedConversion
+          let completedConversion: Conversion.Completed =
             { Id = conversion.Id
-              OutputFile = video |> Conversion.Video
-              ThumbnailFile = conversion.ThumbnailName |> Conversion.Thumbnail }
+              OutputFile = video |> Video
+              ThumbnailFile = conversion.ThumbnailName |> Thumbnail }
+
+          saveConversion (Conversion.Completed completedConversion)
+          |> Task.map (fun _ -> completedConversion)
 
     [<RequireQualifiedAccess>]
     module Prepared =
-      let saveThumbnail (saveThumbnailedConversion: Conversion.Thumbnailed.Save) : Conversion.Prepared.SaveThumbnail =
+      let saveThumbnail (saveConversion: Conversion.Save) : Prepared.SaveThumbnail =
         fun conversion thumbnail ->
-          let thumbnailedConversion: Conversion.Thumbnailed =
+          let thumbnailedConversion: Thumbnailed =
             { Id = conversion.Id
               ThumbnailName = thumbnail }
 
-          saveThumbnailedConversion thumbnailedConversion
+          saveConversion (Conversion.Thumbnailed thumbnailedConversion)
           |> Task.map (fun _ -> thumbnailedConversion)
 
-      let saveVideo (saveConvertedConversion: Conversion.Converted.Save) : Conversion.Prepared.SaveVideo =
+      let saveVideo (saveConversion: Conversion.Save) : Prepared.SaveVideo =
         fun conversion video ->
           let convertedConversion: Conversion.Converted =
             { Id = conversion.Id
               OutputFile = video }
 
-          saveConvertedConversion convertedConversion
+          saveConversion (Conversion.Converted convertedConversion)
           |> Task.map (fun _ -> convertedConversion)
 
     [<RequireQualifiedAccess>]
     module Converted =
-      let complete (saveCompletedConversion: Conversion.Completed.Save) : Conversion.Converted.Complete =
+      let complete (saveConversion: Conversion.Save) : Converted.Complete =
         fun conversion thumbnail ->
-          saveCompletedConversion
+          let completedConversion: Conversion.Completed =
             { Id = conversion.Id
-              OutputFile = (conversion.OutputFile |> Conversion.Video)
-              ThumbnailFile = (thumbnail |> Conversion.Thumbnail) }
+              OutputFile = (conversion.OutputFile |> Video)
+              ThumbnailFile = (thumbnail |> Thumbnail) }
+
+          saveConversion (Conversion.Completed completedConversion)
+          |> Task.map (fun _ -> completedConversion)
