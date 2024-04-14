@@ -58,8 +58,8 @@ module Startup =
 
     services
       .BuildSingleton<Conversion.Create, Conversion.New.Save>(Conversion.create)
+      .BuildSingleton<Conversion.Load, IMongoDatabase>(Conversion.load)
 
-      .BuildSingleton<Conversion.New.Load, IMongoDatabase>(Conversion.New.load)
       .BuildSingleton<Conversion.New.Save, IMongoDatabase>(Conversion.New.save)
       .BuildSingleton<Conversion.New.QueuePreparation, WorkersSettings>(Conversion.New.queuePreparation)
       .BuildSingleton<Conversion.New.InputFile.DownloadLink, IHttpClientFactory, WorkersSettings>(Conversion.New.InputFile.downloadLink)
@@ -72,13 +72,10 @@ module Startup =
       .BuildSingleton<Conversion.Prepared.SaveVideo, Conversion.Converted.Save>(Conversion.Prepared.saveVideo)
       .BuildSingleton<Conversion.Prepared.SaveThumbnail, Conversion.Thumbnailed.Save>(Conversion.Prepared.saveThumbnail)
 
-      .BuildSingleton<Conversion.Completed.Load, IMongoDatabase>(Conversion.Completed.load)
       .BuildSingleton<Conversion.Completed.DeleteVideo, WorkersSettings>(Conversion.Completed.deleteVideo)
       .BuildSingleton<Conversion.Completed.DeleteThumbnail, WorkersSettings>(Conversion.Completed.deleteThumbnail)
       .BuildSingleton<Conversion.Completed.Save, IMongoDatabase>(Conversion.Completed.save)
       .BuildSingleton<Conversion.Completed.QueueUpload, WorkersSettings>(Conversion.Completed.queueUpload)
-      .BuildSingleton<Conversion.PreparedOrConverted.Load, IMongoDatabase>(Conversion.PreparedOrConverted.load)
-      .BuildSingleton<Conversion.PreparedOrThumbnailed.Load, IMongoDatabase>(Conversion.PreparedOrThumbnailed.load)
 
       .BuildSingleton<Conversion.Converted.Save, IMongoDatabase>(Conversion.Converted.save)
       .BuildSingleton<Conversion.Thumbnailed.Save, IMongoDatabase>(Conversion.Thumbnailed.save)

@@ -11,15 +11,6 @@ module Repos =
   module Conversion =
     [<RequireQualifiedAccess>]
     module New =
-      let load (db: IMongoDatabase) : Conversion.New.Load =
-        let collection = db.GetCollection "conversions"
-
-        fun conversionId ->
-          let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), (conversionId |> ConversionId.value))
-
-          collection.Find(filter).SingleOrDefaultAsync()
-          |> Task.map Conversion.New.fromDb
-
       let save (db: IMongoDatabase) : Conversion.New.Save =
         let collection = db.GetCollection "conversions"
 

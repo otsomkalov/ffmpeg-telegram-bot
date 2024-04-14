@@ -69,30 +69,6 @@ module Conversion =
         collection.ReplaceOneAsync(filter, entity) |> Task.ignore
 
   [<RequireQualifiedAccess>]
-  module PreparedOrConverted =
-    let load (db: IMongoDatabase) : Conversion.PreparedOrConverted.Load =
-      let collection = db.GetCollection "conversions"
-
-      fun conversionId ->
-        let (ConversionId conversionId) = conversionId
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
-
-        collection.Find(filter).SingleOrDefaultAsync()
-        |> Task.map Conversion.PreparedOrConverted.fromDb
-
-  [<RequireQualifiedAccess>]
-  module PreparedOrThumbnailed =
-    let load (db: IMongoDatabase) : Conversion.PreparedOrThumbnailed.Load =
-      let collection = db.GetCollection "conversions"
-
-      fun conversionId ->
-        let (ConversionId conversionId) = conversionId
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
-
-        collection.Find(filter).SingleOrDefaultAsync()
-        |> Task.map Conversion.PreparedOrThumbnailed.fromDb
-
-  [<RequireQualifiedAccess>]
   module Completed =
     let deleteVideo (settings: WorkersSettings) : Conversion.Completed.DeleteVideo =
       let blobServiceClient = BlobServiceClient(settings.ConnectionString)
@@ -116,16 +92,6 @@ module Conversion =
         let blob = container.GetBlobClient(name)
         blob.DeleteAsync() |> Task.ignore
 
-    let load (db: IMongoDatabase) : Conversion.Completed.Load =
-      let collection = db.GetCollection "conversions"
-
-      fun conversionId ->
-        let (ConversionId conversionId) = conversionId
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
-
-        collection.Find(filter).SingleOrDefaultAsync()
-        |> Task.map Conversion.Completed.fromDb
-
     let save (db: IMongoDatabase) : Conversion.Completed.Save =
       let collection = db.GetCollection "conversions"
 
@@ -135,3 +101,13 @@ module Conversion =
 
         collection.ReplaceOneAsync(filter, entity)
         |> Task.map (fun _ -> conversion)
+
+  let load (db: IMongoDatabase) : Conversion.Load =
+    let collection = db.GetCollection "conversions"
+
+    fun conversionId ->
+      let (ConversionId conversionId) = conversionId
+      let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+
+      collection.Find(filter).SingleOrDefaultAsync()
+      |> Task.map Conversion.fromDb

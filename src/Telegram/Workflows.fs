@@ -2,6 +2,7 @@
 
 open System.Threading.Tasks
 open Domain.Core
+open Domain.Core.Conversion
 open Telegram.Core
 open otsom.fs.Telegram.Bot.Core
 open otsom.fs.Extensions
@@ -120,9 +121,9 @@ module Workflows =
     let onError editMessage tran =
       fun error ->
         match error with
-        | Conversion.New.DownloadLinkError.Unauthorized -> editMessage (tran Resources.NotAuthorized)
-        | Conversion.New.DownloadLinkError.NotFound -> editMessage (tran Resources.NotFound)
-        | Conversion.New.DownloadLinkError.ServerError -> editMessage (tran Resources.ServerError)
+        | New.DownloadLinkError.Unauthorized -> editMessage (tran Resources.NotAuthorized)
+        | New.DownloadLinkError.NotFound -> editMessage (tran Resources.NotFound)
+        | New.DownloadLinkError.ServerError -> editMessage (tran Resources.ServerError)
 
     fun conversionId file ->
       task {
@@ -145,7 +146,7 @@ module Workflows =
   let processConversionResult
     (loadUserConversion: UserConversion.Load)
     (editBotMessage: EditBotMessage)
-    (loadPreparedOrThumbnailed: Conversion.PreparedOrThumbnailed.Load)
+    (loadConversion: Conversion.Load)
     (loadUser: User.Load)
     (getLocaleTranslations: Translation.GetLocaleTranslations)
     (saveVideo: Conversion.Prepared.SaveVideo)
@@ -157,10 +158,10 @@ module Workflows =
       function
       | ConversionResult.Success file ->
         match conversion with
-        | Choice1Of2 preparedConversion ->
+        | Prepared preparedConversion ->
           saveVideo preparedConversion file
           |> Task.bind (fun _ -> editMessage (tran Resources.VideoConverted))
-        | Choice2Of2 thumbnailedConversion ->
+        | Thumbnailed thumbnailedConversion ->
           complete thumbnailedConversion file
           |> Task.bind queueUpload
           |> Task.bind (fun _ -> editMessage (tran Resources.Uploading))
@@ -178,7 +179,7 @@ module Workflows =
           |> Task.map (Option.bind (_.Lang))
           |> Task.bind getLocaleTranslations
 
-        let! conversion = loadPreparedOrThumbnailed conversionId
+        let! conversion = loadConversion conversionId
 
         return! processResult editMessage tran conversion result
       }
@@ -186,7 +187,7 @@ module Workflows =
   let processThumbnailingResult
     (loadUserConversion: UserConversion.Load)
     (editBotMessage: EditBotMessage)
-    (loadPreparedOrConverted: Conversion.PreparedOrConverted.Load)
+    (loadConversion: Conversion.Load)
     (loadUser: User.Load)
     (getLocaleTranslations: Translation.GetLocaleTranslations)
     (saveThumbnail: Conversion.Prepared.SaveThumbnail)
@@ -198,10 +199,10 @@ module Workflows =
       function
       | ConversionResult.Success file ->
         match conversion with
-        | Choice1Of2 preparedConversion ->
+        | Prepared preparedConversion ->
           saveThumbnail preparedConversion file
           |> Task.bind (fun _ -> editMessage (tran Resources.ThumbnailGenerated))
-        | Choice2Of2 convertedConversion ->
+        | Converted convertedConversion ->
           complete convertedConversion file
           |> Task.bind queueUpload
           |> Task.bind (fun _ -> editMessage (tran Resources.Uploading))
@@ -219,27 +220,34 @@ module Workflows =
           |> Task.map (Option.bind (_.Lang))
           |> Task.bind getLocaleTranslations
 
-        let! conversion = loadPreparedOrConverted conversionId
+        let! conversion = loadConversion conversionId
 
         return! processResult editMessage tran conversion result
       }
 
   let uploadCompletedConversion
     (loadUserConversion: UserConversion.Load)
-    (loadCompletedConversion: Conversion.Completed.Load)
+    (loadConversion: Conversion.Load)
     (deleteBotMessage: DeleteBotMessage)
     (replyWithVideo: ReplyWithVideo)
     (deleteVideo: Conversion.Completed.DeleteVideo)
     (deleteThumbnail: Conversion.Completed.DeleteThumbnail)
     : UploadCompletedConversion =
+    let uploadAndClean userConversion =
+      function
+      | Completed conversion ->
+        task {
+          do! replyWithVideo userConversion.ChatId userConversion.ReceivedMessageId conversion.OutputFile conversion.ThumbnailFile
+
+          do! deleteVideo conversion.OutputFile
+          do! deleteThumbnail conversion.ThumbnailFile
+          do! deleteBotMessage userConversion.ChatId userConversion.SentMessageId
+        }
+
     fun id ->
       task {
         let! userConversion = loadUserConversion id
-        let! conversion = loadCompletedConversion id
+        let! conversion = loadConversion id
 
-        do! replyWithVideo userConversion.ChatId userConversion.ReceivedMessageId conversion.OutputFile conversion.ThumbnailFile
-
-        do! deleteVideo conversion.OutputFile
-        do! deleteThumbnail conversion.ThumbnailFile
-        do! deleteBotMessage userConversion.ChatId userConversion.SentMessageId
+        return! uploadAndClean userConversion conversion
       }

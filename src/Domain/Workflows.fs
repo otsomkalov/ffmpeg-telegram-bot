@@ -1,6 +1,7 @@
 ﻿namespace Domain
 
 open Domain.Core
+open Domain.Core.Conversion
 open otsom.fs.Extensions
 open Domain.Repos
 open shortid
@@ -29,8 +30,8 @@ module Workflows =
         : Conversion.New.Prepare =
         fun conversionId file ->
           match file with
-          | Conversion.New.Link l -> downloadLink l
-          | Conversion.New.Document d -> downloadDocument d |> Task.map Ok
+          | New.Link l -> downloadLink l
+          | New.Document d -> downloadDocument d |> Task.map Ok
           |> TaskResult.map (fun downloadedFile ->
             { Id = conversionId
               InputFile = downloadedFile }

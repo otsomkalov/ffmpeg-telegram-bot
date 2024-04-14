@@ -6,9 +6,10 @@ open Domain.Core
 module Repos =
   [<RequireQualifiedAccess>]
   module Conversion =
+    type Load = ConversionId -> Task<Conversion>
+
     [<RequireQualifiedAccess>]
     module New =
-      type Load = ConversionId -> Task<Conversion.New>
       type Save = Conversion.New -> Task<unit>
 
       [<RequireQualifiedAccess>]
@@ -27,19 +28,10 @@ module Repos =
     module Completed =
       type Save = Conversion.Completed -> Task<Conversion.Completed>
 
-      type Load = ConversionId -> Task<Conversion.Completed>
       type DeleteVideo = Conversion.Video -> Task<unit>
       type DeleteThumbnail = Conversion.Thumbnail -> Task<unit>
 
       type QueueUpload = Conversion.Completed -> Task<unit>
-
-    [<RequireQualifiedAccess>]
-    module PreparedOrConverted =
-      type Load = ConversionId -> Task<Conversion.PreparedOrConverted>
-
-    [<RequireQualifiedAccess>]
-    module PreparedOrThumbnailed =
-      type Load = ConversionId -> Task<Conversion.PreparedOrThumbnailed>
 
     [<RequireQualifiedAccess>]
     module Thumbnailed =
