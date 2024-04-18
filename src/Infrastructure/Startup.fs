@@ -57,10 +57,10 @@ module Startup =
           .Get<DatabaseSettings>())
 
     services
-      .BuildSingleton<Conversion.Create, Conversion.New.Save>(Conversion.create)
+      .BuildSingleton<Conversion.Create, Conversion.Save>(Conversion.create)
+      .BuildSingleton<Conversion.Load, IMongoDatabase>(Conversion.load)
+      .BuildSingleton<Conversion.Save, IMongoDatabase>(Conversion.save)
 
-      .BuildSingleton<Conversion.New.Load, IMongoDatabase>(Conversion.New.load)
-      .BuildSingleton<Conversion.New.Save, IMongoDatabase>(Conversion.New.save)
       .BuildSingleton<Conversion.New.QueuePreparation, WorkersSettings>(Conversion.New.queuePreparation)
       .BuildSingleton<Conversion.New.InputFile.DownloadLink, IHttpClientFactory, WorkersSettings>(Conversion.New.InputFile.downloadLink)
 
@@ -68,20 +68,12 @@ module Startup =
       // .BuildSingleton<Conversion.Prepared.QueueConversion, WorkersSettings>(Conversion.Prepared.queueConversion)
       // .BuildSingleton<Conversion.Prepared.QueueThumbnailing, WorkersSettings>(Conversion.Prepared.queueThumbnailing)
 
-      .BuildSingleton<Conversion.Prepared.Save, IMongoDatabase>(Conversion.Prepared.save)
-      .BuildSingleton<Conversion.Prepared.SaveVideo, Conversion.Converted.Save>(Conversion.Prepared.saveVideo)
-      .BuildSingleton<Conversion.Prepared.SaveThumbnail, Conversion.Thumbnailed.Save>(Conversion.Prepared.saveThumbnail)
+      .BuildSingleton<Conversion.Prepared.SaveVideo, Conversion.Save>(Conversion.Prepared.saveVideo)
+      .BuildSingleton<Conversion.Prepared.SaveThumbnail, Conversion.Save>(Conversion.Prepared.saveThumbnail)
 
-      .BuildSingleton<Conversion.Completed.Load, IMongoDatabase>(Conversion.Completed.load)
       .BuildSingleton<Conversion.Completed.DeleteVideo, WorkersSettings>(Conversion.Completed.deleteVideo)
       .BuildSingleton<Conversion.Completed.DeleteThumbnail, WorkersSettings>(Conversion.Completed.deleteThumbnail)
-      .BuildSingleton<Conversion.Completed.Save, IMongoDatabase>(Conversion.Completed.save)
       .BuildSingleton<Conversion.Completed.QueueUpload, WorkersSettings>(Conversion.Completed.queueUpload)
-      .BuildSingleton<Conversion.PreparedOrConverted.Load, IMongoDatabase>(Conversion.PreparedOrConverted.load)
-      .BuildSingleton<Conversion.PreparedOrThumbnailed.Load, IMongoDatabase>(Conversion.PreparedOrThumbnailed.load)
 
-      .BuildSingleton<Conversion.Converted.Save, IMongoDatabase>(Conversion.Converted.save)
-      .BuildSingleton<Conversion.Thumbnailed.Save, IMongoDatabase>(Conversion.Thumbnailed.save)
-
-      .BuildSingleton<Conversion.Thumbnailed.Complete, Conversion.Completed.Save>(Conversion.Thumbnailed.complete)
-      .BuildSingleton<Conversion.Converted.Complete, Conversion.Completed.Save>(Conversion.Converted.complete)
+      .BuildSingleton<Conversion.Thumbnailed.Complete, Conversion.Save>(Conversion.Thumbnailed.complete)
+      .BuildSingleton<Conversion.Converted.Complete, Conversion.Save>(Conversion.Converted.complete)

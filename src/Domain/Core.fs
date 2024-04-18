@@ -5,7 +5,6 @@ open System.Threading.Tasks
 module Core =
   type ConversionId = ConversionId of string
 
-  [<RequireQualifiedAccess>]
   module Conversion =
     type New = { Id: ConversionId }
 
@@ -19,9 +18,6 @@ module Core =
     type Thumbnailed =
       { Id: ConversionId
         ThumbnailName: string }
-
-    type PreparedOrConverted = Choice<Prepared, Converted>
-    type PreparedOrThumbnailed = Choice<Prepared, Thumbnailed>
 
     type Video = Video of string
     type Thumbnail = Thumbnail of string
@@ -62,3 +58,18 @@ module Core =
     [<RequireQualifiedAccess>]
     module Thumbnailed =
       type Complete = Thumbnailed -> string -> Task<Completed>
+
+  type Conversion =
+    | New of Conversion.New
+    | Prepared of Conversion.Prepared
+    | Converted of Conversion.Converted
+    | Thumbnailed of Conversion.Thumbnailed
+    | Completed of Conversion.Completed
+
+    member this.Id =
+      match this with
+      | New { Id = id }
+      | Prepared { Id = id }
+      | Converted { Id = id }
+      | Thumbnailed { Id = id }
+      | Completed { Id = id } -> id

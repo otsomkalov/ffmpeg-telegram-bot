@@ -30,7 +30,6 @@ type Functions
     replyToUserMessage: ReplyToUserMessage,
     editBotMessage: EditBotMessage,
     loadUserConversion: UserConversion.Load,
-    loadCompletedConversion: Conversion.Completed.Load,
     deleteBotMessage: DeleteBotMessage,
     replyWithVideo: ReplyWithVideo,
     deleteVideo: Conversion.Completed.DeleteVideo,
@@ -40,18 +39,17 @@ type Functions
     loadUser: User.Load,
     completeThumbnailedConversion: Conversion.Thumbnailed.Complete,
     completeConvertedConversion: Conversion.Converted.Complete,
-    loadPreparedOrThumbnailed: Conversion.PreparedOrThumbnailed.Load,
-    loadPreparedOrConverted: Conversion.PreparedOrConverted.Load,
     saveVideo: Conversion.Prepared.SaveVideo,
     saveThumbnail: Conversion.Prepared.SaveThumbnail,
     downloadLink: Conversion.New.InputFile.DownloadLink,
     downloadDocument: Conversion.New.InputFile.DownloadDocument,
-    savePreparedConversion: Conversion.Prepared.Save,
     saveUserConversion: UserConversion.Save,
     ensureUserExists: User.EnsureExists,
     queueConversionPreparation: Conversion.New.QueuePreparation,
     parseCommand: ParseCommand,
-    createConversion: Conversion.Create
+    createConversion: Conversion.Create,
+    loadConversion: Conversion.Load,
+    saveConversion: Conversion.Save
   ) =
 
   [<Function("HandleUpdate")>]
@@ -87,7 +85,7 @@ type Functions
     let queueThumbnailing = Conversion.Prepared.queueThumbnailing workersSettings
 
     let prepareConversion =
-      Conversion.New.prepare downloadLink downloadDocument savePreparedConversion queueConversion queueThumbnailing
+      Conversion.New.prepare downloadLink downloadDocument saveConversion queueConversion queueThumbnailing
 
     let downloadFileAndQueueConversion =
       downloadFileAndQueueConversion editBotMessage loadUserConversion loadUser getLocaleTranslations prepareConversion
@@ -104,7 +102,7 @@ type Functions
       processConversionResult
         loadUserConversion
         editBotMessage
-        loadPreparedOrThumbnailed
+        loadConversion
         loadUser
         getLocaleTranslations
         saveVideo
@@ -123,7 +121,7 @@ type Functions
       processThumbnailingResult
         loadUserConversion
         editBotMessage
-        loadPreparedOrConverted
+        loadConversion
         loadUser
         getLocaleTranslations
         saveThumbnail
@@ -141,6 +139,6 @@ type Functions
     let conversionId = message.ConversionId |> ConversionId
 
     let uploadSuccessfulConversion =
-      uploadCompletedConversion loadUserConversion loadCompletedConversion deleteBotMessage replyWithVideo deleteVideo deleteThumbnail
+      uploadCompletedConversion loadUserConversion loadConversion deleteBotMessage replyWithVideo deleteVideo deleteThumbnail
 
     uploadSuccessfulConversion conversionId

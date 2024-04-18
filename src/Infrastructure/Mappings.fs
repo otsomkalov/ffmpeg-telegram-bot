@@ -61,20 +61,6 @@ module Mappings =
         )
 
     [<RequireQualifiedAccess>]
-    module PreparedOrConverted =
-      let fromDb (conversion: Database.Conversion) : Conversion.PreparedOrConverted =
-        match conversion.State with
-        | Database.ConversionState.Prepared -> Prepared.fromDb conversion |> Choice1Of2
-        | Database.ConversionState.Converted -> Converted.fromDb conversion |> Choice2Of2
-
-    [<RequireQualifiedAccess>]
-    module PreparedOrThumbnailed =
-      let fromDb (conversion: Database.Conversion) : Conversion.PreparedOrThumbnailed =
-        match conversion.State with
-        | Database.ConversionState.Prepared -> Prepared.fromDb conversion |> Choice1Of2
-        | Database.ConversionState.Thumbnailed -> Thumbnailed.fromDb conversion |> Choice2Of2
-
-    [<RequireQualifiedAccess>]
     module Completed =
       let fromDb (conversion: Database.Conversion) : Conversion.Completed =
         match conversion.State with
@@ -90,3 +76,11 @@ module Mappings =
           ThumbnailFileName = (conversion.ThumbnailFile |> Conversion.Thumbnail.value),
           State = Database.ConversionState.Completed
         )
+
+    let fromDb (conversion: Database.Conversion) : Conversion =
+      match conversion.State with
+      | Database.ConversionState.New -> New.fromDb conversion |> Conversion.New
+      | Database.ConversionState.Prepared -> Prepared.fromDb conversion |> Conversion.Prepared
+      | Database.ConversionState.Converted -> Converted.fromDb conversion |> Conversion.Converted
+      | Database.ConversionState.Thumbnailed -> Thumbnailed.fromDb conversion |> Conversion.Thumbnailed
+      | Database.ConversionState.Completed -> Completed.fromDb conversion |> Conversion.Completed

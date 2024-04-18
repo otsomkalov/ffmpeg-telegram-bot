@@ -49,50 +49,6 @@ module Conversion =
           }
 
   [<RequireQualifiedAccess>]
-  module Converted =
-    let save (db: IMongoDatabase) : Conversion.Converted.Save =
-      let collection = db.GetCollection "conversions"
-
-      fun conversion ->
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), (conversion.Id |> ConversionId.value))
-        let entity = conversion |> Conversion.Converted.toDb
-        collection.ReplaceOneAsync(filter, entity) |> Task.ignore
-
-  [<RequireQualifiedAccess>]
-  module Thumbnailed =
-    let save (db: IMongoDatabase) : Conversion.Thumbnailed.Save =
-      let collection = db.GetCollection "conversions"
-
-      fun conversion ->
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), (conversion.Id |> ConversionId.value))
-        let entity = conversion |> Conversion.Thumbnailed.toDb
-        collection.ReplaceOneAsync(filter, entity) |> Task.ignore
-
-  [<RequireQualifiedAccess>]
-  module PreparedOrConverted =
-    let load (db: IMongoDatabase) : Conversion.PreparedOrConverted.Load =
-      let collection = db.GetCollection "conversions"
-
-      fun conversionId ->
-        let (ConversionId conversionId) = conversionId
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
-
-        collection.Find(filter).SingleOrDefaultAsync()
-        |> Task.map Conversion.PreparedOrConverted.fromDb
-
-  [<RequireQualifiedAccess>]
-  module PreparedOrThumbnailed =
-    let load (db: IMongoDatabase) : Conversion.PreparedOrThumbnailed.Load =
-      let collection = db.GetCollection "conversions"
-
-      fun conversionId ->
-        let (ConversionId conversionId) = conversionId
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
-
-        collection.Find(filter).SingleOrDefaultAsync()
-        |> Task.map Conversion.PreparedOrThumbnailed.fromDb
-
-  [<RequireQualifiedAccess>]
   module Completed =
     let deleteVideo (settings: WorkersSettings) : Conversion.Completed.DeleteVideo =
       let blobServiceClient = BlobServiceClient(settings.ConnectionString)
@@ -115,23 +71,3 @@ module Conversion =
         let (Conversion.Thumbnail name) = name
         let blob = container.GetBlobClient(name)
         blob.DeleteAsync() |> Task.ignore
-
-    let load (db: IMongoDatabase) : Conversion.Completed.Load =
-      let collection = db.GetCollection "conversions"
-
-      fun conversionId ->
-        let (ConversionId conversionId) = conversionId
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
-
-        collection.Find(filter).SingleOrDefaultAsync()
-        |> Task.map Conversion.Completed.fromDb
-
-    let save (db: IMongoDatabase) : Conversion.Completed.Save =
-      let collection = db.GetCollection "conversions"
-
-      fun conversion ->
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), (conversion.Id |> ConversionId.value))
-        let entity = conversion |> Conversion.Completed.toDb
-
-        collection.ReplaceOneAsync(filter, entity)
-        |> Task.map (fun _ -> conversion)

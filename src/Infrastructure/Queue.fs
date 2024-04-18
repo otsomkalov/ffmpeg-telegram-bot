@@ -18,6 +18,11 @@ module Queue =
     { ConversionId: ConversionId
       File: Conversion.New.InputFile }
 
+  [<CLIMutable>]
+  type CleanerMessage = { ConversionId: string }
+
+  [<CLIMutable>]
+
   [<RequireQualifiedAccess>]
   module Conversion =
 
