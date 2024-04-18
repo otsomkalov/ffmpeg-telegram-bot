@@ -137,6 +137,6 @@ type Functions
     let conversionId = message.ConversionId |> ConversionId
 
     let uploadSuccessfulConversion =
-      uploadCompletedConversion loadUserConversion loadConversion deleteBotMessage replyWithVideo deleteVideo deleteThumbnail
+      uploadCompletedConversion loadUserConversion loadConversion deleteBotMessage loadChatTranslations replyWithVideo deleteVideo deleteThumbnail
 
     uploadSuccessfulConversion conversionId

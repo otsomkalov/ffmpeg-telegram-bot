@@ -21,6 +21,7 @@ open System
 open Domain.Repos
 open Telegram.Infrastructure.Helpers
 open otsom.fs.Extensions.String
+open Infrastructure.Core
 
 module Workflows =
   let deleteBotMessage (bot: ITelegramBotClient) : DeleteBotMessage =
@@ -30,9 +31,9 @@ module Workflows =
     let blobServiceClient = BlobServiceClient(workersSettings.ConnectionString)
 
     fun userId messageId ->
-      fun video thumbnail ->
-        let (Conversion.Video video) = video
-        let (Conversion.Thumbnail thumbnail) = thumbnail
+      fun text video thumbnail ->
+        let video = video |> Conversion.Video.value
+        let thumbnail = thumbnail |> Conversion.Thumbnail.value
 
         let videoContainer =
           blobServiceClient.GetBlobContainerClient workersSettings.Converter.Output.Container
@@ -49,7 +50,7 @@ module Workflows =
           bot.SendVideoAsync(
             (userId |> UserId.value |> ChatId),
             InputFileStream(videoStreamResponse.Value.Content, video),
-            caption = "🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/",
+            caption = text,
             replyToMessageId = (messageId |> UserMessageId.value),
             thumbnail = InputFileStream(thumbnailStreamResponse.Value.Content, thumbnail),
             disableNotification = true
@@ -126,8 +127,8 @@ module Translation =
         return (getTranslation, formatTranslation)
       }
 
-  let getLocaleTranslations (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : Translation.GetLocaleTranslations =
-    let logger = loggerFactory.CreateLogger(nameof Translation.GetLocaleTranslations)
+  let loadTranslations (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : Translation.LoadTranslations =
+    let logger = loggerFactory.CreateLogger(nameof Translation.LoadTranslations)
     let collection = db.GetCollection "resources"
     let getDefaultTranslations = loadDefaultTranslations collection logger
 
