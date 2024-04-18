@@ -34,9 +34,8 @@ type Functions
     replyWithVideo: ReplyWithVideo,
     deleteVideo: Conversion.Completed.DeleteVideo,
     deleteThumbnail: Conversion.Completed.DeleteThumbnail,
-    getLocaleTranslations: Translation.GetLocaleTranslations,
+    loadLangTranslations: Translation.LoadTranslations,
     queueUpload: Conversion.Completed.QueueUpload,
-    loadUser: User.Load,
     completeThumbnailedConversion: Conversion.Thumbnailed.Complete,
     completeConvertedConversion: Conversion.Converted.Complete,
     saveVideo: Conversion.Prepared.SaveVideo,
@@ -49,7 +48,8 @@ type Functions
     parseCommand: ParseCommand,
     createConversion: Conversion.Create,
     loadConversion: Conversion.Load,
-    saveConversion: Conversion.Save
+    saveConversion: Conversion.Save,
+    loadChatTranslations: Chat.LoadTranslations
   ) =
 
   [<Function("HandleUpdate")>]
@@ -59,7 +59,7 @@ type Functions
       UserConversion.queueProcessing createConversion saveUserConversion queueConversionPreparation
 
     let processMessage =
-      processMessage sendUserMessage replyToUserMessage getLocaleTranslations ensureUserExists queueUserConversion parseCommand
+      processMessage sendUserMessage replyToUserMessage loadLangTranslations ensureUserExists queueUserConversion parseCommand
 
     task {
       try
@@ -88,7 +88,7 @@ type Functions
       Conversion.New.prepare downloadLink downloadDocument saveConversion queueConversion queueThumbnailing
 
     let downloadFileAndQueueConversion =
-      downloadFileAndQueueConversion editBotMessage loadUserConversion loadUser getLocaleTranslations prepareConversion
+      downloadFileAndQueueConversion editBotMessage loadUserConversion loadChatTranslations prepareConversion
 
     downloadFileAndQueueConversion message.ConversionId message.File
 
@@ -103,8 +103,7 @@ type Functions
         loadUserConversion
         editBotMessage
         loadConversion
-        loadUser
-        getLocaleTranslations
+        loadChatTranslations
         saveVideo
         completeThumbnailedConversion
         queueUpload
@@ -122,8 +121,7 @@ type Functions
         loadUserConversion
         editBotMessage
         loadConversion
-        loadUser
-        getLocaleTranslations
+        loadChatTranslations
         saveThumbnail
         completeConvertedConversion
         queueUpload
