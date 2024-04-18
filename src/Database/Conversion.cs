@@ -1,4 +1,6 @@
-﻿namespace Database;
+﻿using MongoDB.Bson.Serialization.Attributes;
+
+namespace Database;
 
 public enum ConversionState
 {
@@ -11,6 +13,7 @@ public enum ConversionState
 
 public class Conversion
 {
+    [BsonId]
     public string Id { get; set; }
 
     public string InputFileName { get; set; }
@@ -28,4 +31,7 @@ public class Conversion
     public int SentMessageId { get; set; }
 
     public ConversionState State { get; set; }
+
+    [BsonElement]
+    public DateTime CreatedAt { get; } = DateTime.Now;
 }
