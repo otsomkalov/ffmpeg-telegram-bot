@@ -126,8 +126,8 @@ module Translation =
         return (getTranslation, formatTranslation)
       }
 
-  let getLocaleTranslations (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : Translation.GetLocaleTranslations =
-    let logger = loggerFactory.CreateLogger(nameof Translation.GetLocaleTranslations)
+  let getLocaleTranslations (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : Translation.LoadTranslations =
+    let logger = loggerFactory.CreateLogger(nameof Translation.LoadTranslations)
     let collection = db.GetCollection "resources"
     let getDefaultTranslations = loadDefaultTranslations collection logger
 
