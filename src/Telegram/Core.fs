@@ -44,7 +44,11 @@ module Core =
     type GetTranslation = string -> string
     type FormatTranslation = string * obj array -> string
 
-    type GetLocaleTranslations = string option -> Task<GetTranslation * FormatTranslation>
+    type LoadTranslations = string option -> Task<GetTranslation * FormatTranslation>
+
+  [<RequireQualifiedAccess>]
+  module Chat =
+    type LoadTranslations = UserId -> Task<Translation.GetTranslation * Translation.FormatTranslation>
 
   type ProcessMessage = Message -> Task<unit>
 

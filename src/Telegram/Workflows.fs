@@ -35,10 +35,24 @@ module Workflows =
           return! queueConversionPreparation conversion.Id inputFile
         }
 
+  [<RequireQualifiedAccess>]
+  module Chat =
+    let loadTranslations
+      (loadUser: User.Load)
+      (loadTranslations: Translation.LoadTranslations)
+      : Chat.LoadTranslations =
+      fun chatId ->
+        task {
+          let! chat = loadUser chatId
+          let! translations = loadTranslations chat.Lang
+
+          return translations
+        }
+
   let processMessage
     (sendUserMessage: SendUserMessage)
     (replyToUserMessage: ReplyToUserMessage)
-    (getLocaleTranslations: Translation.GetLocaleTranslations)
+    (getLocaleTranslations: Translation.LoadTranslations)
     (ensureUserExists: User.EnsureExists)
     (queueUserConversion: UserConversion.QueueProcessing)
     (parseCommand: ParseCommand)
@@ -110,8 +124,7 @@ module Workflows =
   let downloadFileAndQueueConversion
     (editBotMessage: EditBotMessage)
     (loadUserConversion: UserConversion.Load)
-    (loadUser: User.Load)
-    (getLocaleTranslations: Translation.GetLocaleTranslations)
+    (loadTranslations: Chat.LoadTranslations)
     (prepareConversion: Conversion.New.Prepare)
     : DownloadFileAndQueueConversion =
 
@@ -129,11 +142,7 @@ module Workflows =
       task {
         let! userConversion = loadUserConversion conversionId
 
-        let! tran, _ =
-          userConversion.UserId
-          |> Option.taskMap loadUser
-          |> Task.map (Option.bind (_.Lang))
-          |> Task.bind getLocaleTranslations
+        let! tran, _ = userConversion.ChatId |> loadTranslations
 
         let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
@@ -147,8 +156,7 @@ module Workflows =
     (loadUserConversion: UserConversion.Load)
     (editBotMessage: EditBotMessage)
     (loadConversion: Conversion.Load)
-    (loadUser: User.Load)
-    (getLocaleTranslations: Translation.GetLocaleTranslations)
+    (loadTranslations: Chat.LoadTranslations)
     (saveVideo: Conversion.Prepared.SaveVideo)
     (complete: Conversion.Thumbnailed.Complete)
     (queueUpload: Conversion.Completed.QueueUpload)
@@ -173,11 +181,7 @@ module Workflows =
 
         let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
-        let! tran, _ =
-          userConversion.UserId
-          |> Option.taskMap loadUser
-          |> Task.map (Option.bind (_.Lang))
-          |> Task.bind getLocaleTranslations
+        let! tran, _ = userConversion.ChatId |> loadTranslations
 
         let! conversion = loadConversion conversionId
 
@@ -188,8 +192,7 @@ module Workflows =
     (loadUserConversion: UserConversion.Load)
     (editBotMessage: EditBotMessage)
     (loadConversion: Conversion.Load)
-    (loadUser: User.Load)
-    (getLocaleTranslations: Translation.GetLocaleTranslations)
+    (loadTranslations: Chat.LoadTranslations)
     (saveThumbnail: Conversion.Prepared.SaveThumbnail)
     (complete: Conversion.Converted.Complete)
     (queueUpload: Conversion.Completed.QueueUpload)
@@ -214,11 +217,7 @@ module Workflows =
 
         let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
-        let! tran, _ =
-          userConversion.UserId
-          |> Option.taskMap loadUser
-          |> Task.map (Option.bind (_.Lang))
-          |> Task.bind getLocaleTranslations
+        let! tran, _ = userConversion.ChatId |> loadTranslations
 
         let! conversion = loadConversion conversionId
 
