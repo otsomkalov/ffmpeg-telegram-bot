@@ -36,18 +36,17 @@ module Workflows =
         }
 
   [<RequireQualifiedAccess>]
-  module Chat =
+  module User =
     let loadTranslations
       (loadUser: User.Load)
       (loadTranslations: Translation.LoadTranslations)
-      : Chat.LoadTranslations =
-      fun chatId ->
-        task {
-          let! chat = loadUser chatId
-          let! translations = loadTranslations chat.Lang
-
-          return translations
-        }
+      (loadDefaultTranslations: Translation.LoadDefaultTranslations)
+      : User.LoadTranslations =
+      Option.taskMap
+        (loadUser
+        >> Task.bind (fun user ->
+          loadTranslations user.Lang))
+      >> Task.bind (Option.defaultWithTask loadDefaultTranslations)
 
   let processMessage
     (sendUserMessage: SendUserMessage)
@@ -124,7 +123,7 @@ module Workflows =
   let downloadFileAndQueueConversion
     (editBotMessage: EditBotMessage)
     (loadUserConversion: UserConversion.Load)
-    (loadTranslations: Chat.LoadTranslations)
+    (loadTranslations: User.LoadTranslations)
     (prepareConversion: Conversion.New.Prepare)
     : DownloadFileAndQueueConversion =
 
@@ -142,7 +141,7 @@ module Workflows =
       task {
         let! userConversion = loadUserConversion conversionId
 
-        let! tran, _ = userConversion.ChatId |> loadTranslations
+        let! tran, _ = userConversion.UserId |> loadTranslations
 
         let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
@@ -156,7 +155,7 @@ module Workflows =
     (loadUserConversion: UserConversion.Load)
     (editBotMessage: EditBotMessage)
     (loadConversion: Conversion.Load)
-    (loadTranslations: Chat.LoadTranslations)
+    (loadTranslations: User.LoadTranslations)
     (saveVideo: Conversion.Prepared.SaveVideo)
     (complete: Conversion.Thumbnailed.Complete)
     (queueUpload: Conversion.Completed.QueueUpload)
@@ -181,7 +180,7 @@ module Workflows =
 
         let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
-        let! tran, _ = userConversion.ChatId |> loadTranslations
+        let! tran, _ = userConversion.UserId |> loadTranslations
 
         let! conversion = loadConversion conversionId
 
@@ -192,7 +191,7 @@ module Workflows =
     (loadUserConversion: UserConversion.Load)
     (editBotMessage: EditBotMessage)
     (loadConversion: Conversion.Load)
-    (loadTranslations: Chat.LoadTranslations)
+    (loadTranslations: User.LoadTranslations)
     (saveThumbnail: Conversion.Prepared.SaveThumbnail)
     (complete: Conversion.Converted.Complete)
     (queueUpload: Conversion.Completed.QueueUpload)
@@ -217,7 +216,7 @@ module Workflows =
 
         let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
-        let! tran, _ = userConversion.ChatId |> loadTranslations
+        let! tran, _ = userConversion.UserId |> loadTranslations
 
         let! conversion = loadConversion conversionId
 

@@ -49,7 +49,7 @@ type Functions
     createConversion: Conversion.Create,
     loadConversion: Conversion.Load,
     saveConversion: Conversion.Save,
-    loadChatTranslations: Chat.LoadTranslations
+    loadChatTranslations: User.LoadTranslations
   ) =
 
   [<Function("HandleUpdate")>]

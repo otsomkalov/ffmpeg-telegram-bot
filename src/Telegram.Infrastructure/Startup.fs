@@ -43,9 +43,10 @@ module Startup =
 
       .BuildSingleton<DeleteBotMessage, ITelegramBotClient>(deleteBotMessage)
       .BuildSingleton<ReplyWithVideo, WorkersSettings, ITelegramBotClient>(replyWithVideo)
-      .BuildSingleton<Translation.LoadTranslations, IMongoDatabase, ILoggerFactory>(Translation.getLocaleTranslations)
+      .BuildSingleton<Translation.LoadDefaultTranslations, IMongoDatabase, ILoggerFactory>(Translation.loadDefaultTranslations)
+      .BuildSingleton<Translation.LoadTranslations, IMongoDatabase, ILoggerFactory, Translation.LoadDefaultTranslations>(Translation.loadTranslations)
 
-      .BuildSingleton<Chat.LoadTranslations, User.Load, Translation.LoadTranslations>(Chat.loadTranslations)
+      .BuildSingleton<User.LoadTranslations, User.Load, Translation.LoadTranslations, Translation.LoadDefaultTranslations>(User.loadTranslations)
 
       .BuildSingleton<User.Load, IMongoDatabase>(User.load)
       .BuildSingleton<User.EnsureExists, IMongoDatabase, ILoggerFactory>(User.ensureExists)
