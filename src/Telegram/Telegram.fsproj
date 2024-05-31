@@ -19,7 +19,7 @@
 
   <ItemGroup>
     <PackageReference Include="otsom.fs.Extensions" Version="0.0.29"/>
-    <PackageReference Include="otsom.fs.Telegram.Bot" Version="0.0.15"/>
+    <PackageReference Include="otsom.fs.Telegram.Bot" Version="0.0.20"/>
   </ItemGroup>
 
 </Project>
