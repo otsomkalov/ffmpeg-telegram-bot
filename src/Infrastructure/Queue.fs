@@ -1,5 +1,6 @@
 ﻿namespace Infrastructure
 
+open System.Diagnostics
 open Azure.Storage.Queues
 open Domain.Core
 open Infrastructure.Helpers
@@ -10,6 +11,9 @@ open Domain.Repos
 open Infrastructure.Core
 
 module Queue =
+  [<CLIMutable>]
+  type BaseMessage<'a> = { OperationId: string; Data: 'a }
+
   [<CLIMutable>]
   type UploaderMessage = { ConversionId: string }
 
@@ -36,8 +40,10 @@ module Queue =
             queueServiceClient.GetQueueClient(workersSettings.Downloader.Queue)
 
           let message =
-            { ConversionId = conversionId
-              File = inputFile }
+            { OperationId = Activity.Current.ParentId
+              Data =
+                { ConversionId = conversionId
+                  File = inputFile } }
 
           let messageBody = JSON.serialize message
 
@@ -48,41 +54,47 @@ module Queue =
       [<CLIMutable>]
       type private ConverterMessage = { Id: string; Name: string }
 
-      let queueConversion (workersSettings: WorkersSettings) : Conversion.Prepared.QueueConversion =
+      let queueConversion (workersSettings: WorkersSettings) operationId : Conversion.Prepared.QueueConversion =
         fun conversion ->
           let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
 
           let queueClient =
             queueServiceClient.GetQueueClient(workersSettings.Converter.Input.Queue)
 
-          { Id = conversion.Id |> ConversionId.value
-            Name = conversion.InputFile }
+          { OperationId = operationId
+            Data =
+              { Id = conversion.Id |> ConversionId.value
+                Name = conversion.InputFile } }
           |> JSON.serialize
           |> queueClient.SendMessageAsync
           |> Task.ignore
 
-      let queueThumbnailing (workersSettings: WorkersSettings) : Conversion.Prepared.QueueThumbnailing =
+      let queueThumbnailing (workersSettings: WorkersSettings) operationId : Conversion.Prepared.QueueThumbnailing =
         fun conversion ->
           let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
 
           let queueClient =
             queueServiceClient.GetQueueClient(workersSettings.Thumbnailer.Input.Queue)
 
-          { Id = conversion.Id |> ConversionId.value
-            Name = conversion.InputFile }
+          { OperationId = operationId
+            Data =
+              { Id = conversion.Id |> ConversionId.value
+                Name = conversion.InputFile } }
           |> JSON.serialize
           |> queueClient.SendMessageAsync
           |> Task.ignore
 
     [<RequireQualifiedAccess>]
     module Completed =
-      let queueUpload (workersSettings: WorkersSettings) : Conversion.Completed.QueueUpload =
+      let queueUpload (workersSettings: WorkersSettings) operationId : Conversion.Completed.QueueUpload =
         fun conversion ->
           let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
 
           let queueClient = queueServiceClient.GetQueueClient(workersSettings.Uploader.Queue)
 
           let messageBody =
-            JSON.serialize { ConversionId = (conversion.Id |> ConversionId.value) }
+            JSON.serialize
+              { OperationId = operationId
+                Data = { ConversionId = (conversion.Id |> ConversionId.value) } }
 
           queueClient.SendMessageAsync(messageBody) |> Task.ignore
