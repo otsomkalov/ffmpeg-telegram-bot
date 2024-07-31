@@ -73,7 +73,6 @@ module Startup =
 
       .BuildSingleton<Conversion.Completed.DeleteVideo, WorkersSettings>(Conversion.Completed.deleteVideo)
       .BuildSingleton<Conversion.Completed.DeleteThumbnail, WorkersSettings>(Conversion.Completed.deleteThumbnail)
-      .BuildSingleton<Conversion.Completed.QueueUpload, WorkersSettings>(Conversion.Completed.queueUpload)
 
       .BuildSingleton<Conversion.Thumbnailed.Complete, Conversion.Save>(Conversion.Thumbnailed.complete)
       .BuildSingleton<Conversion.Converted.Complete, Conversion.Save>(Conversion.Converted.complete)

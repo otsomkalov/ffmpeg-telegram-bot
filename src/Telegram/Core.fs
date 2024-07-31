@@ -45,10 +45,7 @@ module Core =
     type FormatTranslation = string * obj array -> string
 
     type LoadTranslations = string option -> Task<GetTranslation * FormatTranslation>
-
-  [<RequireQualifiedAccess>]
-  module Chat =
-    type LoadTranslations = UserId -> Task<Translation.GetTranslation * Translation.FormatTranslation>
+    type LoadDefaultTranslations = unit -> Task<GetTranslation * FormatTranslation>
 
   type ProcessMessage = Message -> Task<unit>
 
@@ -60,3 +57,7 @@ module Core =
     | Video of string * string
 
   type ParseCommand = Message -> Task<Command option>
+
+  [<RequireQualifiedAccess>]
+  module User =
+    type LoadTranslations = UserId option -> Task<Translation.GetTranslation * Translation.FormatTranslation>

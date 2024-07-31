@@ -1,11 +1,14 @@
 ﻿namespace Bot.Functions
 
+open System.Diagnostics
 open System.Threading.Tasks
 open Domain.Workflows
 open FSharp
 open Infrastructure.Core
 open Infrastructure.Queue
 open Infrastructure.Settings
+open Microsoft.ApplicationInsights
+open Microsoft.ApplicationInsights.DataContracts
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
@@ -35,7 +38,6 @@ type Functions
     deleteVideo: Conversion.Completed.DeleteVideo,
     deleteThumbnail: Conversion.Completed.DeleteThumbnail,
     loadLangTranslations: Translation.LoadTranslations,
-    queueUpload: Conversion.Completed.QueueUpload,
     completeThumbnailedConversion: Conversion.Thumbnailed.Complete,
     completeConvertedConversion: Conversion.Converted.Complete,
     saveVideo: Conversion.Prepared.SaveVideo,
@@ -49,7 +51,8 @@ type Functions
     createConversion: Conversion.Create,
     loadConversion: Conversion.Load,
     saveConversion: Conversion.Save,
-    loadChatTranslations: Chat.LoadTranslations
+    loadChatTranslations: User.LoadTranslations,
+    telemetryClient: TelemetryClient
   ) =
 
   [<Function("HandleUpdate")>]
@@ -78,11 +81,12 @@ type Functions
   [<Function("Downloader")>]
   member this.DownloadFile
     (
-      [<QueueTrigger("%Workers:Downloader:Queue%", Connection = "Workers:ConnectionString")>] message: DownloaderMessage,
+      [<QueueTrigger("%Workers:Downloader:Queue%", Connection = "Workers:ConnectionString")>] message: BaseMessage<DownloaderMessage>,
       _: FunctionContext
     ) : Task<unit> =
-    let queueConversion = Conversion.Prepared.queueConversion workersSettings
-    let queueThumbnailing = Conversion.Prepared.queueThumbnailing workersSettings
+    let data = message.Data
+    let queueConversion = Conversion.Prepared.queueConversion workersSettings message.OperationId
+    let queueThumbnailing = Conversion.Prepared.queueThumbnailing workersSettings message.OperationId
 
     let prepareConversion =
       Conversion.New.prepare downloadLink downloadDocument saveConversion queueConversion queueThumbnailing
@@ -90,12 +94,20 @@ type Functions
     let downloadFileAndQueueConversion =
       downloadFileAndQueueConversion editBotMessage loadUserConversion loadChatTranslations prepareConversion
 
-    downloadFileAndQueueConversion message.ConversionId message.File
+    task {
+      use activity = (new Activity("Downloader")).SetParentId(message.OperationId)
+      use operation = telemetryClient.StartOperation<RequestTelemetry>(activity)
+
+      do! downloadFileAndQueueConversion data.ConversionId data.File
+
+      operation.Telemetry.Success <- true
+    }
 
   [<Function("SaveConversionResult")>]
   member this.SaveConversionResult
     (
-      [<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>] message: ConverterResultMessage,
+      [<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>] message:
+        BaseMessage<ConverterResultMessage>,
       _: FunctionContext
     ) : Task<unit> =
     let processConversionResult =
@@ -106,14 +118,26 @@ type Functions
         loadChatTranslations
         saveVideo
         completeThumbnailedConversion
-        queueUpload
+        (Conversion.Completed.queueUpload workersSettings message.OperationId)
 
-    processConversionResult (ConversionId message.Id) message.Result
+    task {
+      use activity =
+        (new Activity("SaveConversionResult")).SetParentId(message.OperationId)
+
+      use operation = telemetryClient.StartOperation<RequestTelemetry>(activity)
+
+      let data = message.Data
+
+      do! processConversionResult (ConversionId data.Id) data.Result
+
+      operation.Telemetry.Success <- true
+    }
 
   [<Function("SaveThumbnailingResult")>]
   member this.SaveThumbnailingResult
     (
-      [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>] message: ConverterResultMessage,
+      [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>] message:
+        BaseMessage<ConverterResultMessage>,
       _: FunctionContext
     ) : Task<unit> =
     let processThumbnailingResult =
@@ -124,19 +148,39 @@ type Functions
         loadChatTranslations
         saveThumbnail
         completeConvertedConversion
-        queueUpload
+        (Conversion.Completed.queueUpload workersSettings message.OperationId)
 
-    processThumbnailingResult (ConversionId message.Id) message.Result
+    task {
+      use activity =
+        (new Activity("SaveThumbnailingResult")).SetParentId(message.OperationId)
+
+      use operation = telemetryClient.StartOperation<RequestTelemetry>(activity)
+
+      let data = message.Data
+
+      do! processThumbnailingResult (ConversionId data.Id) data.Result
+
+      operation.Telemetry.Success <- true
+    }
 
   [<Function("Uploader")>]
   member this.Upload
     (
-      [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>] message: UploaderMessage,
+      [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>] message: BaseMessage<UploaderMessage>,
       _: FunctionContext
     ) : Task =
-    let conversionId = message.ConversionId |> ConversionId
+    let conversionId = message.Data.ConversionId |> ConversionId
 
     let uploadSuccessfulConversion =
-      uploadCompletedConversion loadUserConversion loadConversion deleteBotMessage loadChatTranslations replyWithVideo deleteVideo deleteThumbnail
+      uploadCompletedConversion loadUserConversion loadConversion deleteBotMessage replyWithVideo deleteVideo deleteThumbnail
 
-    uploadSuccessfulConversion conversionId
+    task {
+      use activity =
+        (new Activity("Uploader")).SetParentId(message.OperationId)
+
+      use operation = telemetryClient.StartOperation<RequestTelemetry>(activity)
+
+      do! uploadSuccessfulConversion conversionId
+
+      operation.Telemetry.Success <- true
+    }

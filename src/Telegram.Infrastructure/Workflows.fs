@@ -21,7 +21,6 @@ open System
 open Domain.Repos
 open Telegram.Infrastructure.Helpers
 open otsom.fs.Extensions.String
-open Infrastructure.Core
 
 module Workflows =
   let deleteBotMessage (bot: ITelegramBotClient) : DeleteBotMessage =
@@ -31,9 +30,9 @@ module Workflows =
     let blobServiceClient = BlobServiceClient(workersSettings.ConnectionString)
 
     fun userId messageId ->
-      fun text video thumbnail ->
-        let video = video |> Conversion.Video.value
-        let thumbnail = thumbnail |> Conversion.Thumbnail.value
+      fun video thumbnail ->
+        let (Conversion.Video video) = video
+        let (Conversion.Thumbnail thumbnail) = thumbnail
 
         let videoContainer =
           blobServiceClient.GetBlobContainerClient workersSettings.Converter.Output.Container
@@ -50,7 +49,7 @@ module Workflows =
           bot.SendVideoAsync(
             (userId |> UserId.value |> ChatId),
             InputFileStream(videoStreamResponse.Value.Content, video),
-            caption = text,
+            caption = "🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/",
             replyToMessageId = (messageId |> UserMessageId.value),
             thumbnail = InputFileStream(thumbnailStreamResponse.Value.Content, thumbnail),
             disableNotification = true
@@ -111,7 +110,10 @@ module Translation =
       | Some fmt -> String.Format(fmt, args)
       | None -> fallback
 
-  let private loadDefaultTranslations (collection: IMongoCollection<_>) logger =
+  let loadDefaultTranslations (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : Translation.LoadDefaultTranslations =
+    let logger = loggerFactory.CreateLogger(nameof Translation.LoadDefaultTranslations)
+    let collection = db.GetCollection "resources"
+
     fun () ->
       task {
         Logf.logfi logger "Loading default translations"
@@ -127,15 +129,14 @@ module Translation =
         return (getTranslation, formatTranslation)
       }
 
-  let loadTranslations (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : Translation.LoadTranslations =
+  let loadTranslations (db: IMongoDatabase) (loggerFactory: ILoggerFactory) (loadDefaultTranslations: Translation.LoadDefaultTranslations) : Translation.LoadTranslations =
     let logger = loggerFactory.CreateLogger(nameof Translation.LoadTranslations)
     let collection = db.GetCollection "resources"
-    let getDefaultTranslations = loadDefaultTranslations collection logger
 
     function
     | Some l when l <> Translation.DefaultLang ->
       task {
-        let! tran, tranf = getDefaultTranslations ()
+        let! tran, tranf = loadDefaultTranslations ()
 
         Logf.logfi logger "Loading translations for lang %s{Lang}" l
 
@@ -151,4 +152,4 @@ module Translation =
 
         return (getTranslation, formatTranslation)
       }
-    | _ -> getDefaultTranslations ()
+    | _ -> loadDefaultTranslations ()

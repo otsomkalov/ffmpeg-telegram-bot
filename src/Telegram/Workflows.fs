@@ -11,7 +11,7 @@ open Telegram.Repos
 
 module Workflows =
   type DeleteBotMessage = UserId -> BotMessageId -> Task
-  type ReplyWithVideo = UserId -> UserMessageId -> string -> Conversion.Video -> Conversion.Thumbnail -> Task<unit>
+  type ReplyWithVideo = UserId -> UserMessageId -> Conversion.Video -> Conversion.Thumbnail -> Task<unit>
 
   [<RequireQualifiedAccess>]
   module UserConversion =
@@ -36,18 +36,17 @@ module Workflows =
         }
 
   [<RequireQualifiedAccess>]
-  module Chat =
+  module User =
     let loadTranslations
       (loadUser: User.Load)
       (loadTranslations: Translation.LoadTranslations)
-      : Chat.LoadTranslations =
-      fun chatId ->
-        task {
-          let! chat = loadUser chatId
-          let! translations = loadTranslations chat.Lang
-
-          return translations
-        }
+      (loadDefaultTranslations: Translation.LoadDefaultTranslations)
+      : User.LoadTranslations =
+      Option.taskMap
+        (loadUser
+        >> Task.bind (fun user ->
+          loadTranslations user.Lang))
+      >> Task.bind (Option.defaultWithTask loadDefaultTranslations)
 
   let processMessage
     (sendUserMessage: SendUserMessage)
@@ -124,7 +123,7 @@ module Workflows =
   let downloadFileAndQueueConversion
     (editBotMessage: EditBotMessage)
     (loadUserConversion: UserConversion.Load)
-    (loadTranslations: Chat.LoadTranslations)
+    (loadTranslations: User.LoadTranslations)
     (prepareConversion: Conversion.New.Prepare)
     : DownloadFileAndQueueConversion =
 
@@ -142,7 +141,7 @@ module Workflows =
       task {
         let! userConversion = loadUserConversion conversionId
 
-        let! tran, _ = userConversion.ChatId |> loadTranslations
+        let! tran, _ = userConversion.UserId |> loadTranslations
 
         let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
@@ -156,7 +155,7 @@ module Workflows =
     (loadUserConversion: UserConversion.Load)
     (editBotMessage: EditBotMessage)
     (loadConversion: Conversion.Load)
-    (loadTranslations: Chat.LoadTranslations)
+    (loadTranslations: User.LoadTranslations)
     (saveVideo: Conversion.Prepared.SaveVideo)
     (complete: Conversion.Thumbnailed.Complete)
     (queueUpload: Conversion.Completed.QueueUpload)
@@ -181,7 +180,7 @@ module Workflows =
 
         let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
-        let! tran, _ = userConversion.ChatId |> loadTranslations
+        let! tran, _ = userConversion.UserId |> loadTranslations
 
         let! conversion = loadConversion conversionId
 
@@ -192,7 +191,7 @@ module Workflows =
     (loadUserConversion: UserConversion.Load)
     (editBotMessage: EditBotMessage)
     (loadConversion: Conversion.Load)
-    (loadTranslations: Chat.LoadTranslations)
+    (loadTranslations: User.LoadTranslations)
     (saveThumbnail: Conversion.Prepared.SaveThumbnail)
     (complete: Conversion.Converted.Complete)
     (queueUpload: Conversion.Completed.QueueUpload)
@@ -217,7 +216,7 @@ module Workflows =
 
         let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
-        let! tran, _ = userConversion.ChatId |> loadTranslations
+        let! tran, _ = userConversion.UserId |> loadTranslations
 
         let! conversion = loadConversion conversionId
 
@@ -228,16 +227,15 @@ module Workflows =
     (loadUserConversion: UserConversion.Load)
     (loadConversion: Conversion.Load)
     (deleteBotMessage: DeleteBotMessage)
-    (loadTranslations: Chat.LoadTranslations)
     (replyWithVideo: ReplyWithVideo)
     (deleteVideo: Conversion.Completed.DeleteVideo)
     (deleteThumbnail: Conversion.Completed.DeleteThumbnail)
     : UploadCompletedConversion =
-    let uploadAndClean userConversion tran =
+    let uploadAndClean userConversion =
       function
       | Completed conversion ->
         task {
-          do! replyWithVideo userConversion.ChatId userConversion.ReceivedMessageId (tran Resources.Completed) conversion.OutputFile conversion.ThumbnailFile
+          do! replyWithVideo userConversion.ChatId userConversion.ReceivedMessageId conversion.OutputFile conversion.ThumbnailFile
 
           do! deleteVideo conversion.OutputFile
           do! deleteThumbnail conversion.ThumbnailFile
@@ -248,7 +246,6 @@ module Workflows =
       task {
         let! userConversion = loadUserConversion id
         let! conversion = loadConversion id
-        let! tran, _ = userConversion.ChatId |> loadTranslations
 
-        return! uploadAndClean userConversion tran conversion
+        return! uploadAndClean userConversion conversion
       }
