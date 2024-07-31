@@ -52,7 +52,8 @@ type Functions
     loadConversion: Conversion.Load,
     saveConversion: Conversion.Save,
     loadChatTranslations: User.LoadTranslations,
-    telemetryClient: TelemetryClient
+    telemetryClient: TelemetryClient,
+    loadTranslations: User.LoadTranslations
   ) =
 
   [<Function("HandleUpdate")>]
@@ -172,7 +173,7 @@ type Functions
     let conversionId = message.Data.ConversionId |> ConversionId
 
     let uploadSuccessfulConversion =
-      uploadCompletedConversion loadUserConversion loadConversion deleteBotMessage replyWithVideo deleteVideo deleteThumbnail
+      uploadCompletedConversion loadUserConversion loadConversion deleteBotMessage replyWithVideo loadTranslations deleteVideo deleteThumbnail
 
     task {
       use activity =
