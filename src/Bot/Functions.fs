@@ -35,8 +35,6 @@ type Functions
     loadUserConversion: UserConversion.Load,
     deleteBotMessage: DeleteBotMessage,
     replyWithVideo: ReplyWithVideo,
-    deleteVideo: Conversion.Completed.DeleteVideo,
-    deleteThumbnail: Conversion.Completed.DeleteThumbnail,
     loadLangTranslations: Translation.LoadTranslations,
     completeThumbnailedConversion: Conversion.Thumbnailed.Complete,
     completeConvertedConversion: Conversion.Converted.Complete,
@@ -51,9 +49,9 @@ type Functions
     createConversion: Conversion.Create,
     loadConversion: Conversion.Load,
     saveConversion: Conversion.Save,
-    loadChatTranslations: User.LoadTranslations,
     telemetryClient: TelemetryClient,
-    loadTranslations: User.LoadTranslations
+    loadTranslations: User.LoadTranslations,
+    cleanupConversion: Conversion.Completed.Cleanup
   ) =
 
   [<Function("HandleUpdate")>]
@@ -93,7 +91,7 @@ type Functions
       Conversion.New.prepare downloadLink downloadDocument saveConversion queueConversion queueThumbnailing
 
     let downloadFileAndQueueConversion =
-      downloadFileAndQueueConversion editBotMessage loadUserConversion loadChatTranslations prepareConversion
+      downloadFileAndQueueConversion editBotMessage loadUserConversion loadTranslations prepareConversion
 
     task {
       use activity = (new Activity("Downloader")).SetParentId(message.OperationId)
@@ -116,7 +114,7 @@ type Functions
         loadUserConversion
         editBotMessage
         loadConversion
-        loadChatTranslations
+        loadTranslations
         saveVideo
         completeThumbnailedConversion
         (Conversion.Completed.queueUpload workersSettings message.OperationId)
@@ -173,7 +171,7 @@ type Functions
     let conversionId = message.Data.ConversionId |> ConversionId
 
     let uploadSuccessfulConversion =
-      uploadCompletedConversion loadUserConversion loadConversion deleteBotMessage replyWithVideo loadTranslations deleteVideo deleteThumbnail
+      uploadCompletedConversion loadUserConversion loadConversion deleteBotMessage replyWithVideo loadTranslations cleanupConversion
 
     task {
       use activity =
