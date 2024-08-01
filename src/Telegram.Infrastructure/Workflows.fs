@@ -30,7 +30,7 @@ module Workflows =
     let blobServiceClient = BlobServiceClient(workersSettings.ConnectionString)
 
     fun userId messageId ->
-      fun video thumbnail ->
+      fun text video thumbnail ->
         let (Conversion.Video video) = video
         let (Conversion.Thumbnail thumbnail) = thumbnail
 
@@ -49,7 +49,7 @@ module Workflows =
           bot.SendVideoAsync(
             (userId |> UserId.value |> ChatId),
             InputFileStream(videoStreamResponse.Value.Content, video),
-            caption = "🇺🇦 Help the Ukrainian army fight russian and belarus invaders: https://savelife.in.ua/en/donate/",
+            caption = text,
             replyToMessageId = (messageId |> UserMessageId.value),
             thumbnail = InputFileStream(thumbnailStreamResponse.Value.Content, thumbnail),
             disableNotification = true

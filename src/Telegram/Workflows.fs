@@ -11,7 +11,7 @@ open Telegram.Repos
 
 module Workflows =
   type DeleteBotMessage = UserId -> BotMessageId -> Task
-  type ReplyWithVideo = UserId -> UserMessageId -> Conversion.Video -> Conversion.Thumbnail -> Task<unit>
+  type ReplyWithVideo = UserId -> UserMessageId -> string -> Conversion.Video -> Conversion.Thumbnail -> Task<unit>
 
   [<RequireQualifiedAccess>]
   module UserConversion =
@@ -228,6 +228,7 @@ module Workflows =
     (loadConversion: Conversion.Load)
     (deleteBotMessage: DeleteBotMessage)
     (replyWithVideo: ReplyWithVideo)
+    (loadTranslations: User.LoadTranslations)
     (deleteVideo: Conversion.Completed.DeleteVideo)
     (deleteThumbnail: Conversion.Completed.DeleteThumbnail)
     : UploadCompletedConversion =
@@ -235,7 +236,9 @@ module Workflows =
       function
       | Completed conversion ->
         task {
-          do! replyWithVideo userConversion.ChatId userConversion.ReceivedMessageId conversion.OutputFile conversion.ThumbnailFile
+          let! tran, _ = userConversion.UserId |> loadTranslations
+
+          do! replyWithVideo userConversion.ChatId userConversion.ReceivedMessageId (tran Resources.Completed) conversion.OutputFile conversion.ThumbnailFile
 
           do! deleteVideo conversion.OutputFile
           do! deleteThumbnail conversion.ThumbnailFile

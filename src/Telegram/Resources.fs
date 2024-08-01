@@ -35,3 +35,6 @@ module Resources =
 
   [<Literal>]
   let Uploading = "uploading"
+
+  [<Literal>]
+  let Completed = "completed"
