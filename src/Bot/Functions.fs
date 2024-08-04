@@ -144,7 +144,7 @@ type Functions
         loadUserConversion
         editBotMessage
         loadConversion
-        loadChatTranslations
+        loadTranslations
         saveThumbnail
         completeConvertedConversion
         (Conversion.Completed.queueUpload workersSettings message.OperationId)

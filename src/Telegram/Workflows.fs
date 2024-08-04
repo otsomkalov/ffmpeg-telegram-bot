@@ -62,7 +62,7 @@ module Workflows =
       let sendMessage = sendUserMessage chatId
       let replyToMessage = replyToUserMessage chatId message.MessageId
 
-      let processLinks (_, tranf: Translation.FormatTranslation) (queueUserConversion) links =
+      let processLinks (_, tranf: Translation.FormatTranslation) queueUserConversion links =
         let sendUrlToQueue (url: string) =
           task {
             let! sentMessageId = replyToMessage (tranf (Resources.LinkDownload, [| url |]))
