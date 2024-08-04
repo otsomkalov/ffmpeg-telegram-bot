@@ -28,14 +28,14 @@ steps:
     name: Build
     inputs:
       command: 'build'
-      projects: 'src/**/Bot.fsproj'
+      projects: '**/*.fsproj'
       arguments: '-r $(Runtime)'
       publishWebProjects: false
   - task: DotNetCoreCLI@2
     name: Test
     inputs:
       command: 'test'
-      projects: 'tests/**/*.fsproj'
+      projects: '**/*.fsproj'
       arguments: '-r $(Runtime) --collect:"XPlat Code Coverage"'
   - task: PublishCodeCoverageResults@2
     displayName: 'Publish coverage'
@@ -46,7 +46,7 @@ steps:
     inputs:
       command: 'publish'
       configuration: 'Release'
-      projects: 'src/**/Bot.fsproj'
+      projects: 'src/Bot/Bot.fsproj'
       arguments: '-r $(Runtime) -o $(Build.ArtifactStagingDirectory)'
       publishWebProjects: false
   - task: PublishBuildArtifacts@1
