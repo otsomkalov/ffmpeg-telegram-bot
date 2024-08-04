@@ -22,23 +22,32 @@ steps:
     name: Restore
     inputs:
       command: 'restore'
-      projects: 'src/**/Bot.fsproj'
+      projects: '**/*.fsproj'
       arguments: '-r $(Runtime)'
   - task: DotNetCoreCLI@2
     name: Build
     inputs:
       command: 'build'
-      configuration: 'Release'
-      projects: 'src/**/Bot.fsproj'
-      arguments: '-r $(Runtime) -c Release'
+      projects: '**/*.fsproj'
+      arguments: '-r $(Runtime)'
       publishWebProjects: false
+  - task: DotNetCoreCLI@2
+    name: Test
+    inputs:
+      command: 'test'
+      projects: '**/*.fsproj'
+      arguments: '-r $(Runtime) --collect:"XPlat Code Coverage"'
+  - task: PublishCodeCoverageResults@2
+    displayName: 'Publish coverage'
+    inputs:
+      summaryFileLocation: '$(Agent.TempDirectory)/*/coverage.cobertura.xml'
   - task: DotNetCoreCLI@2
     name: Publish
     inputs:
       command: 'publish'
       configuration: 'Release'
-      projects: 'src/**/Bot.fsproj'
-      arguments: '-r $(Runtime) -c Release -o $(Build.ArtifactStagingDirectory)'
+      projects: 'src/Bot/Bot.fsproj'
+      arguments: '-r $(Runtime) -o $(Build.ArtifactStagingDirectory)'
       publishWebProjects: false
   - task: PublishBuildArtifacts@1
     name: Pack

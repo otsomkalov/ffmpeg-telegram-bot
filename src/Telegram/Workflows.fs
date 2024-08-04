@@ -62,7 +62,7 @@ module Workflows =
       let sendMessage = sendUserMessage chatId
       let replyToMessage = replyToUserMessage chatId message.MessageId
 
-      let processLinks (_, tranf: Translation.FormatTranslation) (queueUserConversion) links =
+      let processLinks (_, tranf: Translation.FormatTranslation) queueUserConversion links =
         let sendUrlToQueue (url: string) =
           task {
             let! sentMessageId = replyToMessage (tranf (Resources.LinkDownload, [| url |]))
@@ -229,8 +229,7 @@ module Workflows =
     (deleteBotMessage: DeleteBotMessage)
     (replyWithVideo: ReplyWithVideo)
     (loadTranslations: User.LoadTranslations)
-    (deleteVideo: Conversion.Completed.DeleteVideo)
-    (deleteThumbnail: Conversion.Completed.DeleteThumbnail)
+    (cleanupConversion: Conversion.Completed.Cleanup)
     : UploadCompletedConversion =
     let uploadAndClean userConversion =
       function
@@ -240,8 +239,7 @@ module Workflows =
 
           do! replyWithVideo userConversion.ChatId userConversion.ReceivedMessageId (tran Resources.Completed) conversion.OutputFile conversion.ThumbnailFile
 
-          do! deleteVideo conversion.OutputFile
-          do! deleteThumbnail conversion.ThumbnailFile
+          do! cleanupConversion conversion
           do! deleteBotMessage userConversion.ChatId userConversion.SentMessageId
         }
 

@@ -2,17 +2,22 @@
 
 open Domain.Core
 open Domain.Core.Conversion
+open Microsoft.FSharp.Core
 open otsom.fs.Extensions
 open Domain.Repos
 open shortid
 
 module Workflows =
   [<RequireQualifiedAccess>]
+  module ConversionId =
+    let generate: ConversionId.Generate = fun () -> ShortId.Generate() |> ConversionId
+
+  [<RequireQualifiedAccess>]
   module Conversion =
-    let create (saveConversion: Conversion.Save) : Create =
+    let create (generateId: ConversionId.Generate) (saveConversion: Conversion.Save) : Create =
       fun () ->
         task {
-          let newConversion: Conversion.New = { Id = ShortId.Generate() |> ConversionId }
+          let newConversion: Conversion.New = { Id = generateId () }
 
           do! saveConversion (Conversion.New newConversion)
 
@@ -82,3 +87,15 @@ module Workflows =
 
           saveConversion (Conversion.Completed completedConversion)
           |> Task.map (fun _ -> completedConversion)
+
+    [<RequireQualifiedAccess>]
+    module Completed =
+      let cleanup
+        (deleteVideo: Conversion.Completed.DeleteVideo)
+        (deleteThumbnail: Conversion.Completed.DeleteThumbnail)
+        : Completed.Cleanup =
+        fun conversion ->
+          task {
+            do! deleteVideo conversion.OutputFile
+            do! deleteThumbnail conversion.ThumbnailFile
+          }

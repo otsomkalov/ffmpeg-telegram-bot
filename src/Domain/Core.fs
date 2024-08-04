@@ -1,9 +1,13 @@
 ﻿namespace Domain
 
 open System.Threading.Tasks
+open Microsoft.FSharp.Core
 
 module Core =
   type ConversionId = ConversionId of string
+
+  module ConversionId =
+    type Generate = unit -> ConversionId
 
   module Conversion =
     type New = { Id: ConversionId }
@@ -58,6 +62,10 @@ module Core =
     [<RequireQualifiedAccess>]
     module Thumbnailed =
       type Complete = Thumbnailed -> string -> Task<Completed>
+
+    [<RequireQualifiedAccess>]
+    module Completed =
+      type Cleanup = Completed -> Task<unit>
 
   type Conversion =
     | New of Conversion.New
