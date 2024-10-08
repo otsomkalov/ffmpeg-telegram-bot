@@ -1,9 +1,8 @@
 ﻿namespace Telegram.Infrastructure
 
 open Domain.Core
-open FSharp
-open Microsoft.Extensions.Logging
 open MongoDB.Driver
+open Telegram.Core
 open Telegram.Repos
 open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
@@ -37,30 +36,40 @@ module Repos =
         let userId' = userId |> UserId.value
         let filter = Builders<Database.User>.Filter.Eq((fun c -> c.Id), userId')
 
-        collection.Find(filter).SingleOrDefaultAsync() |> Task.map Mappings.User.fromDb
+        collection.Find(filter).SingleOrDefaultAsync() |> Task.map Option.ofObj |> TaskOption.map Mappings.User.fromDb
 
-    let ensureExists (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : User.EnsureExists =
-      let logger = loggerFactory.CreateLogger(nameof User.EnsureExists)
+    let create (db: IMongoDatabase) : User.Create =
       let collection = db.GetCollection "users"
 
-      fun user ->
-        let userId' = user.Id |> UserId.value
+      fun userId lang ->
+        let user : User = {Id = userId; Lang = lang}
+        task {
+          do! collection.InsertOneAsync(user |> Mappings.User.toDb)
 
-        let filter = Builders<Database.User>.Filter.Eq((fun u -> u.Id), userId')
+          return user
+        }
 
-        let setOnInsert =
-          [ Builders<Database.User>.Update.SetOnInsert((fun u -> u.Id), userId')
-            Builders<Database.User>.Update
-              .SetOnInsert((fun u -> u.Lang), (user.Lang |> Option.toObj)) ]
+  [<RequireQualifiedAccess>]
+  module Channel =
+    let load (db: IMongoDatabase) : Channel.Load =
+      let collection = db.GetCollection "channels"
 
-        Logf.logfi logger "Upserting user with id %i" userId'
+      fun channelId ->
+        let channelId' = channelId |> ChannelId.value
+        let filter = Builders<Database.Channel>.Filter.Eq((fun c -> c.Id), channelId')
 
-        task{
-          do!
-            collection.UpdateOneAsync(filter, Builders.Update.Combine(setOnInsert), UpdateOptions(IsUpsert = true))
-            |> Task.ignore
+        collection.Find(filter).SingleOrDefaultAsync()
+        |> Task.map Option.ofObj
+        |> TaskOption.map Mappings.Channel.fromDb
 
-          Logf.logfi logger "Upserted user with id %i" userId'
+    let create (db: IMongoDatabase) : Channel.Create =
+      let collection = db.GetCollection "channels"
 
-          return ()
+      fun channelId ->
+        let channel: Channel = { Id = channelId }
+
+        task {
+          do! collection.InsertOneAsync(channel |> Mappings.Channel.toDb)
+
+          return channel
         }

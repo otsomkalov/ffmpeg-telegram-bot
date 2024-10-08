@@ -3,6 +3,9 @@
 open System.Threading.Tasks
 open Domain.Core
 open Domain.Core.Conversion
+open FSharp
+open Microsoft.Extensions.Logging
+open Microsoft.FSharp.Core
 open Telegram.Core
 open otsom.fs.Telegram.Bot.Core
 open otsom.fs.Extensions
@@ -44,81 +47,118 @@ module Workflows =
       : User.LoadTranslations =
       Option.taskMap
         (loadUser
+        >> Task.map Option.get
         >> Task.bind (fun user ->
           loadTranslations user.Lang))
       >> Task.bind (Option.defaultWithTask loadDefaultTranslations)
+
+  let private processLinks replyToMessage (tranf: Translation.FormatTranslation) queueUserConversion links =
+      let sendUrlToQueue (url: string) =
+        task {
+          let! sentMessageId = replyToMessage (tranf (Resources.LinkDownload, [| url |]))
+
+          return! queueUserConversion sentMessageId (Conversion.New.InputFile.Link { Url = url })
+        }
+
+      links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.ignore
+
+  let private processDocument replyToMessage (tranf: Translation.FormatTranslation) queueUserConversion fileId fileName =
+      task {
+        let! sentMessageId = replyToMessage (tranf (Resources.DocumentDownload, [| fileName |]))
+
+        return! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
+      }
+
+  let private processVideo replyToMessage (tranf: Translation.FormatTranslation) queueUserConversion fileId fileName =
+      task {
+        let! sentMessageId = replyToMessage (tranf (Resources.VideoDownload, [| fileName |]))
+
+        return! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
+      }
+
+  let private processIncomingMessage parseCommand (tran, tranf) queueUserConversion sendMessage replyToMessage =
+    fun userMessageId userId chatId message ->
+      task{
+          let! command = parseCommand message
+
+          let queueConversion = queueUserConversion userMessageId userId chatId
+
+          return!
+            match command with
+            | Some(Command.Start) -> sendMessage (tran Resources.Welcome)
+            | Some(Command.Links links) -> processLinks replyToMessage tranf queueConversion links
+            | Some(Command.Document(fileId, fileName)) -> processDocument replyToMessage tranf queueConversion fileId fileName
+            | Some(Command.Video(fileId, fileName)) -> processVideo replyToMessage tranf queueConversion fileId fileName
+            | None -> Task.FromResult()
+        }
 
   let processMessage
     (sendUserMessage: SendUserMessage)
     (replyToUserMessage: ReplyToUserMessage)
     (getLocaleTranslations: Translation.LoadTranslations)
-    (ensureUserExists: User.EnsureExists)
+    (loadUser: User.Load)
+    (createUser: User.Create)
     (queueUserConversion: UserConversion.QueueProcessing)
     (parseCommand: ParseCommand)
+    (logger: ILogger)
     : ProcessMessage =
     fun message ->
       let chatId = message.Chat.Id |> UserId
-      let userId = message.From |> Option.ofObj |> Option.map (_.Id >> UserId)
+      let userId = message.From.Id |> UserId
       let sendMessage = sendUserMessage chatId
       let replyToMessage = replyToUserMessage chatId message.MessageId
+      let userMessageId = message.MessageId |> UserMessageId
 
-      let processLinks (_, tranf: Translation.FormatTranslation) queueUserConversion links =
-        let sendUrlToQueue (url: string) =
-          task {
-            let! sentMessageId = replyToMessage (tranf (Resources.LinkDownload, [| url |]))
+      Logf.logfi logger "Processing message from user %i{UserId} and chat %i{ChatId}" (userId |> UserId.value) (chatId |> UserId.value)
 
-            return! queueUserConversion sentMessageId (Conversion.New.InputFile.Link { Url = url })
-          }
-
-        links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.ignore
-
-      let processDocument (_, tranf: Translation.FormatTranslation) queueUserConversion fileId fileName =
+      userId
+      |> loadUser
+      |> Task.bind (Option.defaultWithTask (fun () -> createUser userId (message.From.LanguageCode |> Option.ofObj)))
+      |> Task.bind (fun user ->
         task {
-          let! sentMessageId = replyToMessage (tranf (Resources.DocumentDownload, [| fileName |]))
+          let! translations = getLocaleTranslations user.Lang
 
-          return! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
-        }
+          return!
+            processIncomingMessage
+              parseCommand
+              translations
+              queueUserConversion
+              sendMessage
+              replyToMessage
+              userMessageId
+              (Some userId)
+              chatId
+              message
+        })
 
-      let processVideo (_, tranf: Translation.FormatTranslation) queueUserConversion fileId fileName =
+  let processPost
+    (sendUserMessage: SendUserMessage)
+    (replyToUserMessage: ReplyToUserMessage)
+    (loadDefaultTranslations: Translation.LoadDefaultTranslations)
+    (loadChannel: Channel.Load)
+    (createChannel: Channel.Create)
+    (queueUserConversion: UserConversion.QueueProcessing)
+    (parseCommand: ParseCommand)
+    (logger: ILogger)
+    : ProcessPost =
+    fun post ->
+      let channelId = post.Chat.Id |> ChannelId.create
+      let chatId = post.Chat.Id |> UserId
+      let sendMessage = sendUserMessage chatId
+      let replyToMessage = replyToUserMessage chatId post.MessageId
+      let postId = (post.MessageId |> UserMessageId)
+
+      Logf.logfi logger "Processing post from channel %i{ChannelId}" (channelId |> ChannelId.value)
+
+      channelId
+      |> loadChannel
+      |> Task.bind (Option.defaultWithTask (fun () -> createChannel channelId))
+      |> Task.bind (fun channel ->
         task {
-          let! sentMessageId = replyToMessage (tranf (Resources.VideoDownload, [| fileName |]))
+          let! translations = loadDefaultTranslations ()
 
-          return! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
-        }
-
-      let processCommand =
-        fun cmd ->
-          task {
-            let! tran, tranf =
-              message.From
-              |> Option.ofObj
-              |> Option.bind (_.LanguageCode >> Option.ofObj)
-              |> getLocaleTranslations
-
-            return!
-              match cmd with
-              | Command.Start -> sendMessage (tran Resources.Welcome)
-              | Command.Links links ->
-                processLinks (tran, tranf) (queueUserConversion (message.MessageId |> UserMessageId) userId chatId) links
-              | Command.Document(fileId, fileName) ->
-                processDocument (tran, tranf) (queueUserConversion (message.MessageId |> UserMessageId) userId chatId) fileId fileName
-              | Command.Video(fileId, fileName) ->
-                processVideo (tran, tranf) (queueUserConversion (message.MessageId |> UserMessageId) userId chatId) fileId fileName
-          }
-
-      let processMessage' =
-        function
-        | None -> Task.FromResult()
-        | Some cmd ->
-          match message.From |> Option.ofObj with
-          | Some sender ->
-            task {
-              do! ensureUserExists (Mappings.User.fromTg sender)
-              do! processCommand cmd
-            }
-          | None -> processCommand cmd
-
-      parseCommand message |> Task.bind processMessage'
+          return! processIncomingMessage parseCommand translations queueUserConversion sendMessage replyToMessage postId None chatId post
+        })
 
   let downloadFileAndQueueConversion
     (editBotMessage: EditBotMessage)

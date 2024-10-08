@@ -28,7 +28,6 @@ type ConverterResultMessage =
 type Functions
   (
     workersSettings: WorkersSettings,
-    _logger: ILogger<Functions>,
     sendUserMessage: SendUserMessage,
     replyToUserMessage: ReplyToUserMessage,
     editBotMessage: EditBotMessage,
@@ -43,7 +42,6 @@ type Functions
     downloadLink: Conversion.New.InputFile.DownloadLink,
     downloadDocument: Conversion.New.InputFile.DownloadDocument,
     saveUserConversion: UserConversion.Save,
-    ensureUserExists: User.EnsureExists,
     queueConversionPreparation: Conversion.New.QueuePreparation,
     parseCommand: ParseCommand,
     createConversion: Conversion.Create,
@@ -51,29 +49,38 @@ type Functions
     saveConversion: Conversion.Save,
     telemetryClient: TelemetryClient,
     loadTranslations: User.LoadTranslations,
-    cleanupConversion: Conversion.Completed.Cleanup
+    cleanupConversion: Conversion.Completed.Cleanup,
+    loadUser: User.Load,
+    loadChannel: Channel.Load,
+    createUser: User.Create,
+    createChannel: Channel.Create,
+    loadDefaultTranslations: Translation.LoadDefaultTranslations
   ) =
 
   [<Function("HandleUpdate")>]
-  member this.HandleUpdate([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update) : Task<unit> =
+  member this.HandleUpdate([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update, ctx: FunctionContext) : Task<unit> =
+    let logger = nameof(this.HandleUpdate) |> ctx.GetLogger
 
     let queueUserConversion =
       UserConversion.queueProcessing createConversion saveUserConversion queueConversionPreparation
 
     let processMessage =
-      processMessage sendUserMessage replyToUserMessage loadLangTranslations ensureUserExists queueUserConversion parseCommand
+      processMessage sendUserMessage replyToUserMessage loadLangTranslations loadUser createUser queueUserConversion parseCommand logger
+
+    let processPost =
+      processPost sendUserMessage replyToUserMessage loadDefaultTranslations loadChannel createChannel queueUserConversion parseCommand logger
 
     task {
       try
         do!
           (match update.Type with
            | UpdateType.Message -> processMessage update.Message
-           | UpdateType.ChannelPost -> processMessage update.ChannelPost
+           | UpdateType.ChannelPost -> processPost update.ChannelPost
            | _ -> Task.FromResult())
 
         return ()
       with e ->
-        Logf.elogfe _logger e "Error during processing an update:"
+        Logf.elogfe logger e "Error during processing an update:"
         return ()
     }
 

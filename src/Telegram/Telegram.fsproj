@@ -18,6 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FSharp.Logf" Version="1.2.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
     <PackageReference Include="otsom.fs.Extensions" Version="0.0.34"/>
     <PackageReference Include="otsom.fs.Telegram.Bot" Version="0.0.15"/>
   </ItemGroup>
