@@ -57,7 +57,8 @@ module Startup =
           .Get<DatabaseSettings>())
 
     services
-      .BuildSingleton<Conversion.Create, Conversion.Save>(Conversion.create)
+      .AddSingleton<ConversionId.Generate>(ConversionId.generate)
+      .BuildSingleton<Conversion.Create, ConversionId.Generate, Conversion.Save>(Conversion.create)
       .BuildSingleton<Conversion.Load, IMongoDatabase>(Conversion.load)
       .BuildSingleton<Conversion.Save, IMongoDatabase>(Conversion.save)
 
@@ -73,6 +74,7 @@ module Startup =
 
       .BuildSingleton<Conversion.Completed.DeleteVideo, WorkersSettings>(Conversion.Completed.deleteVideo)
       .BuildSingleton<Conversion.Completed.DeleteThumbnail, WorkersSettings>(Conversion.Completed.deleteThumbnail)
+      .BuildSingleton<Conversion.Completed.Cleanup, Conversion.Completed.DeleteVideo, Conversion.Completed.DeleteThumbnail>(Conversion.Completed.cleanup)
 
       .BuildSingleton<Conversion.Thumbnailed.Complete, Conversion.Save>(Conversion.Thumbnailed.complete)
       .BuildSingleton<Conversion.Converted.Complete, Conversion.Save>(Conversion.Converted.complete)
