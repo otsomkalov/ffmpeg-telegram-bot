@@ -8,10 +8,22 @@ open otsom.fs.Telegram.Bot.Core
 
 module Core =
   type ChatId = ChatId of int64
+
+  type ChannelId = ChannelId of int64
+
+  [<RequireQualifiedAccess>]
+  module ChannelId =
+    let create id =
+      if id < 0L then ChannelId id else failwith "ChannelId cannot be greater than 0"
+
+    let value (ChannelId id) = id
+
   type UserMessageId = UserMessageId of int
   type UploadCompletedConversion = ConversionId -> Task<unit>
 
   type User = { Id: UserId; Lang: string option }
+
+  type Channel = {Id: ChannelId}
 
   [<RequireQualifiedAccess>]
   type ConversionResult =
@@ -48,6 +60,7 @@ module Core =
     type LoadDefaultTranslations = unit -> Task<GetTranslation * FormatTranslation>
 
   type ProcessMessage = Message -> Task<unit>
+  type ProcessPost = Message -> Task<unit>
 
   [<RequireQualifiedAccess>]
   type Command =

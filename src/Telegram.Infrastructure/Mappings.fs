@@ -34,3 +34,11 @@ module Mappings =
 
     let toDb (user: User) : Database.User =
       Database.User(Id = (user.Id |> UserId.value), Lang = (user.Lang |> Option.toObj))
+
+  [<RequireQualifiedAccess>]
+  module Channel =
+    let fromDb (channel: Database.Channel) : Channel =
+      { Id = ChannelId channel.Id }
+
+    let toDb (channel: Channel) : Database.Channel =
+      Database.Channel(Id = (channel.Id |> ChannelId.value))
