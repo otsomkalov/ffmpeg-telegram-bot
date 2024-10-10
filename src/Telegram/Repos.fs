@@ -19,4 +19,4 @@ module Repos =
   [<RequireQualifiedAccess>]
   module Channel =
     type Load = ChannelId -> Task<Channel option>
-    type Create = ChannelId -> Task<Channel>
+    type Save = Channel -> Task<unit>

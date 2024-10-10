@@ -62,14 +62,10 @@ module Repos =
         |> Task.map Option.ofObj
         |> TaskOption.map Mappings.Channel.fromDb
 
-    let create (db: IMongoDatabase) : Channel.Create =
+    let save (db: IMongoDatabase) : Channel.Save =
       let collection = db.GetCollection "channels"
 
-      fun channelId ->
-        let channel: Channel = { Id = channelId }
-
+      fun channel ->
         task {
           do! collection.InsertOneAsync(channel |> Mappings.Channel.toDb)
-
-          return channel
         }

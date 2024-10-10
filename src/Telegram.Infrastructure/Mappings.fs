@@ -38,7 +38,7 @@ module Mappings =
   [<RequireQualifiedAccess>]
   module Channel =
     let fromDb (channel: Database.Channel) : Channel =
-      { Id = ChannelId channel.Id }
+      { Id = ChannelId channel.Id; Banned = channel.Banned }
 
     let toDb (channel: Channel) : Database.Channel =
-      Database.Channel(Id = (channel.Id |> ChannelId.value))
+      Database.Channel(Id = (channel.Id |> ChannelId.value), Banned = channel.Banned)
