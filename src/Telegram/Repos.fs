@@ -14,9 +14,15 @@ module Repos =
   [<RequireQualifiedAccess>]
   module User =
     type Load = UserId -> Task<User option>
-    type Create = UserId -> string option -> Task<User>
+    type Create = User -> Task<unit>
 
   [<RequireQualifiedAccess>]
   module Channel =
     type Load = ChannelId -> Task<Channel option>
     type Save = Channel -> Task<unit>
+
+  [<RequireQualifiedAccess>]
+  module Group =
+    type Load = GroupId -> Task<Group option>
+
+    type Save = Group -> Task<unit>

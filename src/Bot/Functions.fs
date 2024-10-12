@@ -54,7 +54,9 @@ type Functions
     loadChannel: Channel.Load,
     createUser: User.Create,
     saveChannel: Channel.Save,
-    loadDefaultTranslations: Translation.LoadDefaultTranslations
+    loadDefaultTranslations: Translation.LoadDefaultTranslations,
+    loadGroup: Group.Load,
+    saveGroup: Group.Save
   ) =
 
   [<Function("HandleUpdate")>]
@@ -64,18 +66,22 @@ type Functions
     let queueUserConversion =
       UserConversion.queueProcessing createConversion saveUserConversion queueConversionPreparation
 
-    let processMessage =
-      processMessage sendUserMessage replyToUserMessage loadLangTranslations loadUser createUser queueUserConversion parseCommand logger
+    let processPrivateMessage =
+      processPrivateMessage sendUserMessage replyToUserMessage loadLangTranslations loadUser createUser queueUserConversion parseCommand logger
 
-    let processPost =
-      processPost sendUserMessage replyToUserMessage loadDefaultTranslations loadChannel saveChannel queueUserConversion parseCommand logger
+    let processGeoupMessage =
+      processGroupMessage sendUserMessage replyToUserMessage loadLangTranslations loadUser createUser loadGroup saveGroup queueUserConversion parseCommand logger
+
+    let processChannelPost =
+      processChannelPost sendUserMessage replyToUserMessage loadDefaultTranslations loadChannel saveChannel queueUserConversion parseCommand logger
 
     task {
       try
         do!
           (match update.Type with
-           | UpdateType.Message -> processMessage update.Message
-           | UpdateType.ChannelPost -> processPost update.ChannelPost
+           | UpdateType.Message when update.Message.From.Id = update.Message.Chat.Id -> processPrivateMessage update.Message
+           | UpdateType.Message -> processGeoupMessage update.Message
+           | UpdateType.ChannelPost -> processChannelPost update.ChannelPost
            | _ -> Task.FromResult())
 
         return ()
