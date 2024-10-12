@@ -38,10 +38,10 @@ module Mappings =
   [<RequireQualifiedAccess>]
   module Group =
     let fromDb (group: Database.Group) : Group =
-      { Id = GroupId group.Id }
+      { Id = GroupId group.Id; Banned = group.Banned }
 
     let toDb (group: Group) : Database.Group =
-      Database.Group(Id = (group.Id |> GroupId.value))
+      Database.Group(Id = (group.Id |> GroupId.value), Banned = group.Banned)
 
   [<RequireQualifiedAccess>]
   module Channel =

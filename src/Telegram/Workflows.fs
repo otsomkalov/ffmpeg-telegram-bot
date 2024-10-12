@@ -160,6 +160,7 @@ module Workflows =
     (sendUserMessage: SendUserMessage)
     (replyToUserMessage: ReplyToUserMessage)
     (getLocaleTranslations: Translation.LoadTranslations)
+    (loadDefaultTranslations: Translation.LoadDefaultTranslations)
     (loadUser: User.Load)
     (createUser: User.Create)
     (loadGroup: Group.Load)
@@ -186,20 +187,30 @@ module Workflows =
 
         return!
           match user, group with
+          | Some u, Some g when g.Banned ->
+            task {
+              let! tran, _ = loadDefaultTranslations ()
+              do! sendMessage (tran Resources.ChannelBan)
+            }
           | Some u, Some g ->
             processMessageFromKnownUser u userMessageId groupId' message
           | Some u, None ->
             task {
-              do! saveGroup {Id = groupId}
+              do! saveGroup {Id = groupId; Banned = false }
 
               return!
                 processMessageFromKnownUser u userMessageId groupId' message
+            }
+          | None, Some g when g.Banned ->
+            task {
+              let! tran, _ = loadDefaultTranslations ()
+              do! sendMessage (tran Resources.ChannelBan)
             }
           | None, Some g ->
             processMessageFromNewUser userId groupId' userMessageId message
           | _ ->
             task {
-              do! saveGroup {Id = groupId}
+              do! saveGroup {Id = groupId; Banned = false }
 
               return! processMessageFromNewUser userId groupId' userMessageId message
             }

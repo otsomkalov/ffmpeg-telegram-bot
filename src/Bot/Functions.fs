@@ -70,7 +70,7 @@ type Functions
       processPrivateMessage sendUserMessage replyToUserMessage loadLangTranslations loadUser createUser queueUserConversion parseCommand logger
 
     let processGeoupMessage =
-      processGroupMessage sendUserMessage replyToUserMessage loadLangTranslations loadUser createUser loadGroup saveGroup queueUserConversion parseCommand logger
+      processGroupMessage sendUserMessage replyToUserMessage loadLangTranslations loadDefaultTranslations loadUser createUser loadGroup saveGroup queueUserConversion parseCommand logger
 
     let processChannelPost =
       processChannelPost sendUserMessage replyToUserMessage loadDefaultTranslations loadChannel saveChannel queueUserConversion parseCommand logger
