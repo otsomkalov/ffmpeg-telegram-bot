@@ -130,8 +130,8 @@ resource "azurerm_linux_function_app" "func-tg-bot" {
   builtin_logging_enabled     = false
 
   site_config {
-    application_insights_key = azurerm_application_insights.appi-tg-bot.instrumentation_key
-    app_scale_limit          = 10
+    application_insights_connection_string = azurerm_application_insights.appi-tg-bot.connection_string
+    app_scale_limit                        = 10
 
     application_stack {
       dotnet_version              = "8.0"

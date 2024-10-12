@@ -49,7 +49,10 @@ module Startup =
       .BuildSingleton<User.LoadTranslations, User.Load, Translation.LoadTranslations, Translation.LoadDefaultTranslations>(User.loadTranslations)
 
       .BuildSingleton<User.Load, IMongoDatabase>(User.load)
-      .BuildSingleton<User.EnsureExists, IMongoDatabase, ILoggerFactory>(User.ensureExists)
+      .BuildSingleton<User.Create, IMongoDatabase>(User.create)
+
+      .BuildSingleton<Channel.Load, IMongoDatabase>(Channel.load)
+      .BuildSingleton<Channel.Create, IMongoDatabase>(Channel.create)
 
       .BuildSingleton<Conversion.New.InputFile.DownloadDocument, ITelegramBotClient, WorkersSettings>(Conversion.New.InputFile.downloadDocument)
 

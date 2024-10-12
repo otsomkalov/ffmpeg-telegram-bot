@@ -13,5 +13,10 @@ module Repos =
 
   [<RequireQualifiedAccess>]
   module User =
-    type Load = UserId -> Task<User>
-    type EnsureExists = User -> Task<unit>
+    type Load = UserId -> Task<User option>
+    type Create = UserId -> string option -> Task<User>
+
+  [<RequireQualifiedAccess>]
+  module Channel =
+    type Load = ChannelId -> Task<Channel option>
+    type Create = ChannelId -> Task<Channel>
