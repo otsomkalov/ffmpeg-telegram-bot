@@ -53,7 +53,7 @@ type Functions
     loadUser: User.Load,
     loadChannel: Channel.Load,
     createUser: User.Create,
-    createChannel: Channel.Create,
+    saveChannel: Channel.Save,
     loadDefaultTranslations: Translation.LoadDefaultTranslations
   ) =
 
@@ -68,7 +68,7 @@ type Functions
       processMessage sendUserMessage replyToUserMessage loadLangTranslations loadUser createUser queueUserConversion parseCommand logger
 
     let processPost =
-      processPost sendUserMessage replyToUserMessage loadDefaultTranslations loadChannel createChannel queueUserConversion parseCommand logger
+      processPost sendUserMessage replyToUserMessage loadDefaultTranslations loadChannel saveChannel queueUserConversion parseCommand logger
 
     task {
       try

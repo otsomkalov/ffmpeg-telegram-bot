@@ -76,12 +76,10 @@ module Workflows =
         return! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
       }
 
-  let private processIncomingMessage parseCommand (tran, tranf) queueUserConversion sendMessage replyToMessage =
-    fun userMessageId userId chatId message ->
+  let private processIncomingMessage parseCommand (tran, tranf) queueConversion sendMessage replyToMessage =
+    fun message ->
       task{
           let! command = parseCommand message
-
-          let queueConversion = queueUserConversion userMessageId userId chatId
 
           return!
             match command with
@@ -122,12 +120,9 @@ module Workflows =
             processIncomingMessage
               parseCommand
               translations
-              queueUserConversion
+              (queueUserConversion userMessageId (Some userId) chatId)
               sendMessage
               replyToMessage
-              userMessageId
-              (Some userId)
-              chatId
               message
         })
 
@@ -136,7 +131,7 @@ module Workflows =
     (replyToUserMessage: ReplyToUserMessage)
     (loadDefaultTranslations: Translation.LoadDefaultTranslations)
     (loadChannel: Channel.Load)
-    (createChannel: Channel.Create)
+    (saveChannel: Channel.Save)
     (queueUserConversion: UserConversion.QueueProcessing)
     (parseCommand: ParseCommand)
     (logger: ILogger)
@@ -147,18 +142,27 @@ module Workflows =
       let sendMessage = sendUserMessage chatId
       let replyToMessage = replyToUserMessage chatId post.MessageId
       let postId = (post.MessageId |> UserMessageId)
+      let queueConversion = (queueUserConversion postId None chatId)
 
       Logf.logfi logger "Processing post from channel %i{ChannelId}" (channelId |> ChannelId.value)
 
-      channelId
-      |> loadChannel
-      |> Task.bind (Option.defaultWithTask (fun () -> createChannel channelId))
-      |> Task.bind (fun channel ->
-        task {
-          let! translations = loadDefaultTranslations ()
+      task {
+        let! tran, tranf = loadDefaultTranslations ()
+        let! channel = loadChannel channelId
 
-          return! processIncomingMessage parseCommand translations queueUserConversion sendMessage replyToMessage postId None chatId post
-        })
+        return!
+          match channel with
+          | Some c when c.Banned -> sendMessage (tran Resources.ChannelBan)
+          | Some _ ->
+            processIncomingMessage parseCommand (tran, tranf) queueConversion sendMessage replyToMessage post
+          | None ->
+            task {
+              do! saveChannel { Id = channelId; Banned = false }
+
+              return!
+                processIncomingMessage parseCommand (tran, tranf) queueConversion sendMessage replyToMessage post
+            }
+      }
 
   let downloadFileAndQueueConversion
     (editBotMessage: EditBotMessage)

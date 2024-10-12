@@ -52,7 +52,7 @@ module Startup =
       .BuildSingleton<User.Create, IMongoDatabase>(User.create)
 
       .BuildSingleton<Channel.Load, IMongoDatabase>(Channel.load)
-      .BuildSingleton<Channel.Create, IMongoDatabase>(Channel.create)
+      .BuildSingleton<Channel.Save, IMongoDatabase>(Channel.save)
 
       .BuildSingleton<Conversion.New.InputFile.DownloadDocument, ITelegramBotClient, WorkersSettings>(Conversion.New.InputFile.downloadDocument)
 

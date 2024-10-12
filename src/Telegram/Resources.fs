@@ -38,3 +38,6 @@ module Resources =
 
   [<Literal>]
   let Completed = "completed"
+
+  [<Literal>]
+  let ChannelBan = "channel-ban"

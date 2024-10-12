@@ -23,7 +23,7 @@ module Core =
 
   type User = { Id: UserId; Lang: string option }
 
-  type Channel = {Id: ChannelId}
+  type Channel = {Id: ChannelId; Banned: bool }
 
   [<RequireQualifiedAccess>]
   type ConversionResult =
