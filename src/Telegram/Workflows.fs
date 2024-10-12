@@ -197,7 +197,7 @@ module Workflows =
             }
           | None, Some g ->
             processMessageFromNewUser userId groupId' userMessageId message
-          | _ ->
+          | None, None ->
             task {
               do! saveGroup {Id = groupId}
 

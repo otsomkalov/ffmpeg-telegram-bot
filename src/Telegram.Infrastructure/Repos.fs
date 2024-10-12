@@ -70,7 +70,7 @@ module Repos =
   [<RequireQualifiedAccess>]
   module Group =
     let load (db: IMongoDatabase) : Group.Load =
-      let collection = db.GetCollection "channels"
+      let collection = db.GetCollection "groups"
 
       fun groupId ->
         let groupId' = groupId |> GroupId.value
