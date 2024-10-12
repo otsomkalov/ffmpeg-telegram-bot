@@ -30,10 +30,11 @@ module Mappings =
   module User =
     let fromDb (user: Database.User) : User =
       { Id = UserId user.Id
-        Lang = (user.Lang |> Option.ofObj) }
+        Lang = (user.Lang |> Option.ofObj)
+        Banned = user.Banned }
 
     let toDb (user: User) : Database.User =
-      Database.User(Id = (user.Id |> UserId.value), Lang = (user.Lang |> Option.toObj))
+      Database.User(Id = (user.Id |> UserId.value), Lang = (user.Lang |> Option.toObj), Banned = user.Banned)
 
   [<RequireQualifiedAccess>]
   module Group =

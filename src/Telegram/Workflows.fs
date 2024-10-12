@@ -94,7 +94,7 @@ module Workflows =
   let private processMessageFromNewUser (createUser: User.Create) (getLocaleTranslations: Translation.LoadTranslations) queueUserConversion parseCommand sendMessage replyToMessage =
     fun userId chatId userMessageId (message: Message) ->
       task {
-        let user = {Id = userId; Lang = message.From.LanguageCode |> Option.ofObj }
+        let user = {Id = userId; Lang = message.From.LanguageCode |> Option.ofObj; Banned = false }
 
         do! createUser user
 
@@ -150,6 +150,12 @@ module Workflows =
 
         return!
           match user with
+          | Some u when u.Banned ->
+            task {
+              let! tran, _ = getLocaleTranslations u.Lang
+
+              do! sendMessage (tran Resources.UserBan)
+            }
           | Some u ->
             processMessageFromKnownUser u userMessageId userId message
           | None ->
@@ -187,10 +193,16 @@ module Workflows =
 
         return!
           match user, group with
-          | Some u, Some g when g.Banned ->
+          | _, Some g when g.Banned ->
             task {
               let! tran, _ = loadDefaultTranslations ()
               do! sendMessage (tran Resources.ChannelBan)
+            }
+          | Some u, _ when u.Banned ->
+            task{
+              let! tran, _ = getLocaleTranslations u.Lang
+
+              do! sendMessage (tran Resources.UserBan)
             }
           | Some u, Some g ->
             processMessageFromKnownUser u userMessageId groupId' message
@@ -200,11 +212,6 @@ module Workflows =
 
               return!
                 processMessageFromKnownUser u userMessageId groupId' message
-            }
-          | None, Some g when g.Banned ->
-            task {
-              let! tran, _ = loadDefaultTranslations ()
-              do! sendMessage (tran Resources.ChannelBan)
             }
           | None, Some g ->
             processMessageFromNewUser userId groupId' userMessageId message
