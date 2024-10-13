@@ -54,6 +54,9 @@ module Startup =
       .BuildSingleton<Channel.Load, IMongoDatabase>(Channel.load)
       .BuildSingleton<Channel.Save, IMongoDatabase>(Channel.save)
 
+      .BuildSingleton<Group.Load, IMongoDatabase>(Group.load)
+      .BuildSingleton<Group.Save, IMongoDatabase>(Group.save)
+
       .BuildSingleton<Conversion.New.InputFile.DownloadDocument, ITelegramBotClient, WorkersSettings>(Conversion.New.InputFile.downloadDocument)
 
       .BuildSingleton<ParseCommand, InputValidationSettings>(parseCommand)

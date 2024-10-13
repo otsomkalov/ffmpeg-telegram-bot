@@ -36,6 +36,14 @@ module Mappings =
       Database.User(Id = (user.Id |> UserId.value), Lang = (user.Lang |> Option.toObj))
 
   [<RequireQualifiedAccess>]
+  module Group =
+    let fromDb (group: Database.Group) : Group =
+      { Id = GroupId group.Id }
+
+    let toDb (group: Group) : Database.Group =
+      Database.Group(Id = (group.Id |> GroupId.value))
+
+  [<RequireQualifiedAccess>]
   module Channel =
     let fromDb (channel: Database.Channel) : Channel =
       { Id = ChannelId channel.Id; Banned = channel.Banned }

@@ -41,12 +41,9 @@ module Repos =
     let create (db: IMongoDatabase) : User.Create =
       let collection = db.GetCollection "users"
 
-      fun userId lang ->
-        let user : User = {Id = userId; Lang = lang}
+      fun user ->
         task {
           do! collection.InsertOneAsync(user |> Mappings.User.toDb)
-
-          return user
         }
 
   [<RequireQualifiedAccess>]
@@ -68,4 +65,25 @@ module Repos =
       fun channel ->
         task {
           do! collection.InsertOneAsync(channel |> Mappings.Channel.toDb)
+        }
+
+  [<RequireQualifiedAccess>]
+  module Group =
+    let load (db: IMongoDatabase) : Group.Load =
+      let collection = db.GetCollection "groups"
+
+      fun groupId ->
+        let groupId' = groupId |> GroupId.value
+        let filter = Builders<Database.Group>.Filter.Eq((fun c -> c.Id), groupId')
+
+        collection.Find(filter).SingleOrDefaultAsync()
+        |> Task.map Option.ofObj
+        |> TaskOption.map Mappings.Group.fromDb
+
+    let save (db: IMongoDatabase) : Group.Save =
+      let collection = db.GetCollection "groups"
+
+      fun group ->
+        task {
+          do! collection.InsertOneAsync(group |> Mappings.Group.toDb)
         }

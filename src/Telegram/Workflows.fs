@@ -6,6 +6,7 @@ open Domain.Core.Conversion
 open FSharp
 open Microsoft.Extensions.Logging
 open Microsoft.FSharp.Core
+open Telegram.Bot.Types
 open Telegram.Core
 open otsom.fs.Telegram.Bot.Core
 open otsom.fs.Extensions
@@ -90,7 +91,41 @@ module Workflows =
             | None -> Task.FromResult()
         }
 
-  let processMessage
+  let private processMessageFromNewUser (createUser: User.Create) (getLocaleTranslations: Translation.LoadTranslations) queueUserConversion parseCommand sendMessage replyToMessage =
+    fun userId chatId userMessageId (message: Message) ->
+      task {
+        let user = {Id = userId; Lang = message.From.LanguageCode |> Option.ofObj }
+
+        do! createUser user
+
+        let! translations = getLocaleTranslations user.Lang
+
+        return!
+          processIncomingMessage
+            parseCommand
+            translations
+            (queueUserConversion userMessageId (Some userId) chatId)
+            sendMessage
+            replyToMessage
+            message
+      }
+
+  let private processMessageFromKnownUser getLocaleTranslations queueUserConversion parseCommand sendMessage replyToMessage =
+    fun user userMessageId chatId message ->
+      task {
+        let! translations = getLocaleTranslations user.Lang
+
+        return!
+          processIncomingMessage
+            parseCommand
+            translations
+            (queueUserConversion userMessageId (Some user.Id) chatId)
+            sendMessage
+            replyToMessage
+            message
+      }
+
+  let processPrivateMessage
     (sendUserMessage: SendUserMessage)
     (replyToUserMessage: ReplyToUserMessage)
     (getLocaleTranslations: Translation.LoadTranslations)
@@ -99,34 +134,78 @@ module Workflows =
     (queueUserConversion: UserConversion.QueueProcessing)
     (parseCommand: ParseCommand)
     (logger: ILogger)
-    : ProcessMessage =
+    : ProcessPrivateMessage =
     fun message ->
-      let chatId = message.Chat.Id |> UserId
       let userId = message.From.Id |> UserId
-      let sendMessage = sendUserMessage chatId
-      let replyToMessage = replyToUserMessage chatId message.MessageId
+      let sendMessage = sendUserMessage userId
+      let replyToMessage = replyToUserMessage userId message.MessageId
       let userMessageId = message.MessageId |> UserMessageId
+      let processMessageFromKnownUser = processMessageFromKnownUser getLocaleTranslations queueUserConversion parseCommand sendMessage replyToMessage
+      let processMessageFromNewUser = processMessageFromNewUser createUser getLocaleTranslations queueUserConversion parseCommand sendMessage replyToMessage
 
-      Logf.logfi logger "Processing message from user %i{UserId} and chat %i{ChatId}" (userId |> UserId.value) (chatId |> UserId.value)
+      Logf.logfi logger "Processing private message from user %i{UserId}" (userId |> UserId.value)
 
-      userId
-      |> loadUser
-      |> Task.bind (Option.defaultWithTask (fun () -> createUser userId (message.From.LanguageCode |> Option.ofObj)))
-      |> Task.bind (fun user ->
-        task {
-          let! translations = getLocaleTranslations user.Lang
+      task {
+        let! user = loadUser userId
 
-          return!
-            processIncomingMessage
-              parseCommand
-              translations
-              (queueUserConversion userMessageId (Some userId) chatId)
-              sendMessage
-              replyToMessage
-              message
-        })
+        return!
+          match user with
+          | Some u ->
+            processMessageFromKnownUser u userMessageId userId message
+          | None ->
+            processMessageFromNewUser userId userId userMessageId message
+      }
 
-  let processPost
+  let processGroupMessage
+    (sendUserMessage: SendUserMessage)
+    (replyToUserMessage: ReplyToUserMessage)
+    (getLocaleTranslations: Translation.LoadTranslations)
+    (loadUser: User.Load)
+    (createUser: User.Create)
+    (loadGroup: Group.Load)
+    (saveGroup: Group.Save)
+    (queueUserConversion: UserConversion.QueueProcessing)
+    (parseCommand: ParseCommand)
+    (logger: ILogger)
+    : ProcessGroupMessage =
+    fun message ->
+      let groupId = message.Chat.Id |> GroupId
+      let groupId' = message.Chat.Id |> UserId
+      let userId = message.From.Id |> UserId
+      let sendMessage = sendUserMessage groupId'
+      let replyToMessage = replyToUserMessage groupId' message.MessageId
+      let userMessageId = message.MessageId |> UserMessageId
+      let processMessageFromKnownUser = processMessageFromKnownUser getLocaleTranslations queueUserConversion parseCommand sendMessage replyToMessage
+      let processMessageFromNewUser = processMessageFromNewUser createUser getLocaleTranslations queueUserConversion parseCommand sendMessage replyToMessage
+
+      Logf.logfi logger "Processing message from user %i{UserId} in group %i{ChatId}" (userId |> UserId.value) (groupId |> GroupId.value)
+
+      task {
+        let! user = loadUser userId
+        let! group = loadGroup groupId
+
+        return!
+          match user, group with
+          | Some u, Some g ->
+            processMessageFromKnownUser u userMessageId groupId' message
+          | Some u, None ->
+            task {
+              do! saveGroup {Id = groupId}
+
+              return!
+                processMessageFromKnownUser u userMessageId groupId' message
+            }
+          | None, Some g ->
+            processMessageFromNewUser userId groupId' userMessageId message
+          | None, None ->
+            task {
+              do! saveGroup {Id = groupId}
+
+              return! processMessageFromNewUser userId groupId' userMessageId message
+            }
+      }
+
+  let processChannelPost
     (sendUserMessage: SendUserMessage)
     (replyToUserMessage: ReplyToUserMessage)
     (loadDefaultTranslations: Translation.LoadDefaultTranslations)
@@ -135,7 +214,7 @@ module Workflows =
     (queueUserConversion: UserConversion.QueueProcessing)
     (parseCommand: ParseCommand)
     (logger: ILogger)
-    : ProcessPost =
+    : ProcessChannelPost =
     fun post ->
       let channelId = post.Chat.Id |> ChannelId.create
       let chatId = post.Chat.Id |> UserId

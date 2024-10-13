@@ -14,16 +14,33 @@ module Core =
   [<RequireQualifiedAccess>]
   module ChannelId =
     let create id =
-      if id < 0L then ChannelId id else failwith "ChannelId cannot be greater than 0"
+      if id < 0L then
+        ChannelId id
+      else
+        failwith "ChannelId cannot be greater than 0"
 
     let value (ChannelId id) = id
+
+  type GroupId = GroupId of int64
+
+  [<RequireQualifiedAccess>]
+  module GroupId =
+    let create id =
+      if id < 0L then
+        GroupId id
+      else
+        failwith "GroupId cannot be greater than 0"
+
+    let value (GroupId id) = id
+
+  type Group = { Id: GroupId }
 
   type UserMessageId = UserMessageId of int
   type UploadCompletedConversion = ConversionId -> Task<unit>
 
   type User = { Id: UserId; Lang: string option }
 
-  type Channel = {Id: ChannelId; Banned: bool }
+  type Channel = { Id: ChannelId; Banned: bool }
 
   [<RequireQualifiedAccess>]
   type ConversionResult =
@@ -59,8 +76,9 @@ module Core =
     type LoadTranslations = string option -> Task<GetTranslation * FormatTranslation>
     type LoadDefaultTranslations = unit -> Task<GetTranslation * FormatTranslation>
 
-  type ProcessMessage = Message -> Task<unit>
-  type ProcessPost = Message -> Task<unit>
+  type ProcessPrivateMessage = Message -> Task<unit>
+  type ProcessGroupMessage = Message -> Task<unit>
+  type ProcessChannelPost = Message -> Task<unit>
 
   [<RequireQualifiedAccess>]
   type Command =

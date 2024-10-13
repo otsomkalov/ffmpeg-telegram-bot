@@ -3,9 +3,7 @@
 namespace Database;
 
 [BsonIgnoreExtraElements]
-public class Channel
+public class Group
 {
     public long Id { get; set; }
-
-    public bool Banned { get; set; }
 }
