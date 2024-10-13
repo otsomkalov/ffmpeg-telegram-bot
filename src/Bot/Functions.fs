@@ -76,14 +76,14 @@ type Functions
 
     task {
       try
-        do!
-          (match update.Type with
-           | UpdateType.Message when update.Message.From.Id = update.Message.Chat.Id -> processPrivateMessage update.Message
-           | UpdateType.Message -> processGeoupMessage update.Message
-           | UpdateType.ChannelPost -> processChannelPost update.ChannelPost
-           | _ -> Task.FromResult())
+        let processUpdateTask =
+          match update.Type with
+          | UpdateType.Message when update.Message.From.Id = update.Message.Chat.Id -> processPrivateMessage update.Message
+          | UpdateType.Message -> processGeoupMessage update.Message
+          | UpdateType.ChannelPost -> processChannelPost update.ChannelPost
+          | _ -> Task.FromResult()
 
-        return ()
+        do! processUpdateTask
       with e ->
         Logf.elogfe logger e "Error during processing an update:"
         return ()

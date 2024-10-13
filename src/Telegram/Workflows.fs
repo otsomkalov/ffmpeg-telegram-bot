@@ -190,7 +190,7 @@ module Workflows =
           | _, Some g when g.Banned ->
             task {
               let! tran, _ = loadDefaultTranslations ()
-              do! replyToMessage (tran Resources.ChannelBan) |> Task.ignore
+              do! replyToMessage (tran Resources.GroupBan) |> Task.ignore
             }
           | Some u, _ when u.Banned ->
             task{
