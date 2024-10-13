@@ -77,21 +77,21 @@ module Workflows =
         return! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
       }
 
-  let private processIncomingMessage parseCommand (tran, tranf) queueConversion sendMessage replyToMessage =
+  let private processIncomingMessage parseCommand (tran, tranf) queueConversion replyToMessage =
     fun message ->
       task{
           let! command = parseCommand message
 
           return!
             match command with
-            | Some(Command.Start) -> sendMessage (tran Resources.Welcome)
+            | Some(Command.Start) -> replyToMessage (tran Resources.Welcome) |> Task.ignore
             | Some(Command.Links links) -> processLinks replyToMessage tranf queueConversion links
             | Some(Command.Document(fileId, fileName)) -> processDocument replyToMessage tranf queueConversion fileId fileName
             | Some(Command.Video(fileId, fileName)) -> processVideo replyToMessage tranf queueConversion fileId fileName
             | None -> Task.FromResult()
         }
 
-  let private processMessageFromNewUser (createUser: User.Create) (getLocaleTranslations: Translation.LoadTranslations) queueUserConversion parseCommand sendMessage replyToMessage =
+  let private processMessageFromNewUser (createUser: User.Create) (getLocaleTranslations: Translation.LoadTranslations) queueUserConversion parseCommand replyToMessage =
     fun userId chatId userMessageId (message: Message) ->
       task {
         let user = {Id = userId; Lang = message.From.LanguageCode |> Option.ofObj; Banned = false }
@@ -105,12 +105,11 @@ module Workflows =
             parseCommand
             translations
             (queueUserConversion userMessageId (Some userId) chatId)
-            sendMessage
             replyToMessage
             message
       }
 
-  let private processMessageFromKnownUser getLocaleTranslations queueUserConversion parseCommand sendMessage replyToMessage =
+  let private processMessageFromKnownUser getLocaleTranslations queueUserConversion parseCommand replyToMessage =
     fun user userMessageId chatId message ->
       task {
         let! translations = getLocaleTranslations user.Lang
@@ -120,13 +119,11 @@ module Workflows =
             parseCommand
             translations
             (queueUserConversion userMessageId (Some user.Id) chatId)
-            sendMessage
             replyToMessage
             message
       }
 
   let processPrivateMessage
-    (sendUserMessage: SendUserMessage)
     (replyToUserMessage: ReplyToUserMessage)
     (getLocaleTranslations: Translation.LoadTranslations)
     (loadUser: User.Load)
@@ -137,11 +134,10 @@ module Workflows =
     : ProcessPrivateMessage =
     fun message ->
       let userId = message.From.Id |> UserId
-      let sendMessage = sendUserMessage userId
       let replyToMessage = replyToUserMessage userId message.MessageId
       let userMessageId = message.MessageId |> UserMessageId
-      let processMessageFromKnownUser = processMessageFromKnownUser getLocaleTranslations queueUserConversion parseCommand sendMessage replyToMessage
-      let processMessageFromNewUser = processMessageFromNewUser createUser getLocaleTranslations queueUserConversion parseCommand sendMessage replyToMessage
+      let processMessageFromKnownUser = processMessageFromKnownUser getLocaleTranslations queueUserConversion parseCommand replyToMessage
+      let processMessageFromNewUser = processMessageFromNewUser createUser getLocaleTranslations queueUserConversion parseCommand replyToMessage
 
       Logf.logfi logger "Processing private message from user %i{UserId}" (userId |> UserId.value)
 
@@ -154,7 +150,7 @@ module Workflows =
             task {
               let! tran, _ = getLocaleTranslations u.Lang
 
-              do! sendMessage (tran Resources.UserBan)
+              do! replyToMessage (tran Resources.UserBan) |> Task.ignore
             }
           | Some u ->
             processMessageFromKnownUser u userMessageId userId message
@@ -163,7 +159,6 @@ module Workflows =
       }
 
   let processGroupMessage
-    (sendUserMessage: SendUserMessage)
     (replyToUserMessage: ReplyToUserMessage)
     (getLocaleTranslations: Translation.LoadTranslations)
     (loadDefaultTranslations: Translation.LoadDefaultTranslations)
@@ -179,11 +174,10 @@ module Workflows =
       let groupId = message.Chat.Id |> GroupId
       let groupId' = message.Chat.Id |> UserId
       let userId = message.From.Id |> UserId
-      let sendMessage = sendUserMessage groupId'
       let replyToMessage = replyToUserMessage groupId' message.MessageId
       let userMessageId = message.MessageId |> UserMessageId
-      let processMessageFromKnownUser = processMessageFromKnownUser getLocaleTranslations queueUserConversion parseCommand sendMessage replyToMessage
-      let processMessageFromNewUser = processMessageFromNewUser createUser getLocaleTranslations queueUserConversion parseCommand sendMessage replyToMessage
+      let processMessageFromKnownUser = processMessageFromKnownUser getLocaleTranslations queueUserConversion parseCommand replyToMessage
+      let processMessageFromNewUser = processMessageFromNewUser createUser getLocaleTranslations queueUserConversion parseCommand replyToMessage
 
       Logf.logfi logger "Processing message from user %i{UserId} in group %i{ChatId}" (userId |> UserId.value) (groupId |> GroupId.value)
 
@@ -196,13 +190,13 @@ module Workflows =
           | _, Some g when g.Banned ->
             task {
               let! tran, _ = loadDefaultTranslations ()
-              do! sendMessage (tran Resources.ChannelBan)
+              do! replyToMessage (tran Resources.ChannelBan) |> Task.ignore
             }
           | Some u, _ when u.Banned ->
             task{
               let! tran, _ = getLocaleTranslations u.Lang
 
-              do! sendMessage (tran Resources.UserBan)
+              do! replyToMessage (tran Resources.UserBan) |> Task.ignore
             }
           | Some u, Some g ->
             processMessageFromKnownUser u userMessageId groupId' message
@@ -224,7 +218,6 @@ module Workflows =
       }
 
   let processChannelPost
-    (sendUserMessage: SendUserMessage)
     (replyToUserMessage: ReplyToUserMessage)
     (loadDefaultTranslations: Translation.LoadDefaultTranslations)
     (loadChannel: Channel.Load)
@@ -236,7 +229,6 @@ module Workflows =
     fun post ->
       let channelId = post.Chat.Id |> ChannelId.create
       let chatId = post.Chat.Id |> UserId
-      let sendMessage = sendUserMessage chatId
       let replyToMessage = replyToUserMessage chatId post.MessageId
       let postId = (post.MessageId |> UserMessageId)
       let queueConversion = (queueUserConversion postId None chatId)
@@ -249,15 +241,15 @@ module Workflows =
 
         return!
           match channel with
-          | Some c when c.Banned -> sendMessage (tran Resources.ChannelBan)
+          | Some c when c.Banned -> replyToMessage (tran Resources.ChannelBan) |> Task.ignore
           | Some _ ->
-            processIncomingMessage parseCommand (tran, tranf) queueConversion sendMessage replyToMessage post
+            processIncomingMessage parseCommand (tran, tranf) queueConversion replyToMessage post
           | None ->
             task {
               do! saveChannel { Id = channelId; Banned = false }
 
               return!
-                processIncomingMessage parseCommand (tran, tranf) queueConversion sendMessage replyToMessage post
+                processIncomingMessage parseCommand (tran, tranf) queueConversion replyToMessage post
             }
       }
 

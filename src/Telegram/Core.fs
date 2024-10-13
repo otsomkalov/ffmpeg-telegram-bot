@@ -42,7 +42,6 @@ module Core =
 
   type Channel = { Id: ChannelId; Banned: bool }
 
-  type Channel = { Id: ChannelId; Banned: bool }
 
   [<RequireQualifiedAccess>]
   type ConversionResult =
