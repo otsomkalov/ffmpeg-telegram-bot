@@ -40,4 +40,7 @@ module Resources =
   let Completed = "completed"
 
   [<Literal>]
+  let GroupBan = "group-ban"
+
+  [<Literal>]
   let ChannelBan = "channel-ban"

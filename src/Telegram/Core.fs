@@ -33,7 +33,7 @@ module Core =
 
     let value (GroupId id) = id
 
-  type Group = { Id: GroupId }
+  type Group = { Id: GroupId; Banned: bool }
 
   type UserMessageId = UserMessageId of int
   type UploadCompletedConversion = ConversionId -> Task<unit>
