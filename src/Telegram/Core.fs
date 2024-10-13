@@ -38,9 +38,10 @@ module Core =
   type UserMessageId = UserMessageId of int
   type UploadCompletedConversion = ConversionId -> Task<unit>
 
-  type User = { Id: UserId; Lang: string option }
+  type User = { Id: UserId; Lang: string option; Banned: bool }
 
   type Channel = { Id: ChannelId; Banned: bool }
+
 
   [<RequireQualifiedAccess>]
   type ConversionResult =

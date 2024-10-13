@@ -94,7 +94,7 @@ module Workflows =
   let private processMessageFromNewUser (createUser: User.Create) (getLocaleTranslations: Translation.LoadTranslations) queueUserConversion parseCommand replyToMessage =
     fun userId chatId userMessageId (message: Message) ->
       task {
-        let user = {Id = userId; Lang = message.From.LanguageCode |> Option.ofObj }
+        let user = {Id = userId; Lang = message.From.LanguageCode |> Option.ofObj; Banned = false }
 
         do! createUser user
 
@@ -146,6 +146,12 @@ module Workflows =
 
         return!
           match user with
+          | Some u when u.Banned ->
+            task {
+              let! tran, _ = getLocaleTranslations u.Lang
+
+              do! replyToMessage (tran Resources.UserBan) |> Task.ignore
+            }
           | Some u ->
             processMessageFromKnownUser u userMessageId userId message
           | None ->
@@ -185,6 +191,12 @@ module Workflows =
             task {
               let! tran, _ = loadDefaultTranslations ()
               do! replyToMessage (tran Resources.GroupBan) |> Task.ignore
+            }
+          | Some u, _ when u.Banned ->
+            task{
+              let! tran, _ = getLocaleTranslations u.Lang
+
+              do! replyToMessage (tran Resources.UserBan) |> Task.ignore
             }
           | Some u, Some g ->
             processMessageFromKnownUser u userMessageId groupId' message

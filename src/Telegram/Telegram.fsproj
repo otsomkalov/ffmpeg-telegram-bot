@@ -9,7 +9,6 @@
     <Compile Include="Core.fs"/>
     <Compile Include="Resources.fs" />
     <Compile Include="Repos.fs" />
-    <Compile Include="Mappings.fs" />
     <Compile Include="Workflows.fs"/>
   </ItemGroup>
 
