@@ -96,13 +96,23 @@ module Conversion =
 
 [<RequireQualifiedAccess>]
 module Translation =
-  let private loadTranslationsMap (collection: IMongoCollection<Database.Translation>) key =
-    collection.Find(fun t -> t.Lang = key).ToListAsync()
-    |> Task.map (
-      Seq.groupBy (_.Key)
-      >> Seq.map (fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head))
-      >> Map.ofSeq
-    )
+  let private loadTranslationsMap (collection: IMongoCollection<Database.Translation>) logger =
+    fun key ->
+      task{
+        let! translationsList = collection.Find(fun t -> t.Lang = key).ToListAsync()
+
+        Logf.logfi logger "Translations list for lang %s{Lang} loaded from DB" key
+
+        let translationsMap =
+          translationsList
+          |> Seq.groupBy (_.Key)
+          |> Seq.map (fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head))
+          |> Map.ofSeq
+
+        Logf.logfi logger "Translations map for lang %s{Lang} contains %i{TranslationsCount} translations" key (translationsMap |> Map.count)
+
+        return translationsMap
+      }
 
   let private formatWithFallback formats fallback =
     fun (key, args) ->
@@ -113,11 +123,12 @@ module Translation =
   let loadDefaultTranslations (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : Translation.LoadDefaultTranslations =
     let logger = loggerFactory.CreateLogger(nameof Translation.LoadDefaultTranslations)
     let collection = db.GetCollection "resources"
+    let loadTranslationsMap = loadTranslationsMap collection logger
 
     fun () ->
       task {
         Logf.logfi logger "Loading default translations"
-        let! translations = loadTranslationsMap collection Translation.DefaultLang
+        let! translations = loadTranslationsMap Translation.DefaultLang
         Logf.logfi logger "Default translations map loaded from DB"
 
         let getTranslation =
@@ -132,15 +143,16 @@ module Translation =
   let loadTranslations (db: IMongoDatabase) (loggerFactory: ILoggerFactory) (loadDefaultTranslations: Translation.LoadDefaultTranslations) : Translation.LoadTranslations =
     let logger = loggerFactory.CreateLogger(nameof Translation.LoadTranslations)
     let collection = db.GetCollection "resources"
+    let loadTranslationsMap = loadTranslationsMap collection logger
 
     function
     | Some l when l <> Translation.DefaultLang ->
       task {
         let! tran, tranf = loadDefaultTranslations ()
 
-        Logf.logfi logger "Loading translations for lang %s{Lang}" l
+        Logf.logfi logger "Loading translations for lang %s{Lang}"
 
-        let! localeTranslations = loadTranslationsMap collection l
+        let! localeTranslations = loadTranslationsMap l
 
         Logf.logfi logger "Translations for lang %s{Lang} is loaded" l
 
