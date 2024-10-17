@@ -99,7 +99,9 @@ module Translation =
   let private loadTranslationsMap (collection: IMongoCollection<Database.Translation>) logger =
     fun key ->
       task{
-        let! translationsList = collection.Find(fun t -> t.Lang = key).ToListAsync()
+        let filter = Builders<Database.Translation>.Filter.Eq((fun t -> t.Lang), key);
+
+        let! translationsList = collection.Find(filter).ToListAsync()
 
         Logf.logfi logger "Translations list for lang %s{Lang} loaded from DB" key
 
