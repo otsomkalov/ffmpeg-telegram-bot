@@ -9,7 +9,6 @@ open Domain.Workflows
 open Infrastructure.Settings
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
-open MongoDB.ApplicationInsights
 open MongoDB.Driver
 open Polly.Extensions.Http
 open otsom.fs.Extensions.DependencyInjection
@@ -18,7 +17,6 @@ open Domain.Repos
 open Polly
 open Infrastructure.Repos
 open Infrastructure.Workflows
-open MongoDB.ApplicationInsights.DependencyInjection
 
 module Startup =
   [<Literal>]
@@ -30,8 +28,8 @@ module Startup =
       .HandleTransientHttpError()
       .WaitAndRetryAsync(5, (fun retryAttempt -> TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))))
 
-  let private configureMongoClient (factory: IMongoClientFactory) (settings: DatabaseSettings) =
-    factory.GetClient(settings.ConnectionString)
+  let private configureMongoClient (settings: DatabaseSettings) =
+    MongoClient(settings.ConnectionString) :> IMongoClient
 
   let private configureMongoDatabase (settings: DatabaseSettings) (mongoClient: IMongoClient) =
     mongoClient.GetDatabase(settings.Name)
@@ -42,8 +40,7 @@ module Startup =
       .AddPolicyHandler(retryPolicy)
 
     services
-      .AddMongoClientFactory()
-      .BuildSingleton<IMongoClient, IMongoClientFactory, DatabaseSettings>(configureMongoClient)
+      .BuildSingleton<IMongoClient, DatabaseSettings>(configureMongoClient)
       .BuildSingleton<IMongoDatabase, DatabaseSettings, IMongoClient>(configureMongoDatabase)
 
     services
