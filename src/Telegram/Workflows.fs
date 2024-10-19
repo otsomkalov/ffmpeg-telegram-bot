@@ -144,6 +144,8 @@ module Workflows =
       task {
         let! user = loadUser userId
 
+        Logf.logfi logger "User is loaded from DB"
+
         return!
           match user with
           | Some u when u.Banned ->
@@ -182,6 +184,8 @@ module Workflows =
       task {
         let! user = loadUser userId
         let! group = loadGroup groupId
+
+        Logf.logfi logger "User and group are loaded from DB"
 
         return!
           match user, group with
@@ -244,6 +248,8 @@ module Workflows =
       task {
         let! tran, tranf = loadDefaultTranslations ()
         let! channel = loadChannel channelId
+
+        Logf.logfi logger "Channel loaded from DB"
 
         return!
           match channel with
