@@ -48,13 +48,13 @@ module Startup =
 
       .BuildSingleton<User.LoadTranslations, User.Load, Translation.LoadTranslations, Translation.LoadDefaultTranslations>(User.loadTranslations)
 
-      .BuildSingleton<User.Load, IMongoDatabase>(User.load)
+      .BuildSingleton<User.Load, IMongoDatabase, ILoggerFactory>(User.load)
       .BuildSingleton<User.Create, IMongoDatabase>(User.create)
 
-      .BuildSingleton<Channel.Load, IMongoDatabase>(Channel.load)
+      .BuildSingleton<Channel.Load, IMongoDatabase, ILoggerFactory>(Channel.load)
       .BuildSingleton<Channel.Save, IMongoDatabase>(Channel.save)
 
-      .BuildSingleton<Group.Load, IMongoDatabase>(Group.load)
+      .BuildSingleton<Group.Load, IMongoDatabase, ILoggerFactory>(Group.load)
       .BuildSingleton<Group.Save, IMongoDatabase>(Group.save)
 
       .BuildSingleton<Conversion.New.InputFile.DownloadDocument, ITelegramBotClient, WorkersSettings>(Conversion.New.InputFile.downloadDocument)
