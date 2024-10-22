@@ -4,6 +4,7 @@ open Domain.Core
 open FSharp
 open Microsoft.Extensions.Logging
 open MongoDB.Driver
+open MongoDB.Driver.Linq
 open Telegram.Core
 open Telegram.Repos
 open otsom.fs.Extensions
@@ -33,16 +34,15 @@ module Repos =
   module User =
     let load (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : User.Load =
       let logger = loggerFactory.CreateLogger(nameof User.Load)
-      let collection = db.GetCollection "users"
+      let collection = db.GetCollection<Database.User> "users"
 
       fun userId ->
         let userId' = userId |> UserId.value
-        let filter = Builders<Database.User>.Filter.Eq((fun c -> c.Id), userId')
 
         Logf.logfi logger "Loading user %i{UserId} from DB" userId'
 
         task {
-          let! entity = collection.Find(filter).SingleOrDefaultAsync()
+          let! entity = collection.AsQueryable().SingleAsync(fun u -> u.Id = userId')
 
           Logf.logfi logger "User %i{UserId} is loaded from DB" userId'
 
@@ -58,16 +58,15 @@ module Repos =
   module Channel =
     let load (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : Channel.Load =
       let logger = loggerFactory.CreateLogger(nameof Channel.Load)
-      let collection = db.GetCollection "channels"
+      let collection = db.GetCollection<Database.Channel> "channels"
 
       fun channelId ->
         let channelId' = channelId |> ChannelId.value
-        let filter = Builders<Database.Channel>.Filter.Eq((fun c -> c.Id), channelId')
 
         Logf.logfi logger "Loading channel %i{ChannelId} from DB" channelId'
 
         task {
-          let! entity = collection.Find(filter).SingleOrDefaultAsync()
+          let! entity = collection.AsQueryable().SingleAsync(fun c -> c.Id = channelId')
 
           Logf.logfi logger "Channel %i{ChannelId} is loaded from DB" channelId'
 
@@ -86,16 +85,15 @@ module Repos =
   module Group =
     let load (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : Group.Load =
       let logger = loggerFactory.CreateLogger(nameof Group.Load)
-      let collection = db.GetCollection "groups"
+      let collection = db.GetCollection<Database.Group> "groups"
 
       fun groupId ->
         let groupId' = groupId |> GroupId.value
-        let filter = Builders<Database.Group>.Filter.Eq((fun c -> c.Id), groupId')
 
         Logf.logfi logger "Loading group %i{GroupId} from DB" groupId'
 
         task {
-          let! entity = collection.Find(filter).SingleOrDefaultAsync()
+          let! entity = collection.AsQueryable().SingleAsync(fun c -> c.Id = groupId')
 
           Logf.logfi logger "Group %i{GroupId} is loaded from DB" groupId'
 
