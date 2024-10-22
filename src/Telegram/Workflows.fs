@@ -179,8 +179,6 @@ module Workflows =
       let processMessageFromKnownUser = processMessageFromKnownUser getLocaleTranslations queueUserConversion parseCommand replyToMessage
       let processMessageFromNewUser = processMessageFromNewUser createUser getLocaleTranslations queueUserConversion parseCommand replyToMessage
 
-      Logf.logfi logger "Processing message from user %i{UserId} in group %i{ChatId}" (userId |> UserId.value) (groupId |> GroupId.value)
-
       task {
         let! user = loadUser userId
         let! group = loadGroup groupId
@@ -199,8 +197,12 @@ module Workflows =
               do! replyToMessage (tran Resources.UserBan) |> Task.ignore
             }
           | Some u, Some g ->
+            Logf.logfi logger "Processing message from known user %i{UserId} in known group %i{GroupId}" (userId |> UserId.value) (groupId |> GroupId.value)
+
             processMessageFromKnownUser u userMessageId groupId' message
           | Some u, None ->
+            Logf.logfi logger "Processing message from known user %i{UserId} in new group %i{GroupId}" (userId |> UserId.value) (groupId |> GroupId.value)
+
             task {
               do! saveGroup {Id = groupId; Banned = false }
 
@@ -208,8 +210,12 @@ module Workflows =
                 processMessageFromKnownUser u userMessageId groupId' message
             }
           | None, Some g ->
+            Logf.logfi logger "Processing message from new user %i{UserId} in known group %i{GroupId}" (userId |> UserId.value) (groupId |> GroupId.value)
+
             processMessageFromNewUser userId groupId' userMessageId message
           | _ ->
+            Logf.logfi logger "Processing message from new user %i{UserId} in new group %i{GroupId}" (userId |> UserId.value) (groupId |> GroupId.value)
+
             task {
               do! saveGroup {Id = groupId; Banned = false }
 
