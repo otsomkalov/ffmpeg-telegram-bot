@@ -42,7 +42,7 @@ module Repos =
         Logf.logfi logger "Loading user %i{UserId} from DB" userId'
 
         task {
-          let! entity = collection.AsQueryable().SingleAsync(fun u -> u.Id = userId')
+          let! entity = collection.AsQueryable().FirstOrDefaultAsync(fun u -> u.Id = userId')
 
           Logf.logfi logger "User %i{UserId} is loaded from DB" userId'
 
@@ -66,7 +66,7 @@ module Repos =
         Logf.logfi logger "Loading channel %i{ChannelId} from DB" channelId'
 
         task {
-          let! entity = collection.AsQueryable().SingleAsync(fun c -> c.Id = channelId')
+          let! entity = collection.AsQueryable().FirstOrDefaultAsync(fun c -> c.Id = channelId')
 
           Logf.logfi logger "Channel %i{ChannelId} is loaded from DB" channelId'
 
@@ -93,7 +93,7 @@ module Repos =
         Logf.logfi logger "Loading group %i{GroupId} from DB" groupId'
 
         task {
-          let! entity = collection.AsQueryable().SingleAsync(fun c -> c.Id = groupId')
+          let! entity = collection.AsQueryable().FirstOrDefaultAsync(fun c -> c.Id = groupId')
 
           Logf.logfi logger "Group %i{GroupId} is loaded from DB" groupId'
 
