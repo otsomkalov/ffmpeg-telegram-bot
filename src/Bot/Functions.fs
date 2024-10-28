@@ -12,7 +12,6 @@ open Microsoft.ApplicationInsights.DataContracts
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
-open Microsoft.Extensions.Logging
 open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
 open Telegram.Core
@@ -47,7 +46,6 @@ type Functions
     loadConversion: Conversion.Load,
     saveConversion: Conversion.Save,
     telemetryClient: TelemetryClient,
-    loadTranslations: User.LoadTranslations,
     cleanupConversion: Conversion.Completed.Cleanup,
     loadUser: User.Load,
     loadChannel: Channel.Load,
@@ -103,7 +101,7 @@ type Functions
       Conversion.New.prepare downloadLink downloadDocument saveConversion queueConversion queueThumbnailing
 
     let downloadFileAndQueueConversion =
-      downloadFileAndQueueConversion editBotMessage loadUserConversion loadTranslations prepareConversion
+      downloadFileAndQueueConversion editBotMessage loadUserConversion (User.loadTranslations loadUser loadLangTranslations loadDefaultTranslations) prepareConversion
 
     task {
       use activity = (new Activity("Downloader")).SetParentId(message.OperationId)
@@ -126,7 +124,7 @@ type Functions
         loadUserConversion
         editBotMessage
         loadConversion
-        loadTranslations
+        (User.loadTranslations loadUser loadLangTranslations loadDefaultTranslations)
         saveVideo
         completeThumbnailedConversion
         (Conversion.Completed.queueUpload workersSettings message.OperationId)
@@ -156,7 +154,7 @@ type Functions
         loadUserConversion
         editBotMessage
         loadConversion
-        loadTranslations
+        (User.loadTranslations loadUser loadLangTranslations loadDefaultTranslations)
         saveThumbnail
         completeConvertedConversion
         (Conversion.Completed.queueUpload workersSettings message.OperationId)
@@ -183,7 +181,7 @@ type Functions
     let conversionId = message.Data.ConversionId |> ConversionId
 
     let uploadSuccessfulConversion =
-      uploadCompletedConversion loadUserConversion loadConversion deleteBotMessage replyWithVideo loadTranslations cleanupConversion
+      uploadCompletedConversion loadUserConversion loadConversion deleteBotMessage replyWithVideo (User.loadTranslations loadUser loadLangTranslations loadDefaultTranslations) cleanupConversion
 
     task {
       use activity =
