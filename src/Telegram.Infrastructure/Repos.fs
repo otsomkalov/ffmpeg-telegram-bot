@@ -32,8 +32,7 @@ module Repos =
 
   [<RequireQualifiedAccess>]
   module User =
-    let load (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : User.Load =
-      let logger = loggerFactory.CreateLogger(nameof User.Load)
+    let load (db: IMongoDatabase) (logger: ILogger) : User.Load =
       let collection = db.GetCollection<Database.User> "users"
 
       fun userId ->

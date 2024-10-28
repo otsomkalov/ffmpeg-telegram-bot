@@ -12,9 +12,12 @@ open Microsoft.ApplicationInsights.DataContracts
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
+open Microsoft.Extensions.Logging
+open MongoDB.Driver
 open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
 open Telegram.Core
+open Telegram.Infrastructure
 open Telegram.Workflows
 open otsom.fs.Telegram.Bot.Core
 open Domain.Repos
@@ -47,21 +50,22 @@ type Functions
     saveConversion: Conversion.Save,
     telemetryClient: TelemetryClient,
     cleanupConversion: Conversion.Completed.Cleanup,
-    loadUser: User.Load,
     loadChannel: Channel.Load,
     createUser: User.Create,
     saveChannel: Channel.Save,
     loadDefaultTranslations: Translation.LoadDefaultTranslations,
     loadGroup: Group.Load,
-    saveGroup: Group.Save
+    saveGroup: Group.Save,
+    db: IMongoDatabase,
+    logger: ILogger<Functions>
   ) =
 
   [<Function("HandleUpdate")>]
   member this.HandleUpdate([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update, ctx: FunctionContext) : Task<unit> =
-    let logger = nameof(this.HandleUpdate) |> ctx.GetLogger
-
     let queueUserConversion =
       UserConversion.queueProcessing createConversion saveUserConversion queueConversionPreparation
+
+    let loadUser = Repos.User.load db logger
 
     let processPrivateMessage =
       processPrivateMessage replyToUserMessage loadLangTranslations loadUser createUser queueUserConversion parseCommand logger
@@ -100,6 +104,8 @@ type Functions
     let prepareConversion =
       Conversion.New.prepare downloadLink downloadDocument saveConversion queueConversion queueThumbnailing
 
+    let loadUser = Repos.User.load db logger
+
     let downloadFileAndQueueConversion =
       downloadFileAndQueueConversion editBotMessage loadUserConversion (User.loadTranslations loadUser loadLangTranslations loadDefaultTranslations) prepareConversion
 
@@ -119,6 +125,9 @@ type Functions
         BaseMessage<ConverterResultMessage>,
       _: FunctionContext
     ) : Task<unit> =
+
+    let loadUser = Repos.User.load db logger
+
     let processConversionResult =
       processConversionResult
         loadUserConversion
@@ -149,6 +158,9 @@ type Functions
         BaseMessage<ConverterResultMessage>,
       _: FunctionContext
     ) : Task<unit> =
+    let loadUser = Repos.User.load db logger
+
+
     let processThumbnailingResult =
       processThumbnailingResult
         loadUserConversion
@@ -178,6 +190,8 @@ type Functions
       [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>] message: BaseMessage<UploaderMessage>,
       _: FunctionContext
     ) : Task =
+    let loadUser = Repos.User.load db logger
+
     let conversionId = message.Data.ConversionId |> ConversionId
 
     let uploadSuccessfulConversion =

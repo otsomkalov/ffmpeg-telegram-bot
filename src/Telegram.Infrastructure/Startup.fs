@@ -46,7 +46,6 @@ module Startup =
       .BuildSingleton<Translation.LoadDefaultTranslations, IMongoDatabase, ILoggerFactory>(Translation.loadDefaultTranslations)
       .BuildSingleton<Translation.LoadTranslations, IMongoDatabase, ILoggerFactory, Translation.LoadDefaultTranslations>(Translation.loadTranslations)
 
-      .BuildSingleton<User.Load, IMongoDatabase, ILoggerFactory>(User.load)
       .BuildSingleton<User.Create, IMongoDatabase>(User.create)
 
       .BuildSingleton<Channel.Load, IMongoDatabase, ILoggerFactory>(Channel.load)
