@@ -110,9 +110,8 @@ module Translation =
       | Some fmt -> String.Format(fmt, args)
       | None -> fallback
 
-  let loadDefaultTranslations (db: IMongoDatabase) (loggerFactory: ILoggerFactory) : Translation.LoadDefaultTranslations =
+  let loadDefaultTranslations (collection: IMongoCollection<Database.Translation>) (loggerFactory: ILoggerFactory) : Translation.LoadDefaultTranslations =
     let logger = loggerFactory.CreateLogger(nameof Translation.LoadDefaultTranslations)
-    let collection = db.GetCollection "resources"
 
     fun () ->
       task {
@@ -129,9 +128,8 @@ module Translation =
         return (getTranslation, formatTranslation)
       }
 
-  let loadTranslations (db: IMongoDatabase) (loggerFactory: ILoggerFactory) (loadDefaultTranslations: Translation.LoadDefaultTranslations) : Translation.LoadTranslations =
+  let loadTranslations (collection: IMongoCollection<Database.Translation>) (loggerFactory: ILoggerFactory) (loadDefaultTranslations: Translation.LoadDefaultTranslations) : Translation.LoadTranslations =
     let logger = loggerFactory.CreateLogger(nameof Translation.LoadTranslations)
-    let collection = db.GetCollection "resources"
 
     function
     | Some l when l <> Translation.DefaultLang ->

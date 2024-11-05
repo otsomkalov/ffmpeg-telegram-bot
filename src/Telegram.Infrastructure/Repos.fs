@@ -2,6 +2,7 @@
 
 open Domain.Core
 open MongoDB.Driver
+open MongoDB.Driver.Linq
 open Telegram.Core
 open Telegram.Repos
 open otsom.fs.Extensions
@@ -29,61 +30,39 @@ module Repos =
 
   [<RequireQualifiedAccess>]
   module User =
-    let load (db: IMongoDatabase) : User.Load =
-      let collection = db.GetCollection "users"
-
+    let load (collection: IMongoCollection<Database.User>) : User.Load =
       fun userId ->
         let userId' = userId |> UserId.value
-        let filter = Builders<Database.User>.Filter.Eq((fun c -> c.Id), userId')
 
-        collection.Find(filter).SingleOrDefaultAsync() |> Task.map Option.ofObj |> TaskOption.map Mappings.User.fromDb
+        collection.AsQueryable().SingleOrDefaultAsync(fun u -> u.Id = userId')
+        |> Task.map Option.ofObj
+        |> TaskOption.map Mappings.User.fromDb
 
-    let create (db: IMongoDatabase) : User.Create =
-      let collection = db.GetCollection "users"
-
-      fun user ->
-        task {
-          do! collection.InsertOneAsync(user |> Mappings.User.toDb)
-        }
+    let create (collection: IMongoCollection<Database.User>) : User.Create =
+      fun user -> task { do! collection.InsertOneAsync(user |> Mappings.User.toDb) }
 
   [<RequireQualifiedAccess>]
   module Channel =
-    let load (db: IMongoDatabase) : Channel.Load =
-      let collection = db.GetCollection "channels"
-
+    let load (collection: IMongoCollection<Database.Channel>) : Channel.Load =
       fun channelId ->
         let channelId' = channelId |> ChannelId.value
-        let filter = Builders<Database.Channel>.Filter.Eq((fun c -> c.Id), channelId')
 
-        collection.Find(filter).SingleOrDefaultAsync()
+        collection.AsQueryable().SingleOrDefaultAsync(fun c -> c.Id = channelId')
         |> Task.map Option.ofObj
         |> TaskOption.map Mappings.Channel.fromDb
 
-    let save (db: IMongoDatabase) : Channel.Save =
-      let collection = db.GetCollection "channels"
-
-      fun channel ->
-        task {
-          do! collection.InsertOneAsync(channel |> Mappings.Channel.toDb)
-        }
+    let save (collection: IMongoCollection<Database.Channel>) : Channel.Save =
+      fun channel -> task { do! collection.InsertOneAsync(channel |> Mappings.Channel.toDb) }
 
   [<RequireQualifiedAccess>]
   module Group =
-    let load (db: IMongoDatabase) : Group.Load =
-      let collection = db.GetCollection "groups"
-
+    let load (collection: IMongoCollection<Database.Group>) : Group.Load =
       fun groupId ->
         let groupId' = groupId |> GroupId.value
-        let filter = Builders<Database.Group>.Filter.Eq((fun c -> c.Id), groupId')
 
-        collection.Find(filter).SingleOrDefaultAsync()
+        collection.AsQueryable().SingleOrDefaultAsync(fun g -> g.Id = groupId')
         |> Task.map Option.ofObj
         |> TaskOption.map Mappings.Group.fromDb
 
-    let save (db: IMongoDatabase) : Group.Save =
-      let collection = db.GetCollection "groups"
-
-      fun group ->
-        task {
-          do! collection.InsertOneAsync(group |> Mappings.Group.toDb)
-        }
+    let save (collection: IMongoCollection<Database.Group>) : Group.Save =
+      fun group -> task { do! collection.InsertOneAsync(group |> Mappings.Group.toDb) }
