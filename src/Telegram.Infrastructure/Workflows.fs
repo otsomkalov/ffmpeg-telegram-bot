@@ -96,13 +96,21 @@ module Conversion =
 
 [<RequireQualifiedAccess>]
 module Translation =
-  let private loadTranslationsMap (collection: IMongoCollection<Database.Translation>) key =
-    collection.Find(fun t -> t.Lang = key).ToListAsync()
-    |> Task.map (
-      Seq.groupBy (_.Key)
-      >> Seq.map (fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head))
-      >> Map.ofSeq
-    )
+  let private loadTranslationsMap (collection: IMongoCollection<Database.Translation>) logger =
+    fun lang ->
+      task {
+        Logf.logfi logger "Loading translations for lang %s{Lang}" lang
+
+        let! trans = collection.Find(fun t -> t.Lang = lang).ToListAsync()
+
+        Logf.logfi logger "Translations for lang %s{Lang} is loaded" lang
+
+        return
+          trans
+          |> Seq.groupBy (_.Key)
+          |> Seq.map (fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head))
+          |> Map.ofSeq
+      }
 
   let private formatWithFallback formats fallback =
     fun (key, args) ->
@@ -115,9 +123,7 @@ module Translation =
 
     fun () ->
       task {
-        Logf.logfi logger "Loading default translations"
-        let! translations = loadTranslationsMap collection Translation.DefaultLang
-        Logf.logfi logger "Default translations map loaded from DB"
+        let! translations = loadTranslationsMap collection logger Translation.DefaultLang
 
         let getTranslation =
           fun key -> translations |> Map.tryFind key |> Option.defaultValue key
@@ -132,15 +138,11 @@ module Translation =
     let logger = loggerFactory.CreateLogger(nameof Translation.LoadTranslations)
 
     function
-    | Some l when l <> Translation.DefaultLang ->
+    | Some lang when lang <> Translation.DefaultLang ->
       task {
         let! tran, tranf = loadDefaultTranslations ()
 
-        Logf.logfi logger "Loading translations for lang %s{Lang}" l
-
-        let! localeTranslations = loadTranslationsMap collection l
-
-        Logf.logfi logger "Translations for lang %s{Lang} is loaded" l
+        let! localeTranslations = loadTranslationsMap collection logger lang
 
         let getTranslation: Translation.GetTranslation =
           fun key -> localeTranslations |> Map.tryFind key |> Option.defaultValue (tran key)
