@@ -10,19 +10,14 @@ open otsom.fs.Extensions
 module Repos =
   [<RequireQualifiedAccess>]
   module Conversion =
-    let load (db: IMongoDatabase) : Conversion.Load =
-      let collection = db.GetCollection "conversions"
-
+    let load (collection: IMongoCollection<Database.Conversion>) : Conversion.Load =
       fun conversionId ->
         let (ConversionId conversionId) = conversionId
         let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
 
-        collection.Find(filter).SingleOrDefaultAsync()
-        |> Task.map Conversion.fromDb
+        collection.Find(filter).SingleOrDefaultAsync() |> Task.map Conversion.fromDb
 
-    let save (db: IMongoDatabase) : Conversion.Save =
-      let collection = db.GetCollection "conversions"
-
+    let save (collection: IMongoCollection<Database.Conversion>) : Conversion.Save =
       fun conversion ->
         let filter =
           Builders<Database.Conversion>.Filter
@@ -36,4 +31,5 @@ module Repos =
           | Conversion.Thumbnailed conversion -> conversion |> Mappings.Conversion.Thumbnailed.toDb
           | Conversion.Completed conversion -> conversion |> Mappings.Conversion.Completed.toDb
 
-        collection.ReplaceOneAsync(filter, entity, ReplaceOptions(IsUpsert = true)) |> Task.ignore
+        collection.ReplaceOneAsync(filter, entity, ReplaceOptions(IsUpsert = true))
+        |> Task.ignore

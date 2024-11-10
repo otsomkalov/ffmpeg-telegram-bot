@@ -43,6 +43,8 @@ module Startup =
       .BuildSingleton<IMongoClient, DatabaseSettings>(configureMongoClient)
       .BuildSingleton<IMongoDatabase, DatabaseSettings, IMongoClient>(configureMongoDatabase)
 
+      .BuildSingleton<IMongoCollection<Database.Conversion>, IMongoDatabase>(_.GetCollection<Database.Conversion>("conversions"))
+
     services
       .BuildSingleton<WorkersSettings, IConfiguration>(fun cfg ->
         cfg
@@ -56,8 +58,8 @@ module Startup =
     services
       .AddSingleton<ConversionId.Generate>(ConversionId.generate)
       .BuildSingleton<Conversion.Create, ConversionId.Generate, Conversion.Save>(Conversion.create)
-      .BuildSingleton<Conversion.Load, IMongoDatabase>(Conversion.load)
-      .BuildSingleton<Conversion.Save, IMongoDatabase>(Conversion.save)
+      .BuildSingleton<Conversion.Load, IMongoCollection<Database.Conversion>>(Conversion.load)
+      .BuildSingleton<Conversion.Save, IMongoCollection<Database.Conversion>>(Conversion.save)
 
       .BuildSingleton<Conversion.New.QueuePreparation, WorkersSettings>(Conversion.New.queuePreparation)
       .BuildSingleton<Conversion.New.InputFile.DownloadLink, IHttpClientFactory, WorkersSettings>(Conversion.New.InputFile.downloadLink)
