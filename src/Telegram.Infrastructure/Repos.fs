@@ -1,6 +1,8 @@
 ﻿namespace Telegram.Infrastructure
 
 open Domain.Core
+open FSharp
+open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open MongoDB.Driver.Linq
 open Telegram.Core
@@ -30,13 +32,21 @@ module Repos =
 
   [<RequireQualifiedAccess>]
   module User =
-    let load (collection: IMongoCollection<Database.User>) : User.Load =
+    let load (collection: IMongoCollection<Database.User>) (loggerFactory: ILoggerFactory) : User.Load =
+      let logger = loggerFactory.CreateLogger(nameof User.Load)
+
       fun userId ->
         let userId' = userId |> UserId.value
 
-        collection.AsQueryable().SingleOrDefaultAsync(fun u -> u.Id = userId')
-        |> Task.map Option.ofObj
-        |> TaskOption.map Mappings.User.fromDb
+        task {
+          Logf.logfi logger "Loading user %i{UserId}" userId'
+
+          let! userEntity = collection.AsQueryable().SingleOrDefaultAsync(fun u -> u.Id = userId')
+
+          Logf.logfi logger "User %i{UserId} is loaded" userId'
+
+          return userEntity |> Option.ofObj |> Option.map Mappings.User.fromDb
+        }
 
     let create (collection: IMongoCollection<Database.User>) : User.Create =
       fun user -> task { do! collection.InsertOneAsync(user |> Mappings.User.toDb) }
