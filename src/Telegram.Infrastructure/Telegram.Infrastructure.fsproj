@@ -8,15 +8,14 @@
   <ItemGroup>
     <Compile Include="Core.fs"/>
     <Compile Include="Mappings.fs"/>
-    <Compile Include="Settings.fs" />
-    <Compile Include="Helpers.fs" />
-    <Compile Include="Repos.fs" />
+    <Compile Include="Settings.fs"/>
+    <Compile Include="Helpers.fs"/>
+    <Compile Include="Repos.fs"/>
     <Compile Include="Workflows.fs"/>
     <Compile Include="Startup.fs"/>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="otsom.fs.Extensions.DependencyInjection" Version="0.0.1"/>
     <PackageReference Include="FSharp.Logf" Version="1.2.2"/>
   </ItemGroup>
 

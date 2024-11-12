@@ -7,7 +7,6 @@ open Domain.Repos
 open Infrastructure.Settings
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
-open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open Telegram.Bot
 open Telegram.Core
@@ -17,9 +16,10 @@ open Telegram.Workflows
 open otsom.fs.Extensions.DependencyInjection
 open Telegram.Repos
 open Telegram.Infrastructure.Repos
+open otsom.fs.Resources
 
 module Startup =
-  let addTelegram (services: IServiceCollection) =
+  let addTelegram (cfg: IConfiguration) (services: IServiceCollection) =
     services
       .BuildSingleton<InputValidationSettings, IConfiguration>(fun cfg ->
         cfg
@@ -38,7 +38,9 @@ module Startup =
       .BuildSingleton<IMongoCollection<Database.User>, IMongoDatabase>(_.GetCollection<Database.User>("users"))
       .BuildSingleton<IMongoCollection<Database.Channel>, IMongoDatabase>(_.GetCollection<Database.Channel>("channels"))
       .BuildSingleton<IMongoCollection<Database.Group>, IMongoDatabase>(_.GetCollection<Database.Group>("groups"))
-      .BuildSingleton<IMongoCollection<Database.Translation>, IMongoDatabase>(_.GetCollection<Database.Translation>("resources"))
+
+    services
+    |> Startup.addResources cfg
 
     services
       .BuildSingleton<UserConversion.Load, IMongoDatabase>(UserConversion.load)
@@ -46,14 +48,6 @@ module Startup =
 
       .BuildSingleton<DeleteBotMessage, ITelegramBotClient>(deleteBotMessage)
       .BuildSingleton<ReplyWithVideo, WorkersSettings, ITelegramBotClient>(replyWithVideo)
-      .BuildSingleton<Translation.LoadDefaultTranslations, IMongoCollection<Database.Translation>, ILoggerFactory>(Translation.loadDefaultTranslations)
-      .BuildSingleton<Translation.LoadTranslations, IMongoCollection<Database.Translation>, ILoggerFactory, Translation.LoadDefaultTranslations>(
-        Translation.loadTranslations
-      )
-
-      .BuildSingleton<User.LoadTranslations, User.Load, Translation.LoadTranslations, Translation.LoadDefaultTranslations>(
-        User.loadTranslations
-      )
 
       .BuildSingleton<User.Load, IMongoCollection<Database.User>>(User.load)
       .BuildSingleton<User.Create, IMongoCollection<Database.User>>(User.create)
