@@ -12,7 +12,6 @@ open Microsoft.ApplicationInsights.DataContracts
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
-open Microsoft.Extensions.Logging
 open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
 open Telegram.Core
@@ -21,6 +20,7 @@ open otsom.fs.Telegram.Bot.Core
 open Domain.Repos
 open Domain.Core
 open Telegram.Repos
+open otsom.fs.Resources
 
 type ConverterResultMessage =
   { Id: string; Result: ConversionResult }
@@ -33,7 +33,6 @@ type Functions
     loadUserConversion: UserConversion.Load,
     deleteBotMessage: DeleteBotMessage,
     replyWithVideo: ReplyWithVideo,
-    loadLangTranslations: Translation.LoadTranslations,
     completeThumbnailedConversion: Conversion.Thumbnailed.Complete,
     completeConvertedConversion: Conversion.Converted.Complete,
     saveVideo: Conversion.Prepared.SaveVideo,
@@ -47,15 +46,15 @@ type Functions
     loadConversion: Conversion.Load,
     saveConversion: Conversion.Save,
     telemetryClient: TelemetryClient,
-    loadTranslations: User.LoadTranslations,
     cleanupConversion: Conversion.Completed.Cleanup,
     loadUser: User.Load,
     loadChannel: Channel.Load,
     createUser: User.Create,
     saveChannel: Channel.Save,
-    loadDefaultTranslations: Translation.LoadDefaultTranslations,
     loadGroup: Group.Load,
-    saveGroup: Group.Save
+    saveGroup: Group.Save,
+    loadResources: LoadResources,
+    loadDefaultResources: LoadDefaultResources
   ) =
 
   [<Function("HandleUpdate")>]
@@ -66,13 +65,13 @@ type Functions
       UserConversion.queueProcessing createConversion saveUserConversion queueConversionPreparation
 
     let processPrivateMessage =
-      processPrivateMessage replyToUserMessage loadLangTranslations loadUser createUser queueUserConversion parseCommand logger
+      processPrivateMessage replyToUserMessage loadResources loadDefaultResources loadUser createUser queueUserConversion parseCommand logger
 
     let processGeoupMessage =
-      processGroupMessage replyToUserMessage loadLangTranslations loadDefaultTranslations loadUser createUser loadGroup saveGroup queueUserConversion parseCommand logger
+      processGroupMessage replyToUserMessage loadResources loadDefaultResources loadUser createUser loadGroup saveGroup queueUserConversion parseCommand logger
 
     let processChannelPost =
-      processChannelPost replyToUserMessage loadDefaultTranslations loadChannel saveChannel queueUserConversion parseCommand logger
+      processChannelPost replyToUserMessage loadDefaultResources loadChannel saveChannel queueUserConversion parseCommand logger
 
     task {
       try
@@ -103,7 +102,7 @@ type Functions
       Conversion.New.prepare downloadLink downloadDocument saveConversion queueConversion queueThumbnailing
 
     let downloadFileAndQueueConversion =
-      downloadFileAndQueueConversion editBotMessage loadUserConversion loadTranslations prepareConversion
+      downloadFileAndQueueConversion editBotMessage loadUserConversion loadUser loadResources loadDefaultResources prepareConversion
 
     task {
       use activity = (new Activity("Downloader")).SetParentId(message.OperationId)
@@ -126,7 +125,9 @@ type Functions
         loadUserConversion
         editBotMessage
         loadConversion
-        loadTranslations
+        loadUser
+        loadResources
+        loadDefaultResources
         saveVideo
         completeThumbnailedConversion
         (Conversion.Completed.queueUpload workersSettings message.OperationId)
@@ -156,7 +157,9 @@ type Functions
         loadUserConversion
         editBotMessage
         loadConversion
-        loadTranslations
+        loadUser
+        loadResources
+        loadDefaultResources
         saveThumbnail
         completeConvertedConversion
         (Conversion.Completed.queueUpload workersSettings message.OperationId)
@@ -183,7 +186,7 @@ type Functions
     let conversionId = message.Data.ConversionId |> ConversionId
 
     let uploadSuccessfulConversion =
-      uploadCompletedConversion loadUserConversion loadConversion deleteBotMessage replyWithVideo loadTranslations cleanupConversion
+      uploadCompletedConversion loadUserConversion loadConversion deleteBotMessage replyWithVideo loadUser loadResources loadDefaultResources cleanupConversion
 
     task {
       use activity =
