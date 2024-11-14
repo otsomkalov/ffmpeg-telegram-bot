@@ -149,6 +149,8 @@ resource "azurerm_linux_function_app" "func-tg-bot" {
       Database__ConnectionString = var.database-connection-string
       Database__Name             = var.database-name
 
+      Resources__DefaultLang = var.default-lang
+
       Workers__ConnectionString  = azurerm_storage_account.st-tg-bot.primary_connection_string
       Workers__Downloader__Queue = azurerm_storage_queue.stq-downloader-tg-bot.name
 
@@ -167,7 +169,6 @@ resource "azurerm_linux_function_app" "func-tg-bot" {
       Workers__Uploader__Queue = azurerm_storage_queue.stq-uploader-tg-bot.name
 
       Validation__LinkRegex = var.link-regex
-
     },
     {
       for idx, type in var.mime-types : "Validation__MimeTypes__${idx}" => type

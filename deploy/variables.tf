@@ -30,3 +30,8 @@ variable "link-regex" {
 variable "mime-types" {
   type = list(string)
 }
+
+variable "default-lang" {
+  type = string
+  default = "en"
+}
