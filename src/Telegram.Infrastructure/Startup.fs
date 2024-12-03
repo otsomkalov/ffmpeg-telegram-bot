@@ -55,7 +55,7 @@ module Startup =
         User.loadTranslations
       )
 
-      .BuildSingleton<User.Load, IMongoCollection<Database.User>>(User.load)
+      .BuildSingleton<User.Load, IMongoCollection<Database.User>, ILoggerFactory>(User.load)
       .BuildSingleton<User.Create, IMongoCollection<Database.User>>(User.create)
 
       .BuildSingleton<Channel.Load, IMongoCollection<Database.Channel>>(Channel.load)
