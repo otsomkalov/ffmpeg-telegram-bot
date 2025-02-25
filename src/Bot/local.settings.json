@@ -3,7 +3,6 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
-    "APPLICATIONINSIGHTS_CONNECTION_STRING": "<Azure AppInsights connection string>",
     "Workers__ConnectionString": "UseDevelopmentStorage=true",
     "Workers__Downloader__Queue": "downloader",
     "Workers__Converter__Input__Container": "converter-input",
