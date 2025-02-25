@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="Core.fs"/>
-    <Compile Include="Resources.fs" />
-    <Compile Include="Repos.fs" />
+    <Compile Include="Resources.fs"/>
+    <Compile Include="Repos.fs"/>
     <Compile Include="Workflows.fs"/>
   </ItemGroup>
 
@@ -17,9 +17,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FSharp.Logf" Version="1.2.2" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.1" />
-    <PackageReference Include="otsom.fs.Extensions" Version="0.0.34"/>
+    <PackageReference Include="FSharp.Logf" Version="1.2.2"/>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.2"/>
     <PackageReference Include="otsom.fs.Telegram.Bot" Version="0.0.15"/>
   </ItemGroup>
 

@@ -105,12 +105,15 @@ module Translation =
     )
 
   let private formatWithFallback formats fallback =
-    fun (key, args) ->
+    fun (key: string, args: obj seq) ->
       match formats |> Map.tryFind key with
-      | Some fmt -> String.Format(fmt, args)
+      | Some fmt -> String.Format(fmt, args |> Array.ofSeq)
       | None -> fallback
 
-  let loadDefaultTranslations (collection: IMongoCollection<Database.Translation>) (loggerFactory: ILoggerFactory) : Translation.LoadDefaultTranslations =
+  let loadDefaultTranslations
+    (collection: IMongoCollection<Database.Translation>)
+    (loggerFactory: ILoggerFactory)
+    : Translation.LoadDefaultTranslations =
     let logger = loggerFactory.CreateLogger(nameof Translation.LoadDefaultTranslations)
 
     fun () ->
@@ -128,7 +131,11 @@ module Translation =
         return (getTranslation, formatTranslation)
       }
 
-  let loadTranslations (collection: IMongoCollection<Database.Translation>) (loggerFactory: ILoggerFactory) (loadDefaultTranslations: Translation.LoadDefaultTranslations) : Translation.LoadTranslations =
+  let loadTranslations
+    (collection: IMongoCollection<Database.Translation>)
+    (loggerFactory: ILoggerFactory)
+    (loadDefaultTranslations: Translation.LoadDefaultTranslations)
+    : Translation.LoadTranslations =
     let logger = loggerFactory.CreateLogger(nameof Translation.LoadTranslations)
 
     function
