@@ -17,7 +17,7 @@ variables:
 steps:
   - task: UseDotNet@2
     inputs:
-      version: '8.x'
+      version: '9.x'
   - task: DotNetCoreCLI@2
     name: Restore
     inputs:
