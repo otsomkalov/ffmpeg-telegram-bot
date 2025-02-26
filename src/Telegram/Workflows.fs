@@ -21,7 +21,7 @@ module Workflows =
   module UserConversion =
     let queueProcessing
       (createConversion: Conversion.Create)
-      (saveUserConversion: UserConversion.Save)
+      (repo: #ISaveUserConversion)
       (queueConversionPreparation: Conversion.New.QueuePreparation)
       : UserConversion.QueueProcessing =
       fun userMessageId userId chatId sentMessageId inputFile ->
@@ -29,7 +29,7 @@ module Workflows =
           let! conversion = createConversion ()
 
           do!
-            saveUserConversion
+            repo.SaveUserConversion
               { ChatId = chatId
                 UserId = userId
                 SentMessageId = sentMessageId
@@ -42,12 +42,12 @@ module Workflows =
   [<RequireQualifiedAccess>]
   module User =
     let loadTranslations
-      (loadUser: User.Load)
+      (repo: #ILoadUser)
       (loadTranslations: Translation.LoadTranslations)
       (loadDefaultTranslations: Translation.LoadDefaultTranslations)
       : User.LoadTranslations =
       Option.taskMap
-        (loadUser
+        (repo.LoadUser
         >> Task.map Option.get
         >> Task.bind (fun user ->
           loadTranslations user.Lang))
@@ -91,12 +91,12 @@ module Workflows =
             | None -> Task.FromResult()
         }
 
-  let private processMessageFromNewUser (createUser: User.Create) (getLocaleTranslations: Translation.LoadTranslations) queueUserConversion parseCommand replyToMessage =
+  let private processMessageFromNewUser (repo: #ISaveUser) (getLocaleTranslations: Translation.LoadTranslations) queueUserConversion parseCommand replyToMessage =
     fun userId chatId userMessageId (message: Message) ->
       task {
         let user = {Id = userId; Lang = message.From.LanguageCode |> Option.ofObj; Banned = false }
 
-        do! createUser user
+        do! repo.SaveUser user
 
         let! translations = getLocaleTranslations user.Lang
 
@@ -126,8 +126,7 @@ module Workflows =
   let processPrivateMessage
     (replyToUserMessage: ReplyToUserMessage)
     (getLocaleTranslations: Translation.LoadTranslations)
-    (loadUser: User.Load)
-    (createUser: User.Create)
+    (userRepo: #ILoadUser)
     (queueUserConversion: UserConversion.QueueProcessing)
     (parseCommand: ParseCommand)
     (logger: ILogger)
@@ -137,12 +136,12 @@ module Workflows =
       let replyToMessage = replyToUserMessage userId message.MessageId
       let userMessageId = message.MessageId |> UserMessageId
       let processMessageFromKnownUser = processMessageFromKnownUser getLocaleTranslations queueUserConversion parseCommand replyToMessage
-      let processMessageFromNewUser = processMessageFromNewUser createUser getLocaleTranslations queueUserConversion parseCommand replyToMessage
+      let processMessageFromNewUser = processMessageFromNewUser userRepo getLocaleTranslations queueUserConversion parseCommand replyToMessage
 
       Logf.logfi logger "Processing private message from user %i{UserId}" (userId |> UserId.value)
 
       task {
-        let! user = loadUser userId
+        let! user = userRepo.LoadUser userId
 
         return!
           match user with
@@ -162,10 +161,8 @@ module Workflows =
     (replyToUserMessage: ReplyToUserMessage)
     (getLocaleTranslations: Translation.LoadTranslations)
     (loadDefaultTranslations: Translation.LoadDefaultTranslations)
-    (loadUser: User.Load)
-    (createUser: User.Create)
-    (loadGroup: Group.Load)
-    (saveGroup: Group.Save)
+    (userRepo: #ILoadUser)
+    (groupRepo: #ILoadGroup & #ISaveGroup)
     (queueUserConversion: UserConversion.QueueProcessing)
     (parseCommand: ParseCommand)
     (logger: ILogger)
@@ -177,13 +174,13 @@ module Workflows =
       let replyToMessage = replyToUserMessage groupId' message.MessageId
       let userMessageId = message.MessageId |> UserMessageId
       let processMessageFromKnownUser = processMessageFromKnownUser getLocaleTranslations queueUserConversion parseCommand replyToMessage
-      let processMessageFromNewUser = processMessageFromNewUser createUser getLocaleTranslations queueUserConversion parseCommand replyToMessage
+      let processMessageFromNewUser = processMessageFromNewUser userRepo getLocaleTranslations queueUserConversion parseCommand replyToMessage
 
       Logf.logfi logger "Processing message from user %i{UserId} in group %i{ChatId}" (userId |> UserId.value) (groupId |> GroupId.value)
 
       task {
-        let! user = loadUser userId
-        let! group = loadGroup groupId
+        let! user = userRepo.LoadUser userId
+        let! group = groupRepo.LoadGroup groupId
 
         return!
           match user, group with
@@ -202,7 +199,7 @@ module Workflows =
             processMessageFromKnownUser u userMessageId groupId' message
           | Some u, None ->
             task {
-              do! saveGroup {Id = groupId; Banned = false }
+              do! groupRepo.SaveGroup {Id = groupId; Banned = false }
 
               return!
                 processMessageFromKnownUser u userMessageId groupId' message
@@ -211,7 +208,7 @@ module Workflows =
             processMessageFromNewUser userId groupId' userMessageId message
           | _ ->
             task {
-              do! saveGroup {Id = groupId; Banned = false }
+              do! groupRepo.SaveGroup {Id = groupId; Banned = false }
 
               return! processMessageFromNewUser userId groupId' userMessageId message
             }
@@ -220,8 +217,7 @@ module Workflows =
   let processChannelPost
     (replyToUserMessage: ReplyToUserMessage)
     (loadDefaultTranslations: Translation.LoadDefaultTranslations)
-    (loadChannel: Channel.Load)
-    (saveChannel: Channel.Save)
+    (channelRepo: #ILoadChannel & #ISaveChannel)
     (queueUserConversion: UserConversion.QueueProcessing)
     (parseCommand: ParseCommand)
     (logger: ILogger)
@@ -237,7 +233,7 @@ module Workflows =
 
       task {
         let! tran, tranf = loadDefaultTranslations ()
-        let! channel = loadChannel channelId
+        let! channel = channelRepo.LoadChannel channelId
 
         return!
           match channel with
@@ -246,7 +242,7 @@ module Workflows =
             processIncomingMessage parseCommand (tran, tranf) queueConversion replyToMessage post
           | None ->
             task {
-              do! saveChannel { Id = channelId; Banned = false }
+              do! channelRepo.SaveChannel { Id = channelId; Banned = false }
 
               return!
                 processIncomingMessage parseCommand (tran, tranf) queueConversion replyToMessage post
@@ -255,7 +251,7 @@ module Workflows =
 
   let downloadFileAndQueueConversion
     (editBotMessage: EditBotMessage)
-    (loadUserConversion: UserConversion.Load)
+    (userConversionRepo: #ILoadUserConversion)
     (loadTranslations: User.LoadTranslations)
     (prepareConversion: Conversion.New.Prepare)
     : DownloadFileAndQueueConversion =
@@ -272,7 +268,7 @@ module Workflows =
 
     fun conversionId file ->
       task {
-        let! userConversion = loadUserConversion conversionId
+        let! userConversion = userConversionRepo.LoadUserConversion conversionId
 
         let! tran, _ = userConversion.UserId |> loadTranslations
 
@@ -285,7 +281,7 @@ module Workflows =
       }
 
   let processConversionResult
-    (loadUserConversion: UserConversion.Load)
+    (userConversionRepo: #ILoadUserConversion)
     (editBotMessage: EditBotMessage)
     (loadConversion: Conversion.Load)
     (loadTranslations: User.LoadTranslations)
@@ -309,7 +305,7 @@ module Workflows =
 
     fun conversionId result ->
       task {
-        let! userConversion = loadUserConversion conversionId
+        let! userConversion = userConversionRepo.LoadUserConversion conversionId
 
         let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
@@ -321,7 +317,7 @@ module Workflows =
       }
 
   let processThumbnailingResult
-    (loadUserConversion: UserConversion.Load)
+    (userConversionRepo: #ILoadUserConversion)
     (editBotMessage: EditBotMessage)
     (loadConversion: Conversion.Load)
     (loadTranslations: User.LoadTranslations)
@@ -345,7 +341,7 @@ module Workflows =
 
     fun conversionId result ->
       task {
-        let! userConversion = loadUserConversion conversionId
+        let! userConversion = userConversionRepo.LoadUserConversion conversionId
 
         let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
@@ -357,7 +353,7 @@ module Workflows =
       }
 
   let uploadCompletedConversion
-    (loadUserConversion: UserConversion.Load)
+    (userConversionRepo: #ILoadUserConversion)
     (loadConversion: Conversion.Load)
     (deleteBotMessage: DeleteBotMessage)
     (replyWithVideo: ReplyWithVideo)
@@ -378,7 +374,7 @@ module Workflows =
 
     fun id ->
       task {
-        let! userConversion = loadUserConversion id
+        let! userConversion = userConversionRepo.LoadUserConversion id
         let! conversion = loadConversion id
 
         return! uploadAndClean userConversion conversion
