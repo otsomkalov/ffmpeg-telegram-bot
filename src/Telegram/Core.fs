@@ -4,6 +4,7 @@ open System.Threading.Tasks
 open Domain.Core
 open Domain.Repos
 open Telegram.Bot.Types
+open otsom.fs.Resources
 open otsom.fs.Telegram.Bot.Core
 
 module Core =
@@ -39,6 +40,10 @@ module Core =
   type UploadCompletedConversion = ConversionId -> Task<unit>
 
   type User = { Id: UserId; Lang: string option; Banned: bool }
+
+  [<RequireQualifiedAccess>]
+  module User =
+    type BuildResourceProvider = UserId option -> Task<IResourceProvider>
 
   type Channel = { Id: ChannelId; Banned: bool }
 

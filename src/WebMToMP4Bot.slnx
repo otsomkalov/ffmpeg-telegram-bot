@@ -1,16 +1,17 @@
 ﻿<Solution>
   <Folder Name="/Solution Items/">
-    <File Path="..\README.MD"/>
+    <File Path="..\README.MD" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="Bot\Bot.fsproj" Type="Classic F#"/>
-    <Project Path="Database\Database.csproj" Type="Classic C#"/>
-    <Project Path="Domain\Domain.fsproj" Type="Classic F#"/>
-    <Project Path="Infrastructure\Infrastructure.fsproj" Type="Classic F#"/>
-    <Project Path="Telegram.Infrastructure\Telegram.Infrastructure.fsproj" Type="Classic F#"/>
-    <Project Path="Telegram\Telegram.fsproj" Type="Classic F#"/>
+    <Project Path="Bot\Bot.fsproj" Type="Classic F#" />
+    <Project Path="Database\Database.csproj" Type="Classic C#" />
+    <Project Path="Domain\Domain.fsproj" Type="Classic F#" />
+    <Project Path="Infrastructure\Infrastructure.fsproj" Type="Classic F#" />
+    <Project Path="Telegram.Infrastructure\Telegram.Infrastructure.fsproj" Type="Classic F#" />
+    <Project Path="Telegram\Telegram.fsproj" Type="Classic F#" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="Domain.Tests\Domain.Tests.fsproj" Type="Classic F#"/>
+    <Project Path="Domain.Tests\Domain.Tests.fsproj" Type="Classic F#" />
   </Folder>
+  <Project Path="..\..\otsom.fs\src\otsom.fs.Resources\otsom.fs.Resources.fsproj" Type="Classic F#" />
 </Solution>
