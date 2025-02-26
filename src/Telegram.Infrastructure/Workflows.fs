@@ -13,7 +13,6 @@ open Telegram.Core
 open Telegram.Bot.Types
 open Telegram.Infrastructure.Settings
 open Telegram.Workflows
-open Telegram.Infrastructure.Core
 open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
 open System.Threading.Tasks
@@ -50,7 +49,7 @@ module Workflows =
             (userId |> UserId.value |> ChatId),
             InputFileStream(videoStreamResponse.Value.Content, video),
             caption = text,
-            replyToMessageId = (messageId |> UserMessageId.value),
+            replyToMessageId = messageId.Value,
             thumbnail = InputFileStream(thumbnailStreamResponse.Value.Content, thumbnail),
             disableNotification = true
           ))
@@ -96,10 +95,10 @@ module Conversion =
 
 [<RequireQualifiedAccess>]
 module Translation =
-  let private loadTranslationsMap (collection: IMongoCollection<Database.Translation>) key =
+  let private loadTranslationsMap (collection: IMongoCollection<Entities.Translation>) key =
     collection.Find(fun t -> t.Lang = key).ToListAsync()
     |> Task.map (
-      Seq.groupBy (_.Key)
+      Seq.groupBy _.Key
       >> Seq.map (fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head))
       >> Map.ofSeq
     )
@@ -111,7 +110,7 @@ module Translation =
       | None -> fallback
 
   let loadDefaultTranslations
-    (collection: IMongoCollection<Database.Translation>)
+    (collection: IMongoCollection<Entities.Translation>)
     (loggerFactory: ILoggerFactory)
     : Translation.LoadDefaultTranslations =
     let logger = loggerFactory.CreateLogger(nameof Translation.LoadDefaultTranslations)
@@ -132,7 +131,7 @@ module Translation =
       }
 
   let loadTranslations
-    (collection: IMongoCollection<Database.Translation>)
+    (collection: IMongoCollection<Entities.Translation>)
     (loggerFactory: ILoggerFactory)
     (loadDefaultTranslations: Translation.LoadDefaultTranslations)
     : Translation.LoadTranslations =

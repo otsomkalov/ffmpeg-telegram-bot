@@ -7,10 +7,8 @@ open Azure.Storage.Blobs
 open Domain.Core
 open Infrastructure.Helpers
 open Infrastructure.Settings
-open MongoDB.Driver
 open otsom.fs.Extensions
 open Domain.Repos
-open Infrastructure.Mappings
 open System.Threading.Tasks
 open Infrastructure.Core
 
@@ -36,7 +34,7 @@ module Conversion =
               | HttpStatusCode.InternalServerError -> Conversion.New.DownloadLinkError.ServerError |> Error |> Task.FromResult
               | _ ->
                 task {
-                  let fileName = link.Url |> Uri |> (_.Segments) |> Seq.last
+                  let fileName = link.Url |> Uri |> _.Segments |> Seq.last
 
                   use! converterBlobStream = getBlobStream fileName workersSettings.Converter.Input.Container
                   use! thumbnailerBlobStream = getBlobStream fileName workersSettings.Thumbnailer.Input.Container

@@ -3,33 +3,24 @@
 open Domain.Core
 open MongoDB.Driver
 open Domain.Repos
-open Infrastructure.Mappings
 open Infrastructure.Core
 open otsom.fs.Extensions
 
 module Repos =
   [<RequireQualifiedAccess>]
   module Conversion =
-    let load (collection: IMongoCollection<Database.Conversion>) : Conversion.Load =
+    let load (collection: IMongoCollection<Entities.Conversion>) : Conversion.Load =
       fun conversionId ->
         let (ConversionId conversionId) = conversionId
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+        let filter = Builders<Entities.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
 
-        collection.Find(filter).SingleOrDefaultAsync() |> Task.map Conversion.fromDb
+        collection.Find(filter).SingleOrDefaultAsync() |> Task.map _.ToDomain
 
-    let save (collection: IMongoCollection<Database.Conversion>) : Conversion.Save =
+    let save (collection: IMongoCollection<Entities.Conversion>) : Conversion.Save =
       fun conversion ->
         let filter =
-          Builders<Database.Conversion>.Filter
-            .Eq((fun c -> c.Id), (conversion.Id |> ConversionId.value))
+          Builders<Entities.Conversion>.Filter
+            .Eq((fun c -> c.Id), (conversion.Id.Value))
 
-        let entity =
-          match conversion with
-          | Conversion.New conversion -> conversion |> Mappings.Conversion.New.toDb
-          | Conversion.Prepared conversion -> conversion |> Mappings.Conversion.Prepared.toDb
-          | Conversion.Converted conversion -> conversion |> Mappings.Conversion.Converted.toDb
-          | Conversion.Thumbnailed conversion -> conversion |> Mappings.Conversion.Thumbnailed.toDb
-          | Conversion.Completed conversion -> conversion |> Mappings.Conversion.Completed.toDb
-
-        collection.ReplaceOneAsync(filter, entity, ReplaceOptions(IsUpsert = true))
+        collection.ReplaceOneAsync(filter, Entities.Conversion.FromDomain conversion, ReplaceOptions(IsUpsert = true))
         |> Task.ignore

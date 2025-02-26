@@ -8,6 +8,7 @@ open Infrastructure.Settings
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
+open MongoDB.Bson.Serialization
 open MongoDB.Driver
 open Telegram.Bot
 open Telegram.Core
@@ -34,10 +35,10 @@ module Startup =
         TelegramBotClient(options, client) :> ITelegramBotClient)
 
     services
-      .BuildSingleton<IMongoCollection<Database.User>, IMongoDatabase>(_.GetCollection<Database.User>("users"))
-      .BuildSingleton<IMongoCollection<Database.Channel>, IMongoDatabase>(_.GetCollection<Database.Channel>("channels"))
-      .BuildSingleton<IMongoCollection<Database.Group>, IMongoDatabase>(_.GetCollection<Database.Group>("groups"))
-      .BuildSingleton<IMongoCollection<Database.Translation>, IMongoDatabase>(_.GetCollection<Database.Translation>("resources"))
+      .BuildSingleton<IMongoCollection<Entities.User>, IMongoDatabase>(_.GetCollection("users"))
+      .BuildSingleton<IMongoCollection<Entities.Channel>, IMongoDatabase>(_.GetCollection("channels"))
+      .BuildSingleton<IMongoCollection<Entities.Group>, IMongoDatabase>(_.GetCollection("groups"))
+      .BuildSingleton<IMongoCollection<Entities.Translation>, IMongoDatabase>(_.GetCollection("resources"))
 
     services
 
@@ -49,12 +50,12 @@ module Startup =
 
       .BuildSingleton<DeleteBotMessage, ITelegramBotClient>(deleteBotMessage)
       .BuildSingleton<ReplyWithVideo, WorkersSettings, ITelegramBotClient>(replyWithVideo)
-      .BuildSingleton<Translation.LoadDefaultTranslations, IMongoCollection<Database.Translation>, ILoggerFactory>(
+      .BuildSingleton<Translation.LoadDefaultTranslations, IMongoCollection<Entities.Translation>, ILoggerFactory>(
         Translation.loadDefaultTranslations
       )
       .BuildSingleton<
         Translation.LoadTranslations,
-        IMongoCollection<Database.Translation>,
+        IMongoCollection<Entities.Translation>,
         ILoggerFactory,
         Translation.LoadDefaultTranslations
         >(

@@ -176,7 +176,7 @@ module Workflows =
       let processMessageFromKnownUser = processMessageFromKnownUser getLocaleTranslations queueUserConversion parseCommand replyToMessage
       let processMessageFromNewUser = processMessageFromNewUser userRepo getLocaleTranslations queueUserConversion parseCommand replyToMessage
 
-      Logf.logfi logger "Processing message from user %i{UserId} in group %i{ChatId}" (userId |> UserId.value) (groupId |> GroupId.value)
+      Logf.logfi logger "Processing message from user %i{UserId} in group %i{ChatId}" (userId |> UserId.value) groupId.Value
 
       task {
         let! user = userRepo.LoadUser userId
@@ -223,13 +223,13 @@ module Workflows =
     (logger: ILogger)
     : ProcessChannelPost =
     fun post ->
-      let channelId = post.Chat.Id |> ChannelId.create
+      let channelId = post.Chat.Id |> ChannelId.Create
       let chatId = post.Chat.Id |> UserId
       let replyToMessage = replyToUserMessage chatId post.MessageId
       let postId = (post.MessageId |> UserMessageId)
       let queueConversion = (queueUserConversion postId None chatId)
 
-      Logf.logfi logger "Processing post from channel %i{ChannelId}" (channelId |> ChannelId.value)
+      Logf.logfi logger "Processing post from channel %i{ChannelId}" channelId.Value
 
       task {
         let! tran, tranf = loadDefaultTranslations ()

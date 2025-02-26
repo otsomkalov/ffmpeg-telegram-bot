@@ -63,7 +63,7 @@ module Queue =
 
           { OperationId = operationId
             Data =
-              { Id = conversion.Id |> ConversionId.value
+              { Id = conversion.Id.Value
                 Name = conversion.InputFile } }
           |> JSON.serialize
           |> queueClient.SendMessageAsync
@@ -78,7 +78,7 @@ module Queue =
 
           { OperationId = operationId
             Data =
-              { Id = conversion.Id |> ConversionId.value
+              { Id = conversion.Id.Value
                 Name = conversion.InputFile } }
           |> JSON.serialize
           |> queueClient.SendMessageAsync
@@ -95,6 +95,6 @@ module Queue =
           let messageBody =
             JSON.serialize
               { OperationId = operationId
-                Data = { ConversionId = (conversion.Id |> ConversionId.value) } }
+                Data = { ConversionId = conversion.Id.Value } }
 
           queueClient.SendMessageAsync(messageBody) |> Task.ignore

@@ -4,7 +4,9 @@ open System.Threading.Tasks
 open Microsoft.FSharp.Core
 
 module Core =
-  type ConversionId = ConversionId of string
+  type ConversionId =
+    | ConversionId of string
+    member this.Value = let (ConversionId id) = this in id
 
   module ConversionId =
     type Generate = unit -> ConversionId
