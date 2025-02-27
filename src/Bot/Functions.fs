@@ -2,6 +2,7 @@
 
 open System.Diagnostics
 open System.Threading.Tasks
+open Domain
 open Domain.Workflows
 open FSharp
 open Infrastructure.Core
@@ -12,7 +13,6 @@ open Microsoft.ApplicationInsights.DataContracts
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
-open Microsoft.Extensions.Logging
 open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
 open Telegram.Core
@@ -42,16 +42,15 @@ type Functions
     queueConversionPreparation: Conversion.New.QueuePreparation,
     parseCommand: ParseCommand,
     createConversion: Conversion.Create,
-    loadConversion: Conversion.Load,
-    saveConversion: Conversion.Save,
     telemetryClient: TelemetryClient,
     loadTranslations: User.LoadTranslations,
     cleanupConversion: Conversion.Completed.Cleanup,
     loadDefaultTranslations: Translation.LoadDefaultTranslations,
-    userRepo : IUserRepo,
+    userRepo: IUserRepo,
     channelRepo: IChannelRepo,
     groupRepo: IGroupRepo,
-    userConversionRepo: IUserConversionRepo
+    userConversionRepo: IUserConversionRepo,
+    conversionRepo: IConversionRepo
   ) =
 
   [<Function("HandleUpdate")>]
@@ -110,7 +109,7 @@ type Functions
       Conversion.Prepared.queueThumbnailing workersSettings message.OperationId
 
     let prepareConversion =
-      Conversion.New.prepare downloadLink downloadDocument saveConversion queueConversion queueThumbnailing
+      Conversion.New.prepare downloadLink downloadDocument conversionRepo queueConversion queueThumbnailing
 
     let downloadFileAndQueueConversion =
       downloadFileAndQueueConversion editBotMessage userConversionRepo loadTranslations prepareConversion
@@ -135,7 +134,7 @@ type Functions
       processConversionResult
         userConversionRepo
         editBotMessage
-        loadConversion
+        conversionRepo
         loadTranslations
         saveVideo
         completeThumbnailedConversion
@@ -165,7 +164,7 @@ type Functions
       processThumbnailingResult
         userConversionRepo
         editBotMessage
-        loadConversion
+        conversionRepo
         loadTranslations
         saveThumbnail
         completeConvertedConversion
@@ -193,7 +192,7 @@ type Functions
     let conversionId = message.Data.ConversionId |> ConversionId
 
     let uploadSuccessfulConversion =
-      uploadCompletedConversion userConversionRepo loadConversion deleteBotMessage replyWithVideo loadTranslations cleanupConversion
+      uploadCompletedConversion userConversionRepo conversionRepo deleteBotMessage replyWithVideo loadTranslations cleanupConversion
 
     task {
       use activity = (new Activity("Uploader")).SetParentId(message.OperationId)

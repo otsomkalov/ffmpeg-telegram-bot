@@ -2,9 +2,11 @@ module Tests.Conversion.Thumbnailed
 
 open System
 open System.Threading.Tasks
+open Domain
 open Domain.Core
 open Domain.Core.Conversion
 open Domain.Workflows
+open Moq
 open Xunit
 open FsUnit.Xunit
 
@@ -19,11 +21,11 @@ let ``Thumbnailed conversion completes with converted file`` () =
       OutputFile = Video(testOutput)
       ThumbnailFile = Thumbnail(testThumbnail) }
 
-  let saveConversion (conversion: Conversion) =
-    conversion |> should equal (Conversion.Completed expected)
-    Task.FromResult()
+  let repo = Mock<IConversionRepo>()
 
-  let sut = Conversion.Thumbnailed.complete saveConversion
+  repo.Setup(_.SaveConversion(Conversion.Completed expected)).ReturnsAsync(())
+
+  let sut = Conversion.Thumbnailed.complete repo.Object
 
   task {
     let! result =

@@ -4,6 +4,7 @@ namespace Infrastructure
 
 open System
 open System.Net.Http
+open Domain
 open Domain.Core
 open Domain.Workflows
 open Infrastructure.Settings
@@ -16,7 +17,6 @@ open otsom.fs.Extensions.DependencyInjection
 open Queue
 open Domain.Repos
 open Polly
-open Infrastructure.Repos
 open Infrastructure.Workflows
 open MongoDB.ApplicationInsights.DependencyInjection
 
@@ -58,11 +58,11 @@ module Startup =
           .GetSection(DatabaseSettings.SectionName)
           .Get<DatabaseSettings>())
 
+    services.AddSingleton<IConversionRepo, ConversionRepo>()
+
     services
       .AddSingleton<ConversionId.Generate>(ConversionId.generate)
-      .BuildSingleton<Conversion.Create, ConversionId.Generate, Conversion.Save>(Conversion.create)
-      .BuildSingleton<Conversion.Load, IMongoCollection<Entities.Conversion>>(Conversion.load)
-      .BuildSingleton<Conversion.Save, IMongoCollection<Entities.Conversion>>(Conversion.save)
+      .BuildSingleton<Conversion.Create, ConversionId.Generate, IConversionRepo>(Conversion.create)
 
       .BuildSingleton<Conversion.New.QueuePreparation, WorkersSettings>(Conversion.New.queuePreparation)
       .BuildSingleton<Conversion.New.InputFile.DownloadLink, IHttpClientFactory, WorkersSettings>(Conversion.New.InputFile.downloadLink)
@@ -71,12 +71,12 @@ module Startup =
       // .BuildSingleton<Conversion.Prepared.QueueConversion, WorkersSettings>(Conversion.Prepared.queueConversion)
       // .BuildSingleton<Conversion.Prepared.QueueThumbnailing, WorkersSettings>(Conversion.Prepared.queueThumbnailing)
 
-      .BuildSingleton<Conversion.Prepared.SaveVideo, Conversion.Save>(Conversion.Prepared.saveVideo)
-      .BuildSingleton<Conversion.Prepared.SaveThumbnail, Conversion.Save>(Conversion.Prepared.saveThumbnail)
+      .BuildSingleton<Conversion.Prepared.SaveVideo, IConversionRepo>(Conversion.Prepared.saveVideo)
+      .BuildSingleton<Conversion.Prepared.SaveThumbnail, IConversionRepo>(Conversion.Prepared.saveThumbnail)
 
       .BuildSingleton<Conversion.Completed.DeleteVideo, WorkersSettings>(Conversion.Completed.deleteVideo)
       .BuildSingleton<Conversion.Completed.DeleteThumbnail, WorkersSettings>(Conversion.Completed.deleteThumbnail)
       .BuildSingleton<Conversion.Completed.Cleanup, Conversion.Completed.DeleteVideo, Conversion.Completed.DeleteThumbnail>(Conversion.Completed.cleanup)
 
-      .BuildSingleton<Conversion.Thumbnailed.Complete, Conversion.Save>(Conversion.Thumbnailed.complete)
-      .BuildSingleton<Conversion.Converted.Complete, Conversion.Save>(Conversion.Converted.complete)
+      .BuildSingleton<Conversion.Thumbnailed.Complete, IConversionRepo>(Conversion.Thumbnailed.complete)
+      .BuildSingleton<Conversion.Converted.Complete, IConversionRepo>(Conversion.Converted.complete)

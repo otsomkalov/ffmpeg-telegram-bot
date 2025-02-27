@@ -6,9 +6,6 @@ open Domain.Core
 module Repos =
   [<RequireQualifiedAccess>]
   module Conversion =
-    type Load = ConversionId -> Task<Conversion>
-    type Save = Conversion -> Task<unit>
-
     [<RequireQualifiedAccess>]
     module New =
       [<RequireQualifiedAccess>]
@@ -27,3 +24,13 @@ module Repos =
       type DeleteThumbnail = Conversion.Thumbnail -> Task<unit>
 
       type QueueUpload = Conversion.Completed -> Task<unit>
+
+type ILoadConversion =
+  abstract LoadConversion: ConversionId -> Task<Conversion>
+
+type ISaveConversion =
+  abstract SaveConversion: Conversion -> Task<unit>
+
+type IConversionRepo =
+  inherit ILoadConversion
+  inherit ISaveConversion

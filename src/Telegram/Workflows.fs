@@ -1,6 +1,7 @@
 ﻿namespace Telegram
 
 open System.Threading.Tasks
+open Domain
 open Domain.Core
 open Domain.Core.Conversion
 open FSharp
@@ -283,7 +284,7 @@ module Workflows =
   let processConversionResult
     (userConversionRepo: #ILoadUserConversion)
     (editBotMessage: EditBotMessage)
-    (loadConversion: Conversion.Load)
+    (conversionRepo: #ILoadConversion)
     (loadTranslations: User.LoadTranslations)
     (saveVideo: Conversion.Prepared.SaveVideo)
     (complete: Conversion.Thumbnailed.Complete)
@@ -311,7 +312,7 @@ module Workflows =
 
         let! tran, _ = userConversion.UserId |> loadTranslations
 
-        let! conversion = loadConversion conversionId
+        let! conversion = conversionRepo.LoadConversion conversionId
 
         return! processResult editMessage tran conversion result
       }
@@ -319,7 +320,7 @@ module Workflows =
   let processThumbnailingResult
     (userConversionRepo: #ILoadUserConversion)
     (editBotMessage: EditBotMessage)
-    (loadConversion: Conversion.Load)
+    (conversionRepo: #ILoadConversion)
     (loadTranslations: User.LoadTranslations)
     (saveThumbnail: Conversion.Prepared.SaveThumbnail)
     (complete: Conversion.Converted.Complete)
@@ -347,14 +348,14 @@ module Workflows =
 
         let! tran, _ = userConversion.UserId |> loadTranslations
 
-        let! conversion = loadConversion conversionId
+        let! conversion = conversionRepo.LoadConversion conversionId
 
         return! processResult editMessage tran conversion result
       }
 
   let uploadCompletedConversion
     (userConversionRepo: #ILoadUserConversion)
-    (loadConversion: Conversion.Load)
+    (conversionRepo: #ILoadConversion)
     (deleteBotMessage: DeleteBotMessage)
     (replyWithVideo: ReplyWithVideo)
     (loadTranslations: User.LoadTranslations)
@@ -375,7 +376,7 @@ module Workflows =
     fun id ->
       task {
         let! userConversion = userConversionRepo.LoadUserConversion id
-        let! conversion = loadConversion id
+        let! conversion = conversionRepo.LoadConversion id
 
         return! uploadAndClean userConversion conversion
       }

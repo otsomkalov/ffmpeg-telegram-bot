@@ -2,9 +2,11 @@ module Tests.Conversion.Prepared
 
 open System
 open System.Threading.Tasks
+open Domain
 open Domain.Core
 open Domain.Core.Conversion
 open Domain.Workflows
+open Moq
 open Xunit
 open FsUnit.Xunit
 
@@ -14,19 +16,22 @@ let ``Converted file successfully added to Prepared conversion`` () =
   let testInputFile = "test-file.webm"
   let testOutput = "test-output.mp4"
 
-  let expected = {
-    Id = conversionId
-    OutputFile = testOutput
-  }
+  let expected =
+    { Id = conversionId
+      OutputFile = testOutput }
 
-  let saveConversion (conversion: Conversion) =
-    conversion |> should equal (Conversion.Converted expected)
-    Task.FromResult()
+  let repo = Mock<IConversionRepo>()
 
-  let sut = Conversion.Prepared.saveVideo saveConversion
+  repo.Setup(_.SaveConversion(Conversion.Converted expected)).ReturnsAsync(())
+
+  let sut = Conversion.Prepared.saveVideo repo.Object
 
   task {
-    let! result = sut {Id = conversionId; InputFile = testInputFile } testOutput
+    let! result =
+      sut
+        { Id = conversionId
+          InputFile = testInputFile }
+        testOutput
 
     result |> should equal expected
   }
@@ -37,19 +42,22 @@ let ``Thumbnail successfully added to Prepared conversion`` () =
   let testInputFile = "test-file.webm"
   let testThumbnail = "test-thumbnail.jpg"
 
-  let expected = {
-    Id = conversionId
-    ThumbnailName = testThumbnail
-  }
+  let expected =
+    { Id = conversionId
+      ThumbnailName = testThumbnail }
 
-  let saveConversion (conversion: Conversion) =
-    conversion |> should equal (Conversion.Thumbnailed expected)
-    Task.FromResult()
+  let repo = Mock<IConversionRepo>()
 
-  let sut = Conversion.Prepared.saveThumbnail saveConversion
+  repo.Setup(_.SaveConversion(Conversion.Thumbnailed expected)).ReturnsAsync(())
+
+  let sut = Conversion.Prepared.saveThumbnail repo.Object
 
   task {
-    let! result = sut {Id = conversionId; InputFile = testInputFile } testThumbnail
+    let! result =
+      sut
+        { Id = conversionId
+          InputFile = testInputFile }
+        testThumbnail
 
     result |> should equal expected
   }
