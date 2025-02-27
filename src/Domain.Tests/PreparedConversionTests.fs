@@ -13,7 +13,11 @@ open FsUnit.Xunit
 let ``Converted file successfully added to Prepared conversion`` () =
   let conversionId = Guid.NewGuid().ToString() |> ConversionId
   let testInputFile = "test-file.webm"
-  let testOutput = "test-output.mp4"
+  let testOutput = Video "test-output.mp4"
+
+  let input: Prepared =
+    { Id = conversionId
+      InputFile = testInputFile }
 
   let expected =
     { Id = conversionId
@@ -23,14 +27,10 @@ let ``Converted file successfully added to Prepared conversion`` () =
 
   repo.Setup(_.SaveConversion(Conversion.Converted expected)).ReturnsAsync(())
 
-  let sut = Conversion.Prepared.saveVideo repo.Object
+  let sut: IConversionService = ConversionService(repo.Object)
 
   task {
-    let! result =
-      sut
-        { Id = conversionId
-          InputFile = testInputFile }
-        testOutput
+    let! result = sut.SaveVideo(input, testOutput)
 
     result |> should equal expected
 
@@ -41,7 +41,11 @@ let ``Converted file successfully added to Prepared conversion`` () =
 let ``Thumbnail successfully added to Prepared conversion`` () =
   let conversionId = Guid.NewGuid().ToString() |> ConversionId
   let testInputFile = "test-file.webm"
-  let testThumbnail = "test-thumbnail.jpg"
+  let testThumbnail = Thumbnail "test-thumbnail.jpg"
+
+  let input: Prepared =
+    { Id = conversionId
+      InputFile = testInputFile }
 
   let expected =
     { Id = conversionId
@@ -51,14 +55,10 @@ let ``Thumbnail successfully added to Prepared conversion`` () =
 
   repo.Setup(_.SaveConversion(Conversion.Thumbnailed expected)).ReturnsAsync(())
 
-  let sut = Conversion.Prepared.saveThumbnail repo.Object
+  let sut: IConversionService = ConversionService(repo.Object)
 
   task {
-    let! result =
-      sut
-        { Id = conversionId
-          InputFile = testInputFile }
-        testThumbnail
+    let! result = sut.SaveThumbnail(input, testThumbnail)
 
     result |> should equal expected
 

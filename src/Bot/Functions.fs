@@ -33,8 +33,6 @@ type Functions
     deleteBotMessage: DeleteBotMessage,
     replyWithVideo: ReplyWithVideo,
     loadLangTranslations: Translation.LoadTranslations,
-    saveVideo: Conversion.Prepared.SaveVideo,
-    saveThumbnail: Conversion.Prepared.SaveThumbnail,
     downloadLink: Conversion.New.InputFile.DownloadLink,
     downloadDocument: Conversion.New.InputFile.DownloadDocument,
     queueConversionPreparation: Conversion.New.QueuePreparation,
@@ -134,7 +132,6 @@ type Functions
         editBotMessage
         conversionRepo
         loadTranslations
-        saveVideo
         (Conversion.Completed.queueUpload workersSettings message.OperationId)
         conversionService
 
@@ -164,7 +161,6 @@ type Functions
         editBotMessage
         conversionRepo
         loadTranslations
-        saveThumbnail
         (Conversion.Completed.queueUpload workersSettings message.OperationId)
         conversionService
 

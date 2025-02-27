@@ -11,7 +11,7 @@ open FsUnit.Xunit
 [<Fact>]
 let ``Converted conversion completes with thumbnail`` () =
   let conversionId = Guid.NewGuid().ToString() |> ConversionId
-  let testOutput = "test-output.mp4"
+  let testOutput = Video "test-output.mp4"
   let testThumbnail = Thumbnail "test-thumbnail.jpg"
 
   let input: Converted =
@@ -20,7 +20,7 @@ let ``Converted conversion completes with thumbnail`` () =
 
   let expected =
     { Id = conversionId
-      OutputFile = Video(testOutput)
+      OutputFile = testOutput
       ThumbnailFile = testThumbnail }
 
   let repo = Mock<IConversionRepo>()

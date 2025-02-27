@@ -6,6 +6,7 @@ open Microsoft.FSharp.Core
 module Core =
   type ConversionId =
     | ConversionId of string
+
     member this.Value = let (ConversionId id) = this in id
 
   module ConversionId =
@@ -18,15 +19,21 @@ module Core =
 
     type Prepared = { Id: ConversionId; InputFile: string }
 
-    type Converted =
-      { Id: ConversionId; OutputFile: string }
+    type Video =
+      | Video of string
+
+      member this.value = let (Video value) = this in value
+
+    type Thumbnail =
+      | Thumbnail of string
+
+      member this.value = let (Thumbnail value) = this in value
+
+    type Converted = { Id: ConversionId; OutputFile: Video }
 
     type Thumbnailed =
       { Id: ConversionId
-        ThumbnailName: string }
-
-    type Video = Video of string
-    type Thumbnail = Thumbnail of string
+        ThumbnailName: Thumbnail }
 
     type Completed =
       { Id: ConversionId
@@ -52,11 +59,6 @@ module Core =
 
       type QueuePreparation = ConversionId -> InputFile -> Task<unit>
 
-    [<RequireQualifiedAccess>]
-    module Prepared =
-      type SaveThumbnail = Prepared -> string -> Task<Thumbnailed>
-      type SaveVideo = Prepared -> string -> Task<Converted>
-
   type Conversion =
     | New of Conversion.New
     | Prepared of Conversion.Prepared
@@ -74,6 +76,12 @@ module Core =
 
 open Core.Conversion
 
+type ISaveVideo =
+  abstract SaveVideo: Prepared * Video -> Task<Converted>
+
+type ISaveThumbnail =
+  abstract SaveThumbnail: Prepared * Thumbnail -> Task<Thumbnailed>
+
 type ICompleteConversion =
   abstract CompleteConversion: Converted * Thumbnail -> Task<Completed>
   abstract CompleteConversion: Thumbnailed * Video -> Task<Completed>
@@ -82,6 +90,8 @@ type ICleanupConversion =
   abstract CleanupConversion: Completed -> Task<unit>
 
 type IConversionService =
-  inherit ICleanupConversion
+  inherit ISaveVideo
+  inherit ISaveThumbnail
 
   inherit ICompleteConversion
+  inherit ICleanupConversion

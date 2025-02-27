@@ -286,9 +286,8 @@ module Workflows =
     (editBotMessage: EditBotMessage)
     (conversionRepo: #ILoadConversion)
     (loadTranslations: User.LoadTranslations)
-    (saveVideo: Conversion.Prepared.SaveVideo)
     (queueUpload: Conversion.Completed.QueueUpload)
-    (conversionService: #ICompleteConversion)
+    (conversionService: #ISaveVideo & #ICompleteConversion)
     : ProcessConversionResult =
 
     let processResult editMessage tran conversion =
@@ -298,7 +297,7 @@ module Workflows =
 
         match conversion with
         | Prepared preparedConversion ->
-          saveVideo preparedConversion file
+          conversionService.SaveVideo(preparedConversion, video)
           |> Task.bind (fun _ -> editMessage (tran Resources.VideoConverted))
         | Thumbnailed thumbnailedConversion ->
           conversionService.CompleteConversion(thumbnailedConversion, video)
@@ -324,9 +323,8 @@ module Workflows =
     (editBotMessage: EditBotMessage)
     (conversionRepo: #ILoadConversion)
     (loadTranslations: User.LoadTranslations)
-    (saveThumbnail: Conversion.Prepared.SaveThumbnail)
     (queueUpload: Conversion.Completed.QueueUpload)
-    (conversionService: #ICompleteConversion)
+    (conversionService: #ISaveThumbnail & #ICompleteConversion)
     : ProcessThumbnailingResult =
 
     let processResult editMessage tran conversion =
@@ -336,7 +334,7 @@ module Workflows =
 
         match conversion with
         | Prepared preparedConversion ->
-          saveThumbnail preparedConversion file
+          conversionService.SaveThumbnail(preparedConversion, video)
           |> Task.bind (fun _ -> editMessage (tran Resources.ThumbnailGenerated))
         | Converted convertedConversion ->
           conversionService.CompleteConversion(convertedConversion, video)

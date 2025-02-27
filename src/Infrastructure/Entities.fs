@@ -3,6 +3,7 @@ module Infrastructure.Entities
 
 open System
 open Domain.Core
+open Domain.Core.Conversion
 open Infrastructure.Core
 open MongoDB.Bson.Serialization.Attributes
 
@@ -52,11 +53,11 @@ type Conversion() =
 
   member this.ToConverted(): Conversion.Converted =
     { Id = (this.Id |> ConversionId)
-      OutputFile = this.OutputFileName }
+      OutputFile = Video this.OutputFileName }
 
   member this.ToThumbnailed(): Conversion.Thumbnailed =
     { Id = (this.Id |> ConversionId)
-      ThumbnailName = this.ThumbnailFileName }
+      ThumbnailName = Thumbnail this.ThumbnailFileName }
 
   member this.ToCompleted(): Conversion.Completed =
     { Id = (this.Id |> ConversionId)
@@ -78,10 +79,10 @@ type Conversion() =
     Conversion(Id = conversion.Id.Value, State = ConversionState.Prepared, InputFileName = conversion.InputFile)
 
   static member FromConverted(conversion: Conversion.Converted) : Conversion =
-    Conversion(Id = conversion.Id.Value, State = ConversionState.Converted, OutputFileName = conversion.OutputFile)
+    Conversion(Id = conversion.Id.Value, State = ConversionState.Converted, OutputFileName = conversion.OutputFile.value)
 
   static member FromThumbnailed(conversion: Conversion.Thumbnailed) : Conversion =
-    Conversion(Id = conversion.Id.Value, State = ConversionState.Thumbnailed, ThumbnailFileName = conversion.ThumbnailName)
+    Conversion(Id = conversion.Id.Value, State = ConversionState.Thumbnailed, ThumbnailFileName = conversion.ThumbnailName.value)
 
   static member FromCompleted(conversion: Conversion.Completed) : Conversion =
     Conversion(

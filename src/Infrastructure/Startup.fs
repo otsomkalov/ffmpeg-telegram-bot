@@ -70,6 +70,3 @@ module Startup =
       // TODO: Functions of same type. How to register?
       // .BuildSingleton<Conversion.Prepared.QueueConversion, WorkersSettings>(Conversion.Prepared.queueConversion)
       // .BuildSingleton<Conversion.Prepared.QueueThumbnailing, WorkersSettings>(Conversion.Prepared.queueThumbnailing)
-
-      .BuildSingleton<Conversion.Prepared.SaveVideo, IConversionRepo>(Conversion.Prepared.saveVideo)
-      .BuildSingleton<Conversion.Prepared.SaveThumbnail, IConversionRepo>(Conversion.Prepared.saveThumbnail)
