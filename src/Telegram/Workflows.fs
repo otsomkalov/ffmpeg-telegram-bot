@@ -254,7 +254,7 @@ module Workflows =
     (editBotMessage: EditBotMessage)
     (userConversionRepo: #ILoadUserConversion)
     (loadTranslations: User.LoadTranslations)
-    (prepareConversion: Conversion.New.Prepare)
+    (conversion: #IPrepareConversion)
     : DownloadFileAndQueueConversion =
 
     let onSuccess editMessage tran =
@@ -278,7 +278,7 @@ module Workflows =
         let onSuccess = (onSuccess editMessage tran)
         let onError = (onError editMessage tran)
 
-        return! prepareConversion conversionId file |> TaskResult.taskEither onSuccess onError
+        return! conversion.PrepareConversion(conversionId, file) |> TaskResult.taskEither onSuccess onError
       }
 
   let processConversionResult

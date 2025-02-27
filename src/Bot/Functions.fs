@@ -33,8 +33,6 @@ type Functions
     deleteBotMessage: DeleteBotMessage,
     replyWithVideo: ReplyWithVideo,
     loadLangTranslations: Translation.LoadTranslations,
-    downloadLink: Conversion.New.InputFile.DownloadLink,
-    downloadDocument: Conversion.New.InputFile.DownloadDocument,
     queueConversionPreparation: Conversion.New.QueuePreparation,
     parseCommand: ParseCommand,
     createConversion: Conversion.Create,
@@ -98,17 +96,8 @@ type Functions
     ) : Task<unit> =
     let data = message.Data
 
-    let queueConversion =
-      Conversion.Prepared.queueConversion workersSettings message.OperationId
-
-    let queueThumbnailing =
-      Conversion.Prepared.queueThumbnailing workersSettings message.OperationId
-
-    let prepareConversion =
-      Conversion.New.prepare downloadLink downloadDocument conversionRepo queueConversion queueThumbnailing
-
     let downloadFileAndQueueConversion =
-      downloadFileAndQueueConversion editBotMessage userConversionRepo loadTranslations prepareConversion
+      downloadFileAndQueueConversion editBotMessage userConversionRepo loadTranslations conversionService
 
     task {
       use activity = (new Activity("Downloader")).SetParentId(message.OperationId)

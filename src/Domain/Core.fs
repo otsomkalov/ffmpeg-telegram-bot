@@ -55,8 +55,6 @@ module Core =
         | NotFound
         | ServerError
 
-      type Prepare = ConversionId -> InputFile -> Task<Result<Prepared, DownloadLinkError>>
-
       type QueuePreparation = ConversionId -> InputFile -> Task<unit>
 
   type Conversion =
@@ -74,7 +72,11 @@ module Core =
       | Thumbnailed { Id = id }
       | Completed { Id = id } -> id
 
+open Core
 open Core.Conversion
+
+type IPrepareConversion =
+  abstract PrepareConversion: ConversionId * New.InputFile -> Task<Result<Prepared, New.DownloadLinkError>>
 
 type ISaveVideo =
   abstract SaveVideo: Prepared * Video -> Task<Converted>
@@ -90,6 +92,8 @@ type ICleanupConversion =
   abstract CleanupConversion: Completed -> Task<unit>
 
 type IConversionService =
+  inherit IPrepareConversion
+
   inherit ISaveVideo
   inherit ISaveThumbnail
 

@@ -66,8 +66,4 @@ module Startup =
         User.loadTranslations
       )
 
-      .BuildSingleton<Conversion.New.InputFile.DownloadDocument, ITelegramBotClient, WorkersSettings>(
-        Conversion.New.InputFile.downloadDocument
-      )
-
       .BuildSingleton<ParseCommand, InputValidationSettings>(parseCommand)

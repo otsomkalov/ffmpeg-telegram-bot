@@ -18,7 +18,6 @@ open otsom.fs.Extensions.DependencyInjection
 open Queue
 open Domain.Repos
 open Polly
-open Infrastructure.Workflows
 open MongoDB.ApplicationInsights.DependencyInjection
 
 module Startup =
@@ -65,7 +64,6 @@ module Startup =
       .BuildSingleton<Conversion.Create, ConversionId.Generate, IConversionRepo>(Conversion.create)
 
       .BuildSingleton<Conversion.New.QueuePreparation, WorkersSettings>(Conversion.New.queuePreparation)
-      .BuildSingleton<Conversion.New.InputFile.DownloadLink, IHttpClientFactory, WorkersSettings>(Conversion.New.InputFile.downloadLink)
 
       // TODO: Functions of same type. How to register?
       // .BuildSingleton<Conversion.Prepared.QueueConversion, WorkersSettings>(Conversion.Prepared.queueConversion)

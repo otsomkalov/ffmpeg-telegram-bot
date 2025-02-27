@@ -71,29 +71,6 @@ module Workflows =
       | _ -> None |> Task.FromResult
 
 [<RequireQualifiedAccess>]
-module Conversion =
-
-  [<RequireQualifiedAccess>]
-  module New =
-    [<RequireQualifiedAccess>]
-    module InputFile =
-      let downloadDocument (bot: ITelegramBotClient) (workersSettings: WorkersSettings) : Conversion.New.InputFile.DownloadDocument =
-        fun document ->
-          task {
-            use! converterBlobStream = Storage.getBlobStream workersSettings document.Name workersSettings.Converter.Input.Container
-
-            do! bot.GetInfoAndDownloadFileAsync(document.Id, converterBlobStream) |> Task.ignore
-
-            use! thumbnailerBlobStream = Storage.getBlobStream workersSettings document.Name workersSettings.Thumbnailer.Input.Container
-
-            do!
-              bot.GetInfoAndDownloadFileAsync(document.Id, thumbnailerBlobStream)
-              |> Task.ignore
-
-            return document.Name
-          }
-
-[<RequireQualifiedAccess>]
 module Translation =
   let private loadTranslationsMap (collection: IMongoCollection<Entities.Translation>) key =
     collection.Find(fun t -> t.Lang = key).ToListAsync()

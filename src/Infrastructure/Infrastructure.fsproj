@@ -10,7 +10,6 @@
     <Compile Include="Settings.fs"/>
     <Compile Include="Entities.fs"/>
     <Compile Include="Helpers.fs"/>
-    <Compile Include="Workflows.fs"/>
     <Compile Include="Queue.fs"/>
     <Compile Include="Repos.fs"/>
     <Compile Include="Startup.fs"/>
@@ -25,6 +24,7 @@
     <PackageReference Include="otsom.fs.Extensions.DependencyInjection" Version="0.0.1"/>
     <PackageReference Include="MongoDB.ApplicationInsights.DependencyInjection" Version="1.0.34"/>
     <PackageReference Include="MongoDB.Driver" Version="2.29.0"/>
+    <PackageReference Include="Telegram.Bot" Version="19.0.0" />
   </ItemGroup>
 
   <ItemGroup>

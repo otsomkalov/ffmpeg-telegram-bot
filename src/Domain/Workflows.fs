@@ -25,26 +25,6 @@ module Workflows =
           return newConversion
         }
 
-    [<RequireQualifiedAccess>]
-    module New =
-      let prepare
-        (downloadLink: Conversion.New.InputFile.DownloadLink)
-        (downloadDocument: Conversion.New.InputFile.DownloadDocument)
-        (repo: #ISaveConversion)
-        (queueConversion: Conversion.Prepared.QueueConversion)
-        (queueThumbnailing: Conversion.Prepared.QueueThumbnailing)
-        : Conversion.New.Prepare =
-        fun conversionId file ->
-          match file with
-          | New.Link l -> downloadLink l
-          | New.Document d -> downloadDocument d |> Task.map Ok
-          |> TaskResult.map (fun downloadedFile ->
-            { Id = conversionId
-              InputFile = downloadedFile })
-          |> TaskResult.taskTap (Conversion.Prepared >> repo.SaveConversion)
-          |> TaskResult.taskTap queueConversion
-          |> TaskResult.taskTap queueThumbnailing
-
 type ConversionService(repo: IConversionRepo) =
   interface IConversionService with
     member this.CleanupConversion(conversion) =
@@ -98,3 +78,14 @@ type ConversionService(repo: IConversionRepo) =
 
         return convertedConversion
       }
+
+    member this.PrepareConversion(conversionId, file) =
+      match file with
+      | New.Link l -> repo.DownloadLink l
+      | New.Document d -> repo.DownloadDocument d |> Task.map Ok
+      |> TaskResult.map (fun downloadedFile ->
+        { Id = conversionId
+          InputFile = downloadedFile })
+      |> TaskResult.taskTap (Conversion.Prepared >> repo.SaveConversion)
+      |> TaskResult.taskTap repo.QueueConversion
+      |> TaskResult.taskTap repo.QueueThumbnailing
