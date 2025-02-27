@@ -14,6 +14,7 @@ open Microsoft.Extensions.Logging.ApplicationInsights
 open otsom.fs.Telegram.Bot
 open Infrastructure
 open Telegram.Infrastructure
+open Domain
 
 #nowarn "20"
 
@@ -34,13 +35,14 @@ module Startup =
 
     ()
 
-  let private configureServices _ (services: IServiceCollection) =
+  let private configureServices (ctx: HostBuilderContext) (services: IServiceCollection) =
     services.AddApplicationInsightsTelemetryWorkerService()
     services.ConfigureFunctionsApplicationInsights()
 
     services
-    |> Startup.addTelegramBotCore
     |> Startup.addDomain
+    |> Startup.addTelegramBotCore
+    |> Startup.addInfra ctx.Configuration
     |> Startup.addTelegram
 
     services.AddMvcCore().AddNewtonsoftJson()

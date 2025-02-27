@@ -359,7 +359,7 @@ module Workflows =
     (deleteBotMessage: DeleteBotMessage)
     (replyWithVideo: ReplyWithVideo)
     (loadTranslations: User.LoadTranslations)
-    (cleanupConversion: Conversion.Completed.Cleanup)
+    (conversionService: #ICleanupConversion)
     : UploadCompletedConversion =
     let uploadAndClean userConversion =
       function
@@ -369,7 +369,7 @@ module Workflows =
 
           do! replyWithVideo userConversion.ChatId userConversion.ReceivedMessageId (tran Resources.Completed) conversion.OutputFile conversion.ThumbnailFile
 
-          do! cleanupConversion conversion
+          do! conversionService.CleanupConversion conversion
           do! deleteBotMessage userConversion.ChatId userConversion.SentMessageId
         }
 

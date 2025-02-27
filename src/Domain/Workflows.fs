@@ -19,7 +19,7 @@ module Workflows =
         task {
           let newConversion: Conversion.New = { Id = generateId () }
 
-          do! repo.SaveConversion (Conversion.New newConversion)
+          do! repo.SaveConversion(Conversion.New newConversion)
 
           return newConversion
         }
@@ -53,7 +53,7 @@ module Workflows =
               OutputFile = video |> Video
               ThumbnailFile = conversion.ThumbnailName |> Thumbnail }
 
-          repo.SaveConversion (Conversion.Completed completedConversion)
+          repo.SaveConversion(Conversion.Completed completedConversion)
           |> Task.map (fun _ -> completedConversion)
 
     [<RequireQualifiedAccess>]
@@ -64,7 +64,7 @@ module Workflows =
             { Id = conversion.Id
               ThumbnailName = thumbnail }
 
-          repo.SaveConversion (Conversion.Thumbnailed thumbnailedConversion)
+          repo.SaveConversion(Conversion.Thumbnailed thumbnailedConversion)
           |> Task.map (fun _ -> thumbnailedConversion)
 
       let saveVideo (repo: #ISaveConversion) : Prepared.SaveVideo =
@@ -73,7 +73,7 @@ module Workflows =
             { Id = conversion.Id
               OutputFile = video }
 
-          repo.SaveConversion (Conversion.Converted convertedConversion)
+          repo.SaveConversion(Conversion.Converted convertedConversion)
           |> Task.map (fun _ -> convertedConversion)
 
     [<RequireQualifiedAccess>]
@@ -85,17 +85,13 @@ module Workflows =
               OutputFile = (conversion.OutputFile |> Video)
               ThumbnailFile = (thumbnail |> Thumbnail) }
 
-          repo.SaveConversion (Conversion.Completed completedConversion)
+          repo.SaveConversion(Conversion.Completed completedConversion)
           |> Task.map (fun _ -> completedConversion)
 
-    [<RequireQualifiedAccess>]
-    module Completed =
-      let cleanup
-        (deleteVideo: Conversion.Completed.DeleteVideo)
-        (deleteThumbnail: Conversion.Completed.DeleteThumbnail)
-        : Completed.Cleanup =
-        fun conversion ->
-          task {
-            do! deleteVideo conversion.OutputFile
-            do! deleteThumbnail conversion.ThumbnailFile
-          }
+type ConversionService(repo: IConversionRepo) =
+  interface IConversionService with
+    member this.CleanupConversion(conversion) =
+      task {
+        do! repo.DeleteVideo conversion.OutputFile
+        do! repo.DeleteThumbnail conversion.ThumbnailFile
+      }

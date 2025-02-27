@@ -34,6 +34,8 @@ let ``Converted file successfully added to Prepared conversion`` () =
         testOutput
 
     result |> should equal expected
+
+    repo.VerifyAll()
   }
 
 [<Fact>]
@@ -60,4 +62,6 @@ let ``Thumbnail successfully added to Prepared conversion`` () =
         testThumbnail
 
     result |> should equal expected
+
+    repo.VerifyAll()
   }

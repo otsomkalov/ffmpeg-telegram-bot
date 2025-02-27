@@ -2,6 +2,7 @@
 
 open System.Threading.Tasks
 open Domain.Core
+open Domain.Core.Conversion
 
 module Repos =
   [<RequireQualifiedAccess>]
@@ -20,9 +21,6 @@ module Repos =
 
     [<RequireQualifiedAccess>]
     module Completed =
-      type DeleteVideo = Conversion.Video -> Task<unit>
-      type DeleteThumbnail = Conversion.Thumbnail -> Task<unit>
-
       type QueueUpload = Conversion.Completed -> Task<unit>
 
 type ILoadConversion =
@@ -31,6 +29,15 @@ type ILoadConversion =
 type ISaveConversion =
   abstract SaveConversion: Conversion -> Task<unit>
 
+type IDeleteVideo =
+  abstract DeleteVideo: Video -> Task<unit>
+
+type IDeleteThumbnail =
+  abstract DeleteThumbnail: Thumbnail -> Task<unit>
+
 type IConversionRepo =
   inherit ILoadConversion
   inherit ISaveConversion
+
+  inherit IDeleteVideo
+  inherit IDeleteThumbnail

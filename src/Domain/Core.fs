@@ -65,10 +65,6 @@ module Core =
     module Thumbnailed =
       type Complete = Thumbnailed -> string -> Task<Completed>
 
-    [<RequireQualifiedAccess>]
-    module Completed =
-      type Cleanup = Completed -> Task<unit>
-
   type Conversion =
     | New of Conversion.New
     | Prepared of Conversion.Prepared
@@ -83,3 +79,11 @@ module Core =
       | Converted { Id = id }
       | Thumbnailed { Id = id }
       | Completed { Id = id } -> id
+
+open Core.Conversion
+
+type ICleanupConversion =
+  abstract CleanupConversion: Completed -> Task<unit>
+
+type IConversionService =
+  inherit ICleanupConversion

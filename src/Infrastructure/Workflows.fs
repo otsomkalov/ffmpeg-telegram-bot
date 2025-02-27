@@ -45,27 +45,3 @@ module Conversion =
                   return Ok(fileName)
                 }
           }
-
-  [<RequireQualifiedAccess>]
-  module Completed =
-    let deleteVideo (settings: WorkersSettings) : Conversion.Completed.DeleteVideo =
-      let blobServiceClient = BlobServiceClient(settings.ConnectionString)
-
-      let container =
-        blobServiceClient.GetBlobContainerClient settings.Converter.Output.Container
-
-      fun name ->
-        let (Conversion.Video name) = name
-        let blob = container.GetBlobClient(name)
-        blob.DeleteAsync() |> Task.ignore
-
-    let deleteThumbnail (settings: WorkersSettings) : Conversion.Completed.DeleteThumbnail =
-      let blobServiceClient = BlobServiceClient(settings.ConnectionString)
-
-      let container =
-        blobServiceClient.GetBlobContainerClient settings.Thumbnailer.Output.Container
-
-      fun name ->
-        let (Conversion.Thumbnail name) = name
-        let blob = container.GetBlobClient(name)
-        blob.DeleteAsync() |> Task.ignore

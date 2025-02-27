@@ -10,6 +10,7 @@ open Domain.Workflows
 open Infrastructure.Settings
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Options
 open MongoDB.ApplicationInsights
 open MongoDB.Driver
 open Polly.Extensions.Http
@@ -36,7 +37,7 @@ module Startup =
   let private configureMongoDatabase (settings: DatabaseSettings) (mongoClient: IMongoClient) =
     mongoClient.GetDatabase(settings.Name)
 
-  let addDomain (services: IServiceCollection) =
+  let addInfra (cfg: IConfiguration) (services: IServiceCollection) =
     services
       .AddHttpClient(fun (client: HttpClient) -> client.DefaultRequestHeaders.UserAgent.ParseAdd(chromeUserAgent))
       .AddPolicyHandler(retryPolicy)
@@ -48,11 +49,10 @@ module Startup =
 
       .BuildSingleton<IMongoCollection<Entities.Conversion>, IMongoDatabase>(_.GetCollection("conversions"))
 
+    services.Configure<WorkersSettings>(cfg.GetSection WorkersSettings.SectionName)
+
     services
-      .BuildSingleton<WorkersSettings, IConfiguration>(fun cfg ->
-        cfg
-          .GetSection(WorkersSettings.SectionName)
-          .Get<WorkersSettings>())
+      .BuildSingleton<WorkersSettings, IOptions<WorkersSettings>>(_.Value)
       .BuildSingleton<DatabaseSettings, IConfiguration>(fun cfg ->
         cfg
           .GetSection(DatabaseSettings.SectionName)
@@ -73,10 +73,6 @@ module Startup =
 
       .BuildSingleton<Conversion.Prepared.SaveVideo, IConversionRepo>(Conversion.Prepared.saveVideo)
       .BuildSingleton<Conversion.Prepared.SaveThumbnail, IConversionRepo>(Conversion.Prepared.saveThumbnail)
-
-      .BuildSingleton<Conversion.Completed.DeleteVideo, WorkersSettings>(Conversion.Completed.deleteVideo)
-      .BuildSingleton<Conversion.Completed.DeleteThumbnail, WorkersSettings>(Conversion.Completed.deleteThumbnail)
-      .BuildSingleton<Conversion.Completed.Cleanup, Conversion.Completed.DeleteVideo, Conversion.Completed.DeleteThumbnail>(Conversion.Completed.cleanup)
 
       .BuildSingleton<Conversion.Thumbnailed.Complete, IConversionRepo>(Conversion.Thumbnailed.complete)
       .BuildSingleton<Conversion.Converted.Complete, IConversionRepo>(Conversion.Converted.complete)

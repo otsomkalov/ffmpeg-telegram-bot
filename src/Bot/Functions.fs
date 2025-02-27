@@ -44,13 +44,13 @@ type Functions
     createConversion: Conversion.Create,
     telemetryClient: TelemetryClient,
     loadTranslations: User.LoadTranslations,
-    cleanupConversion: Conversion.Completed.Cleanup,
     loadDefaultTranslations: Translation.LoadDefaultTranslations,
     userRepo: IUserRepo,
     channelRepo: IChannelRepo,
     groupRepo: IGroupRepo,
     userConversionRepo: IUserConversionRepo,
-    conversionRepo: IConversionRepo
+    conversionRepo: IConversionRepo,
+    conversionService: IConversionService
   ) =
 
   [<Function("HandleUpdate")>]
@@ -192,7 +192,7 @@ type Functions
     let conversionId = message.Data.ConversionId |> ConversionId
 
     let uploadSuccessfulConversion =
-      uploadCompletedConversion userConversionRepo conversionRepo deleteBotMessage replyWithVideo loadTranslations cleanupConversion
+      uploadCompletedConversion userConversionRepo conversionRepo deleteBotMessage replyWithVideo loadTranslations conversionService
 
     task {
       use activity = (new Activity("Uploader")).SetParentId(message.OperationId)
