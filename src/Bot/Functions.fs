@@ -33,8 +33,6 @@ type Functions
     deleteBotMessage: DeleteBotMessage,
     replyWithVideo: ReplyWithVideo,
     loadLangTranslations: Translation.LoadTranslations,
-    completeThumbnailedConversion: Conversion.Thumbnailed.Complete,
-    completeConvertedConversion: Conversion.Converted.Complete,
     saveVideo: Conversion.Prepared.SaveVideo,
     saveThumbnail: Conversion.Prepared.SaveThumbnail,
     downloadLink: Conversion.New.InputFile.DownloadLink,
@@ -137,8 +135,8 @@ type Functions
         conversionRepo
         loadTranslations
         saveVideo
-        completeThumbnailedConversion
         (Conversion.Completed.queueUpload workersSettings message.OperationId)
+        conversionService
 
     task {
       use activity =
@@ -167,8 +165,8 @@ type Functions
         conversionRepo
         loadTranslations
         saveThumbnail
-        completeConvertedConversion
         (Conversion.Completed.queueUpload workersSettings message.OperationId)
+        conversionService
 
     task {
       use activity =

@@ -57,14 +57,6 @@ module Core =
       type SaveThumbnail = Prepared -> string -> Task<Thumbnailed>
       type SaveVideo = Prepared -> string -> Task<Converted>
 
-    [<RequireQualifiedAccess>]
-    module Converted =
-      type Complete = Converted -> string -> Task<Completed>
-
-    [<RequireQualifiedAccess>]
-    module Thumbnailed =
-      type Complete = Thumbnailed -> string -> Task<Completed>
-
   type Conversion =
     | New of Conversion.New
     | Prepared of Conversion.Prepared
@@ -82,8 +74,14 @@ module Core =
 
 open Core.Conversion
 
+type ICompleteConversion =
+  abstract CompleteConversion: Converted * Thumbnail -> Task<Completed>
+  abstract CompleteConversion: Thumbnailed * Video -> Task<Completed>
+
 type ICleanupConversion =
   abstract CleanupConversion: Completed -> Task<unit>
 
 type IConversionService =
   inherit ICleanupConversion
+
+  inherit ICompleteConversion

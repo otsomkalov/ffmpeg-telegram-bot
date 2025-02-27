@@ -1,7 +1,6 @@
 module Tests.Conversion.Prepared
 
 open System
-open System.Threading.Tasks
 open Domain
 open Domain.Core
 open Domain.Core.Conversion

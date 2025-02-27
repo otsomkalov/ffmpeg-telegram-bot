@@ -73,6 +73,3 @@ module Startup =
 
       .BuildSingleton<Conversion.Prepared.SaveVideo, IConversionRepo>(Conversion.Prepared.saveVideo)
       .BuildSingleton<Conversion.Prepared.SaveThumbnail, IConversionRepo>(Conversion.Prepared.saveThumbnail)
-
-      .BuildSingleton<Conversion.Thumbnailed.Complete, IConversionRepo>(Conversion.Thumbnailed.complete)
-      .BuildSingleton<Conversion.Converted.Complete, IConversionRepo>(Conversion.Converted.complete)

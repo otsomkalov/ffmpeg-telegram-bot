@@ -1,5 +1,6 @@
 ﻿namespace Domain
 
+open System.Threading.Tasks
 open Domain.Core
 open Domain.Core.Conversion
 open Microsoft.FSharp.Core
@@ -45,18 +46,6 @@ module Workflows =
           |> TaskResult.taskTap queueThumbnailing
 
     [<RequireQualifiedAccess>]
-    module Thumbnailed =
-      let complete (repo: #ISaveConversion) : Thumbnailed.Complete =
-        fun conversion video ->
-          let completedConversion: Conversion.Completed =
-            { Id = conversion.Id
-              OutputFile = video |> Video
-              ThumbnailFile = conversion.ThumbnailName |> Thumbnail }
-
-          repo.SaveConversion(Conversion.Completed completedConversion)
-          |> Task.map (fun _ -> completedConversion)
-
-    [<RequireQualifiedAccess>]
     module Prepared =
       let saveThumbnail (repo: #ISaveConversion) : Prepared.SaveThumbnail =
         fun conversion thumbnail ->
@@ -76,17 +65,6 @@ module Workflows =
           repo.SaveConversion(Conversion.Converted convertedConversion)
           |> Task.map (fun _ -> convertedConversion)
 
-    [<RequireQualifiedAccess>]
-    module Converted =
-      let complete (repo: #ISaveConversion) : Converted.Complete =
-        fun conversion thumbnail ->
-          let completedConversion: Conversion.Completed =
-            { Id = conversion.Id
-              OutputFile = (conversion.OutputFile |> Video)
-              ThumbnailFile = (thumbnail |> Thumbnail) }
-
-          repo.SaveConversion(Conversion.Completed completedConversion)
-          |> Task.map (fun _ -> completedConversion)
 
 type ConversionService(repo: IConversionRepo) =
   interface IConversionService with
@@ -94,4 +72,28 @@ type ConversionService(repo: IConversionRepo) =
       task {
         do! repo.DeleteVideo conversion.OutputFile
         do! repo.DeleteThumbnail conversion.ThumbnailFile
+      }
+
+    member this.CompleteConversion(conversion: Converted, thumbnail: Thumbnail) : Task<Completed> =
+      task {
+        let completedConversion: Conversion.Completed =
+          { Id = conversion.Id
+            OutputFile = (conversion.OutputFile |> Video)
+            ThumbnailFile = thumbnail }
+
+        do! repo.SaveConversion(Conversion.Completed completedConversion)
+
+        return completedConversion
+      }
+
+    member this.CompleteConversion(conversion: Thumbnailed, video: Video) : Task<Completed> =
+      task {
+        let completedConversion: Conversion.Completed =
+          { Id = conversion.Id
+            OutputFile = video
+            ThumbnailFile = conversion.ThumbnailName |> Thumbnail }
+
+        do! repo.SaveConversion(Conversion.Completed completedConversion)
+
+        return completedConversion
       }
