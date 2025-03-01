@@ -1,6 +1,8 @@
 ﻿namespace Telegram.Infrastructure
 
 open Domain.Core
+open FSharp
+open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open MongoDB.Driver.Linq
 open Telegram.Core
@@ -22,9 +24,11 @@ type UserConversionRepo(db: IMongoDatabase) =
     member _.SaveUserConversion(conversion) =
       task { do! collection.InsertOneAsync(Entities.Conversion.FromUserConversion conversion) }
 
-type UserRepo(collection: IMongoCollection<Entities.User>) =
+type UserRepo(collection: IMongoCollection<Entities.User>, logger: ILogger<UserRepo>) =
   interface IUserRepo with
     member this.LoadUser(UserId id) =
+      Logf.logfi logger "Loading user %i{UserId}" id
+
       collection.AsQueryable().FirstOrDefaultAsync(fun u -> u.Id = id)
       |> Task.map Option.ofObj
       |> TaskOption.map _.ToDomain()
@@ -32,9 +36,11 @@ type UserRepo(collection: IMongoCollection<Entities.User>) =
     member _.SaveUser user =
       task { do! collection.InsertOneAsync(Entities.User.FromDomain user) }
 
-type ChannelRepo(collection: IMongoCollection<Entities.Channel>) =
+type ChannelRepo(collection: IMongoCollection<Entities.Channel>, logger: ILogger<ChannelRepo>) =
   interface IChannelRepo with
     member _.LoadChannel(ChannelId id) =
+      Logf.logfi logger "Loading channel %i{ChannelId}" id
+
       collection.AsQueryable().FirstOrDefaultAsync(fun c -> c.Id = id)
       |> Task.map Option.ofObj
       |> TaskOption.map _.ToDomain()
@@ -42,9 +48,11 @@ type ChannelRepo(collection: IMongoCollection<Entities.Channel>) =
     member _.SaveChannel channel =
       task { do! collection.InsertOneAsync(Entities.Channel.FromDomain channel) }
 
-type GroupRepo(collection: IMongoCollection<Entities.Group>) =
+type GroupRepo(collection: IMongoCollection<Entities.Group>, logger: ILogger<GroupRepo>) =
   interface IGroupRepo with
     member _.LoadGroup(GroupId id) =
+      Logf.logfi logger "Loading group %i{GroupId}" id
+
       collection.AsQueryable().FirstOrDefaultAsync(fun g -> g.Id = id)
       |> Task.map Option.ofObj
       |> TaskOption.map _.ToDomain()
