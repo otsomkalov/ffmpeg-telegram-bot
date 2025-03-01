@@ -17,7 +17,6 @@ open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
 open System.Threading.Tasks
 open System
-open Domain.Repos
 open Telegram.Infrastructure.Helpers
 open otsom.fs.Extensions.String
 
@@ -69,68 +68,3 @@ module Workflows =
       | Document settings.MimeTypes doc -> Command.Document(doc.FileId, doc.FileName) |> Some |> Task.FromResult
       | Video settings.MimeTypes vid -> Command.Video(vid.FileId, vid.FileName) |> Some |> Task.FromResult
       | _ -> None |> Task.FromResult
-
-[<RequireQualifiedAccess>]
-module Translation =
-  let private loadTranslationsMap (collection: IMongoCollection<Entities.Translation>) key =
-    collection.Find(fun t -> t.Lang = key).ToListAsync()
-    |> Task.map (
-      Seq.groupBy _.Key
-      >> Seq.map (fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head))
-      >> Map.ofSeq
-    )
-
-  let private formatWithFallback formats fallback =
-    fun (key: string, args: obj seq) ->
-      match formats |> Map.tryFind key with
-      | Some fmt -> String.Format(fmt, args |> Array.ofSeq)
-      | None -> fallback
-
-  let loadDefaultTranslations
-    (collection: IMongoCollection<Entities.Translation>)
-    (loggerFactory: ILoggerFactory)
-    : Translation.LoadDefaultTranslations =
-    let logger = loggerFactory.CreateLogger(nameof Translation.LoadDefaultTranslations)
-
-    fun () ->
-      task {
-        Logf.logfi logger "Loading default translations"
-        let! translations = loadTranslationsMap collection Translation.DefaultLang
-        Logf.logfi logger "Default translations map loaded from DB"
-
-        let getTranslation =
-          fun key -> translations |> Map.tryFind key |> Option.defaultValue key
-
-        let formatTranslation =
-          fun (key, args) -> formatWithFallback translations key (key, args)
-
-        return (getTranslation, formatTranslation)
-      }
-
-  let loadTranslations
-    (collection: IMongoCollection<Entities.Translation>)
-    (loggerFactory: ILoggerFactory)
-    (loadDefaultTranslations: Translation.LoadDefaultTranslations)
-    : Translation.LoadTranslations =
-    let logger = loggerFactory.CreateLogger(nameof Translation.LoadTranslations)
-
-    function
-    | Some l when l <> Translation.DefaultLang ->
-      task {
-        let! tran, tranf = loadDefaultTranslations ()
-
-        Logf.logfi logger "Loading translations for lang %s{Lang}" l
-
-        let! localeTranslations = loadTranslationsMap collection l
-
-        Logf.logfi logger "Translations for lang %s{Lang} is loaded" l
-
-        let getTranslation: Translation.GetTranslation =
-          fun key -> localeTranslations |> Map.tryFind key |> Option.defaultValue (tran key)
-
-        let formatTranslation: Translation.FormatTranslation =
-          fun (key, args) -> formatWithFallback localeTranslations (tranf (key, args)) (key, args)
-
-        return (getTranslation, formatTranslation)
-      }
-    | _ -> loadDefaultTranslations ()

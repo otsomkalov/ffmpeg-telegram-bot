@@ -76,25 +76,25 @@ resource "azurerm_storage_queue" "stq-thumbnailer-output-tg-bot" {
 }
 
 resource "azurerm_storage_container" "stc-converter-input-tg-bot" {
-  storage_account_name = azurerm_storage_account.st-tg-bot.name
+  storage_account_id = azurerm_storage_account.st-tg-bot.id
 
   name = "converter-input"
 }
 
 resource "azurerm_storage_container" "stc-converter-output-tg-bot" {
-  storage_account_name = azurerm_storage_account.st-tg-bot.name
+  storage_account_id = azurerm_storage_account.st-tg-bot.id
 
   name = "converter-output"
 }
 
 resource "azurerm_storage_container" "stc-thumbnailer-input-tg-bot" {
-  storage_account_name = azurerm_storage_account.st-tg-bot.name
+  storage_account_id = azurerm_storage_account.st-tg-bot.id
 
   name = "thumbnailer-input"
 }
 
 resource "azurerm_storage_container" "stc-thumbnailer-output-tg-bot" {
-  storage_account_name = azurerm_storage_account.st-tg-bot.name
+  storage_account_id = azurerm_storage_account.st-tg-bot.id
 
   name = "thumbnailer-output"
 }

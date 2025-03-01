@@ -13,6 +13,7 @@ open Infrastructure.Helpers
 open Infrastructure.Queue
 open Infrastructure.Settings
 open Microsoft.Extensions.Options
+open MongoDB.Bson
 open MongoDB.Driver
 open MongoDB.Driver.Linq
 open Telegram.Bot
@@ -31,6 +32,9 @@ type ConversionRepo
   let queueServiceClient = QueueServiceClient(settings.ConnectionString)
 
   interface IConversionRepo with
+    member this.GenerateConversionId() =
+      ObjectId.GenerateNewId().ToString() |> ConversionId
+
     member _.LoadConversion(ConversionId id) =
       collection.AsQueryable().FirstOrDefaultAsync(fun c -> c.Id = id) &|> _.ToDomain
 
@@ -120,3 +124,13 @@ type ConversionRepo
               return Ok(fileName)
             }
       }
+
+    member this.QueueUpload(conversion) =
+      let queueClient = queueServiceClient.GetQueueClient(settings.Uploader.Queue)
+
+      let messageBody =
+        JSON.serialize
+          { OperationId = Activity.Current.ParentId
+            Data = { ConversionId = conversion.Id.Value } }
+
+      queueClient.SendMessageAsync(messageBody) |> Task.ignore

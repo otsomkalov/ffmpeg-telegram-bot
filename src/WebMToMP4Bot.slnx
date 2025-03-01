@@ -12,4 +12,5 @@
   <Folder Name="/tests/">
     <Project Path="Domain.Tests\Domain.Tests.fsproj" Type="Classic F#" />
   </Folder>
+  <Project Path="..\..\otsom.fs\src\otsom.fs.Resources.Mongo\otsom.fs.Resources.Mongo.fsproj" Type="Classic F#" />
 </Solution>

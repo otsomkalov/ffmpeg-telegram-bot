@@ -15,6 +15,7 @@ open otsom.fs.Telegram.Bot
 open Infrastructure
 open Telegram.Infrastructure
 open Domain
+open Telegram
 
 #nowarn "20"
 
@@ -43,7 +44,8 @@ module Startup =
     |> Startup.addDomain
     |> Startup.addTelegramBotCore
     |> Startup.addInfra ctx.Configuration
-    |> Startup.addTelegram
+    |> Startup.addTelegram ctx.Configuration
+    |> Startup.addTelegramInfra ctx.Configuration
 
     services.AddMvcCore().AddNewtonsoftJson()
 

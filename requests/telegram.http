@@ -5,6 +5,9 @@ GET https://{{api}}/bot{{token}}/getUpdates
 GET https://{{api}}/bot{{token}}/deleteWebhook
 
 ###
+GET https://{{api}}/bot{{token}}/logOut
+
+###
 GET https://{{api}}/bot{{token}}/getWebhookInfo
 
 ###

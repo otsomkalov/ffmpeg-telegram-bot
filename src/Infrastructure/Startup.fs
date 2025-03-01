@@ -16,7 +16,6 @@ open MongoDB.Driver
 open Polly.Extensions.Http
 open otsom.fs.Extensions.DependencyInjection
 open Queue
-open Domain.Repos
 open Polly
 open MongoDB.ApplicationInsights.DependencyInjection
 
@@ -52,19 +51,11 @@ module Startup =
 
     services
       .BuildSingleton<WorkersSettings, IOptions<WorkersSettings>>(_.Value)
-      .BuildSingleton<DatabaseSettings, IConfiguration>(fun cfg ->
-        cfg
-          .GetSection(DatabaseSettings.SectionName)
-          .Get<DatabaseSettings>())
+      .BuildSingleton<DatabaseSettings, IConfiguration>(fun cfg -> cfg.GetSection(DatabaseSettings.SectionName).Get<DatabaseSettings>())
 
     services.AddSingleton<IConversionRepo, ConversionRepo>()
 
     services
-      .AddSingleton<ConversionId.Generate>(ConversionId.generate)
-      .BuildSingleton<Conversion.Create, ConversionId.Generate, IConversionRepo>(Conversion.create)
+      .BuildSingleton<Conversion.Create, IConversionRepo>(Conversion.create)
 
       .BuildSingleton<Conversion.New.QueuePreparation, WorkersSettings>(Conversion.New.queuePreparation)
-
-      // TODO: Functions of same type. How to register?
-      // .BuildSingleton<Conversion.Prepared.QueueConversion, WorkersSettings>(Conversion.Prepared.queueConversion)
-      // .BuildSingleton<Conversion.Prepared.QueueThumbnailing, WorkersSettings>(Conversion.Prepared.queueThumbnailing)
