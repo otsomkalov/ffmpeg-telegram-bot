@@ -4,7 +4,10 @@ open System.Threading.Tasks
 open Microsoft.FSharp.Core
 
 module Core =
-  type ConversionId = ConversionId of string
+  type ConversionId =
+    | ConversionId of string
+
+    member this.Value = let (ConversionId id) = this in id
 
   module ConversionId =
     type Generate = unit -> ConversionId
@@ -16,15 +19,21 @@ module Core =
 
     type Prepared = { Id: ConversionId; InputFile: string }
 
-    type Converted =
-      { Id: ConversionId; OutputFile: string }
+    type Video =
+      | Video of string
+
+      member this.value = let (Video value) = this in value
+
+    type Thumbnail =
+      | Thumbnail of string
+
+      member this.value = let (Thumbnail value) = this in value
+
+    type Converted = { Id: ConversionId; OutputFile: Video }
 
     type Thumbnailed =
       { Id: ConversionId
-        ThumbnailName: string }
-
-    type Video = Video of string
-    type Thumbnail = Thumbnail of string
+        ThumbnailName: Thumbnail }
 
     type Completed =
       { Id: ConversionId
@@ -46,26 +55,7 @@ module Core =
         | NotFound
         | ServerError
 
-      type Prepare = ConversionId -> InputFile -> Task<Result<Prepared, DownloadLinkError>>
-
       type QueuePreparation = ConversionId -> InputFile -> Task<unit>
-
-    [<RequireQualifiedAccess>]
-    module Prepared =
-      type SaveThumbnail = Prepared -> string -> Task<Thumbnailed>
-      type SaveVideo = Prepared -> string -> Task<Converted>
-
-    [<RequireQualifiedAccess>]
-    module Converted =
-      type Complete = Converted -> string -> Task<Completed>
-
-    [<RequireQualifiedAccess>]
-    module Thumbnailed =
-      type Complete = Thumbnailed -> string -> Task<Completed>
-
-    [<RequireQualifiedAccess>]
-    module Completed =
-      type Cleanup = Completed -> Task<unit>
 
   type Conversion =
     | New of Conversion.New
@@ -81,3 +71,31 @@ module Core =
       | Converted { Id = id }
       | Thumbnailed { Id = id }
       | Completed { Id = id } -> id
+
+open Core
+open Core.Conversion
+
+type IPrepareConversion =
+  abstract PrepareConversion: ConversionId * New.InputFile -> Task<Result<Prepared, New.DownloadLinkError>>
+
+type ISaveVideo =
+  abstract SaveVideo: Prepared * Video -> Task<Converted>
+
+type ISaveThumbnail =
+  abstract SaveThumbnail: Prepared * Thumbnail -> Task<Thumbnailed>
+
+type ICompleteConversion =
+  abstract CompleteConversion: Converted * Thumbnail -> Task<Completed>
+  abstract CompleteConversion: Thumbnailed * Video -> Task<Completed>
+
+type ICleanupConversion =
+  abstract CleanupConversion: Completed -> Task<unit>
+
+type IConversionService =
+  inherit IPrepareConversion
+
+  inherit ISaveVideo
+  inherit ISaveThumbnail
+
+  inherit ICompleteConversion
+  inherit ICleanupConversion

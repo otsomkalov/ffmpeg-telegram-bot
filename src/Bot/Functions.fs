@@ -2,6 +2,7 @@
 
 open System.Diagnostics
 open System.Threading.Tasks
+open Domain
 open Domain.Workflows
 open FSharp
 open Infrastructure.Core
@@ -20,7 +21,6 @@ open otsom.fs.Telegram.Bot.Core
 open Domain.Repos
 open Domain.Core
 open Telegram.Repos
-open otsom.fs.Resources
 
 type ConverterResultMessage =
   { Id: string; Result: ConversionResult }
@@ -30,48 +30,48 @@ type Functions
     workersSettings: WorkersSettings,
     replyToUserMessage: ReplyToUserMessage,
     editBotMessage: EditBotMessage,
-    loadUserConversion: UserConversion.Load,
     deleteBotMessage: DeleteBotMessage,
     replyWithVideo: ReplyWithVideo,
-    completeThumbnailedConversion: Conversion.Thumbnailed.Complete,
-    completeConvertedConversion: Conversion.Converted.Complete,
-    saveVideo: Conversion.Prepared.SaveVideo,
-    saveThumbnail: Conversion.Prepared.SaveThumbnail,
-    downloadLink: Conversion.New.InputFile.DownloadLink,
-    downloadDocument: Conversion.New.InputFile.DownloadDocument,
-    saveUserConversion: UserConversion.Save,
+    loadLangTranslations: Translation.LoadTranslations,
     queueConversionPreparation: Conversion.New.QueuePreparation,
     parseCommand: ParseCommand,
     createConversion: Conversion.Create,
-    loadConversion: Conversion.Load,
-    saveConversion: Conversion.Save,
     telemetryClient: TelemetryClient,
-    cleanupConversion: Conversion.Completed.Cleanup,
-    loadUser: User.Load,
-    loadChannel: Channel.Load,
-    createUser: User.Create,
-    saveChannel: Channel.Save,
-    loadGroup: Group.Load,
-    saveGroup: Group.Save,
-    loadResources: LoadResources,
-    loadDefaultResources: LoadDefaultResources
+    loadTranslations: User.LoadTranslations,
+    loadDefaultTranslations: Translation.LoadDefaultTranslations,
+    userRepo: IUserRepo,
+    channelRepo: IChannelRepo,
+    groupRepo: IGroupRepo,
+    userConversionRepo: IUserConversionRepo,
+    conversionRepo: IConversionRepo,
+    conversionService: IConversionService
   ) =
 
   [<Function("HandleUpdate")>]
-  member this.HandleUpdate([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update, ctx: FunctionContext) : Task<unit> =
-    let logger = nameof(this.HandleUpdate) |> ctx.GetLogger
+  member this.HandleUpdate
+    ([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update, ctx: FunctionContext)
+    : Task<unit> =
+    let logger = nameof (this.HandleUpdate) |> ctx.GetLogger
 
     let queueUserConversion =
-      UserConversion.queueProcessing createConversion saveUserConversion queueConversionPreparation
+      UserConversion.queueProcessing createConversion userConversionRepo queueConversionPreparation
 
     let processPrivateMessage =
-      processPrivateMessage replyToUserMessage loadResources loadDefaultResources loadUser createUser queueUserConversion parseCommand logger
+      processPrivateMessage replyToUserMessage loadLangTranslations userRepo queueUserConversion parseCommand logger
 
     let processGeoupMessage =
-      processGroupMessage replyToUserMessage loadResources loadDefaultResources loadUser createUser loadGroup saveGroup queueUserConversion parseCommand logger
+      processGroupMessage
+        replyToUserMessage
+        loadLangTranslations
+        loadDefaultTranslations
+        userRepo
+        groupRepo
+        queueUserConversion
+        parseCommand
+        logger
 
     let processChannelPost =
-      processChannelPost replyToUserMessage loadDefaultResources loadChannel saveChannel queueUserConversion parseCommand logger
+      processChannelPost replyToUserMessage loadDefaultTranslations channelRepo queueUserConversion parseCommand logger
 
     task {
       try
@@ -95,14 +95,9 @@ type Functions
       _: FunctionContext
     ) : Task<unit> =
     let data = message.Data
-    let queueConversion = Conversion.Prepared.queueConversion workersSettings message.OperationId
-    let queueThumbnailing = Conversion.Prepared.queueThumbnailing workersSettings message.OperationId
-
-    let prepareConversion =
-      Conversion.New.prepare downloadLink downloadDocument saveConversion queueConversion queueThumbnailing
 
     let downloadFileAndQueueConversion =
-      downloadFileAndQueueConversion editBotMessage loadUserConversion loadUser loadResources loadDefaultResources prepareConversion
+      downloadFileAndQueueConversion editBotMessage userConversionRepo loadTranslations conversionService
 
     task {
       use activity = (new Activity("Downloader")).SetParentId(message.OperationId)
@@ -122,15 +117,12 @@ type Functions
     ) : Task<unit> =
     let processConversionResult =
       processConversionResult
-        loadUserConversion
+        userConversionRepo
         editBotMessage
-        loadConversion
-        loadUser
-        loadResources
-        loadDefaultResources
-        saveVideo
-        completeThumbnailedConversion
+        conversionRepo
+        loadTranslations
         (Conversion.Completed.queueUpload workersSettings message.OperationId)
+        conversionService
 
     task {
       use activity =
@@ -154,15 +146,12 @@ type Functions
     ) : Task<unit> =
     let processThumbnailingResult =
       processThumbnailingResult
-        loadUserConversion
+        userConversionRepo
         editBotMessage
-        loadConversion
-        loadUser
-        loadResources
-        loadDefaultResources
-        saveThumbnail
-        completeConvertedConversion
+        conversionRepo
+        loadTranslations
         (Conversion.Completed.queueUpload workersSettings message.OperationId)
+        conversionService
 
     task {
       use activity =
@@ -186,11 +175,10 @@ type Functions
     let conversionId = message.Data.ConversionId |> ConversionId
 
     let uploadSuccessfulConversion =
-      uploadCompletedConversion loadUserConversion loadConversion deleteBotMessage replyWithVideo loadUser loadResources loadDefaultResources cleanupConversion
+      uploadCompletedConversion userConversionRepo conversionRepo deleteBotMessage replyWithVideo loadTranslations conversionService
 
     task {
-      use activity =
-        (new Activity("Uploader")).SetParentId(message.OperationId)
+      use activity = (new Activity("Uploader")).SetParentId(message.OperationId)
 
       use operation = telemetryClient.StartOperation<RequestTelemetry>(activity)
 

@@ -2,10 +2,12 @@ module Tests.Conversion.New
 
 open System
 open System.Threading.Tasks
+open Domain
 open Domain.Core
 open Domain.Core.Conversion
 open Domain.Repos
 open Domain.Workflows
+open Moq
 open Xunit
 open FsUnit.Xunit
 
@@ -15,57 +17,51 @@ let ``New Conversion is created and saved`` () =
 
   let generateId () = conversionId
 
-  let saveConversion (conversion: Conversion) =
-    conversion.Id |> should equal conversionId
-    Task.FromResult()
+  let expected = { Id = conversionId }
 
-  let sut = Conversion.create generateId saveConversion
+  let repo = Mock<IConversionRepo>()
+
+  repo.Setup(_.SaveConversion(New expected)).ReturnsAsync(())
+
+  let sut = Conversion.create generateId repo.Object
 
   task {
     let! result = sut ()
 
-    result.Id |> should equal conversionId
+    result |> should equal expected
+
+    repo.VerifyAll()
   }
 
 [<Fact>]
 let ``Prepare New Conversion downloads document and saves it`` () =
   let conversionId = Guid.NewGuid().ToString() |> ConversionId
   let docName = "document-name.webm"
-  let docId = "document-id"
+
+  let doc: New.InputDocument = { Id = "document-id"; Name = docName }
 
   let expectedConversion =
     { Id = conversionId
       InputFile = docName }
 
-  let downloadLink _ = failwith "todo"
-
-  let downloadDocument (doc: New.InputDocument) =
-    doc.Id |> should equal docId
-    docName |> should equal docName
-    docName |> Task.FromResult
-
-  let saveConversion (conversion: Conversion) =
-    conversion |> should equal (Conversion.Prepared expectedConversion)
-    Task.FromResult()
-
-  let queueConversion c =
-    c |> should equal expectedConversion
-    Task.FromResult()
-
-  let queueThumbnailing c =
-    c |> should equal expectedConversion
-    Task.FromResult()
-
   let expectedResult: Result<_, Conversion.New.DownloadLinkError> =
     Ok(expectedConversion)
 
-  let sut =
-    Conversion.New.prepare downloadLink downloadDocument saveConversion queueConversion queueThumbnailing
+  let repo = Mock<IConversionRepo>()
+
+  repo.Setup(_.SaveConversion(Prepared expectedConversion)).ReturnsAsync(())
+  repo.Setup(_.DownloadDocument(doc)).ReturnsAsync(docName)
+  repo.Setup(_.QueueConversion(expectedConversion)).ReturnsAsync(())
+  repo.Setup(_.QueueThumbnailing(expectedConversion)).ReturnsAsync(())
+
+  let sut: IConversionService = ConversionService(repo.Object)
 
   task {
-    let! result = sut conversionId (Conversion.New.InputFile.Document({ Id = docId; Name = docName }))
+    let! result = sut.PrepareConversion(conversionId, New.InputFile.Document(doc))
 
     result |> should equal expectedResult
+
+    repo.VerifyAll()
   }
 
 [<Fact>]
@@ -77,34 +73,26 @@ let ``Prepare New Conversion downloads link and saves it`` () =
     { Id = conversionId
       InputFile = "document-name.webm" }
 
-  let downloadLink (link: New.InputLink) =
-    link.Url |> should equal testLink
-    testLink |> Uri |> _.Segments |> Seq.last |> Ok |> Task.FromResult
-
-  let downloadDocument _ = failwith "todo"
-
-  let saveConversion (conversion: Conversion) =
-    conversion |> should equal (Conversion.Prepared expectedConversion)
-    Task.FromResult()
-
-  let queueConversion c =
-    c |> should equal expectedConversion
-    Task.FromResult()
-
-  let queueThumbnailing c =
-    c |> should equal expectedConversion
-    Task.FromResult()
+  let link: New.InputLink = { Url = testLink }
 
   let expectedResult: Result<_, Conversion.New.DownloadLinkError> =
     Ok(expectedConversion)
 
-  let sut =
-    Conversion.New.prepare downloadLink downloadDocument saveConversion queueConversion queueThumbnailing
+  let repo = Mock<IConversionRepo>()
+
+  repo.Setup(_.SaveConversion(Prepared expectedConversion)).ReturnsAsync(())
+  repo.Setup(_.DownloadLink(link)).ReturnsAsync(Ok expectedConversion.InputFile)
+  repo.Setup(_.QueueConversion(expectedConversion)).ReturnsAsync(())
+  repo.Setup(_.QueueThumbnailing(expectedConversion)).ReturnsAsync(())
+
+  let sut: IConversionService = ConversionService(repo.Object)
 
   task {
-    let! result = sut conversionId (Conversion.New.InputFile.Link({ Url = testLink }))
+    let! result = sut.PrepareConversion(conversionId, New.InputFile.Link(link))
 
     result |> should equal expectedResult
+
+    repo.VerifyAll()
   }
 
 [<Fact>]
@@ -112,28 +100,24 @@ let ``Prepare New Conversion stops if link file not found`` () =
   let conversionId = Guid.NewGuid().ToString() |> ConversionId
   let testLink = "http://test.com/document-name.webm"
 
-  let downloadLink (link: New.InputLink) =
-    link.Url |> should equal testLink
-    New.DownloadLinkError.NotFound |> Error |> Task.FromResult
+  let link: New.InputLink = { Url = testLink }
 
-  let downloadDocument _ = failwith "todo"
+  let expected = Error New.DownloadLinkError.NotFound
 
-  let saveConversion _ = failwith "todo"
+  let expectedResult: Result<Conversion.Prepared, _> = expected
 
-  let queueConversion _ = failwith "todo"
+  let repo = Mock<IConversionRepo>()
 
-  let queueThumbnailing _ = failwith "todo"
+  repo.Setup(_.DownloadLink(link)).ReturnsAsync(expected)
 
-  let expectedResult: Result<Conversion.Prepared, _> =
-    New.DownloadLinkError.NotFound |> Error
-
-  let sut =
-    Conversion.New.prepare downloadLink downloadDocument saveConversion queueConversion queueThumbnailing
+  let sut: IConversionService = ConversionService(repo.Object)
 
   task {
-    let! result = sut conversionId (Conversion.New.InputFile.Link({ Url = testLink }))
+    let! result = sut.PrepareConversion(conversionId, New.InputFile.Link(link))
 
     result |> should equal expectedResult
+
+    repo.VerifyAll()
   }
 
 [<Fact>]
@@ -141,28 +125,23 @@ let ``Prepare New Conversion stops if unauthorized to download link file`` () =
   let conversionId = Guid.NewGuid().ToString() |> ConversionId
   let testLink = "http://test.com/document-name.webm"
 
-  let downloadLink (link: New.InputLink) =
-    link.Url |> should equal testLink
-    New.DownloadLinkError.Unauthorized |> Error |> Task.FromResult
+  let expected = Error New.DownloadLinkError.Unauthorized
+  let expectedResult: Result<Conversion.Prepared, _> = expected
 
-  let downloadDocument _ = failwith "todo"
+  let link: New.InputLink = { Url = testLink }
 
-  let saveConversion _ = failwith "todo"
+  let repo = Mock<IConversionRepo>()
 
-  let queueConversion _ = failwith "todo"
+  repo.Setup(_.DownloadLink(link)).ReturnsAsync(expected)
 
-  let queueThumbnailing _ = failwith "todo"
-
-  let expectedResult: Result<Conversion.Prepared, _> =
-    New.DownloadLinkError.Unauthorized |> Error
-
-  let sut =
-    Conversion.New.prepare downloadLink downloadDocument saveConversion queueConversion queueThumbnailing
+  let sut: IConversionService = ConversionService(repo.Object)
 
   task {
-    let! result = sut conversionId (Conversion.New.InputFile.Link({ Url = testLink }))
+    let! result = sut.PrepareConversion(conversionId, New.InputFile.Link(link))
 
     result |> should equal expectedResult
+
+    repo.VerifyAll()
   }
 
 [<Fact>]
@@ -170,26 +149,22 @@ let ``Prepare New Conversion stops if internal server error happened during the 
   let conversionId = Guid.NewGuid().ToString() |> ConversionId
   let testLink = "http://test.com/document-name.webm"
 
-  let downloadLink (link: New.InputLink) =
-    link.Url |> should equal testLink
-    New.DownloadLinkError.ServerError |> Error |> Task.FromResult
+  let expected = Error New.DownloadLinkError.ServerError
 
-  let downloadDocument _ = failwith "todo"
+  let link: New.InputLink = { Url = testLink }
 
-  let saveConversion _ = failwith "todo"
+  let expectedResult: Result<Conversion.Prepared, _> = expected
 
-  let queueConversion _ = failwith "todo"
+  let repo = Mock<IConversionRepo>()
 
-  let queueThumbnailing _ = failwith "todo"
+  repo.Setup(_.DownloadLink(link)).ReturnsAsync(expected)
 
-  let expectedResult: Result<Conversion.Prepared, _> =
-    New.DownloadLinkError.ServerError |> Error
-
-  let sut =
-    Conversion.New.prepare downloadLink downloadDocument saveConversion queueConversion queueThumbnailing
+  let sut: IConversionService = ConversionService(repo.Object)
 
   task {
-    let! result = sut conversionId (Conversion.New.InputFile.Link({ Url = testLink }))
+    let! result = sut.PrepareConversion(conversionId, Conversion.New.InputFile.Link(link))
 
     result |> should equal expectedResult
+
+    repo.VerifyAll()
   }

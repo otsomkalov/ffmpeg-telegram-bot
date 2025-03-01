@@ -13,7 +13,6 @@ open Telegram.Core
 open Telegram.Bot.Types
 open Telegram.Infrastructure.Settings
 open Telegram.Workflows
-open Telegram.Infrastructure.Core
 open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
 open System.Threading.Tasks
@@ -50,7 +49,7 @@ module Workflows =
             (userId |> UserId.value |> ChatId),
             InputFileStream(videoStreamResponse.Value.Content, video),
             caption = text,
-            replyToMessageId = (messageId |> UserMessageId.value),
+            replyToMessageId = messageId.Value,
             thumbnail = InputFileStream(thumbnailStreamResponse.Value.Content, thumbnail),
             disableNotification = true
           ))
@@ -72,24 +71,66 @@ module Workflows =
       | _ -> None |> Task.FromResult
 
 [<RequireQualifiedAccess>]
-module Conversion =
+module Translation =
+  let private loadTranslationsMap (collection: IMongoCollection<Entities.Translation>) key =
+    collection.Find(fun t -> t.Lang = key).ToListAsync()
+    |> Task.map (
+      Seq.groupBy _.Key
+      >> Seq.map (fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head))
+      >> Map.ofSeq
+    )
 
-  [<RequireQualifiedAccess>]
-  module New =
-    [<RequireQualifiedAccess>]
-    module InputFile =
-      let downloadDocument (bot: ITelegramBotClient) (workersSettings: WorkersSettings) : Conversion.New.InputFile.DownloadDocument =
-        fun document ->
-          task {
-            use! converterBlobStream = Storage.getBlobStream workersSettings document.Name workersSettings.Converter.Input.Container
+  let private formatWithFallback formats fallback =
+    fun (key: string, args: obj seq) ->
+      match formats |> Map.tryFind key with
+      | Some fmt -> String.Format(fmt, args |> Array.ofSeq)
+      | None -> fallback
 
-            do! bot.GetInfoAndDownloadFileAsync(document.Id, converterBlobStream) |> Task.ignore
+  let loadDefaultTranslations
+    (collection: IMongoCollection<Entities.Translation>)
+    (loggerFactory: ILoggerFactory)
+    : Translation.LoadDefaultTranslations =
+    let logger = loggerFactory.CreateLogger(nameof Translation.LoadDefaultTranslations)
 
-            use! thumbnailerBlobStream = Storage.getBlobStream workersSettings document.Name workersSettings.Thumbnailer.Input.Container
+    fun () ->
+      task {
+        Logf.logfi logger "Loading default translations"
+        let! translations = loadTranslationsMap collection Translation.DefaultLang
+        Logf.logfi logger "Default translations map loaded from DB"
 
-            do!
-              bot.GetInfoAndDownloadFileAsync(document.Id, thumbnailerBlobStream)
-              |> Task.ignore
+        let getTranslation =
+          fun key -> translations |> Map.tryFind key |> Option.defaultValue key
 
-            return document.Name
-          }
+        let formatTranslation =
+          fun (key, args) -> formatWithFallback translations key (key, args)
+
+        return (getTranslation, formatTranslation)
+      }
+
+  let loadTranslations
+    (collection: IMongoCollection<Entities.Translation>)
+    (loggerFactory: ILoggerFactory)
+    (loadDefaultTranslations: Translation.LoadDefaultTranslations)
+    : Translation.LoadTranslations =
+    let logger = loggerFactory.CreateLogger(nameof Translation.LoadTranslations)
+
+    function
+    | Some l when l <> Translation.DefaultLang ->
+      task {
+        let! tran, tranf = loadDefaultTranslations ()
+
+        Logf.logfi logger "Loading translations for lang %s{Lang}" l
+
+        let! localeTranslations = loadTranslationsMap collection l
+
+        Logf.logfi logger "Translations for lang %s{Lang} is loaded" l
+
+        let getTranslation: Translation.GetTranslation =
+          fun key -> localeTranslations |> Map.tryFind key |> Option.defaultValue (tran key)
+
+        let formatTranslation: Translation.FormatTranslation =
+          fun (key, args) -> formatWithFallback localeTranslations (tranf (key, args)) (key, args)
+
+        return (getTranslation, formatTranslation)
+      }
+    | _ -> loadDefaultTranslations ()

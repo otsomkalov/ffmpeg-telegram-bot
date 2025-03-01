@@ -1,35 +1,122 @@
 ﻿namespace Infrastructure
 
+open System
+open System.Diagnostics
+open System.Net
+open System.Net.Http
+open Azure.Storage.Blobs
+open Azure.Storage.Queues
+open Domain
 open Domain.Core
-open MongoDB.Driver
-open Domain.Repos
-open Infrastructure.Mappings
 open Infrastructure.Core
+open Infrastructure.Helpers
+open Infrastructure.Queue
+open Infrastructure.Settings
+open Microsoft.Extensions.Options
+open MongoDB.Driver
+open MongoDB.Driver.Linq
+open Telegram.Bot
 open otsom.fs.Extensions
+open System.Threading.Tasks
 
-module Repos =
-  [<RequireQualifiedAccess>]
-  module Conversion =
-    let load (collection: IMongoCollection<Database.Conversion>) : Conversion.Load =
-      fun conversionId ->
-        let (ConversionId conversionId) = conversionId
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+type ConversionRepo
+  (
+    collection: IMongoCollection<Entities.Conversion>,
+    options: IOptions<WorkersSettings>,
+    httpClientFactory: IHttpClientFactory,
+    bot: ITelegramBotClient
+  ) =
+  let settings = options.Value
+  let blobServiceClient = BlobServiceClient(settings.ConnectionString)
+  let queueServiceClient = QueueServiceClient(settings.ConnectionString)
 
-        collection.Find(filter).SingleOrDefaultAsync() |> Task.map Conversion.fromDb
+  interface IConversionRepo with
+    member _.LoadConversion(ConversionId id) =
+      collection.AsQueryable().FirstOrDefaultAsync(fun c -> c.Id = id) &|> _.ToDomain
 
-    let save (collection: IMongoCollection<Database.Conversion>) : Conversion.Save =
-      fun conversion ->
-        let filter =
-          Builders<Database.Conversion>.Filter
-            .Eq((fun c -> c.Id), (conversion.Id |> ConversionId.value))
+    member _.SaveConversion conversion =
+      let filter = Builders<Entities.Conversion>.Filter.Eq(_.Id, conversion.Id.Value)
 
-        let entity =
-          match conversion with
-          | Conversion.New conversion -> conversion |> Mappings.Conversion.New.toDb
-          | Conversion.Prepared conversion -> conversion |> Mappings.Conversion.Prepared.toDb
-          | Conversion.Converted conversion -> conversion |> Mappings.Conversion.Converted.toDb
-          | Conversion.Thumbnailed conversion -> conversion |> Mappings.Conversion.Thumbnailed.toDb
-          | Conversion.Completed conversion -> conversion |> Mappings.Conversion.Completed.toDb
+      collection.ReplaceOneAsync(filter, Entities.Conversion.FromDomain conversion, ReplaceOptions(IsUpsert = true))
+      &|> ignore
 
-        collection.ReplaceOneAsync(filter, entity, ReplaceOptions(IsUpsert = true))
-        |> Task.ignore
+    member this.DeleteThumbnail(Conversion.Thumbnail thumbnail) =
+      let container =
+        blobServiceClient.GetBlobContainerClient settings.Thumbnailer.Output.Container
+
+      let blob = container.GetBlobClient(thumbnail)
+
+      blob.DeleteAsync() &|> ignore
+
+    member this.DeleteVideo(Conversion.Video video) =
+      let container =
+        blobServiceClient.GetBlobContainerClient settings.Converter.Output.Container
+
+      let blob = container.GetBlobClient(video)
+
+      blob.DeleteAsync() &|> ignore
+
+    member this.QueueConversion(conversion) =
+      let queueClient = queueServiceClient.GetQueueClient(settings.Converter.Input.Queue)
+
+      let message: BaseMessage<Conversion.Prepared.ConverterMessage> =
+        { OperationId = Activity.Current.ParentId
+          Data =
+            { Id = conversion.Id.Value
+              Name = conversion.InputFile } }
+
+      message |> JSON.serialize |> queueClient.SendMessageAsync &|> ignore
+
+    member this.QueueThumbnailing(conversion) =
+      let queueClient =
+        queueServiceClient.GetQueueClient(settings.Thumbnailer.Input.Queue)
+
+      let message: BaseMessage<Conversion.Prepared.ConverterMessage> =
+        { OperationId = Activity.Current.ParentId
+          Data =
+            { Id = conversion.Id.Value
+              Name = conversion.InputFile } }
+
+      message |> JSON.serialize |> queueClient.SendMessageAsync &|> ignore
+
+    member this.DownloadDocument(document) =
+      task {
+        use! converterBlobStream = Storage.getBlobStream settings document.Name settings.Converter.Input.Container
+
+        do! bot.GetInfoAndDownloadFileAsync(document.Id, converterBlobStream) |> Task.ignore
+
+        use! thumbnailerBlobStream = Storage.getBlobStream settings document.Name settings.Thumbnailer.Input.Container
+
+        do!
+          bot.GetInfoAndDownloadFileAsync(document.Id, thumbnailerBlobStream)
+          |> Task.ignore
+
+        return document.Name
+      }
+
+    member this.DownloadLink(link) =
+      let getBlobStream = Storage.getBlobStream settings
+
+      task {
+        use client = httpClientFactory.CreateClient()
+        use request = new HttpRequestMessage(HttpMethod.Get, link.Url)
+        use! response = client.SendAsync(request)
+
+        return!
+          match response.StatusCode with
+          | HttpStatusCode.Unauthorized -> Conversion.New.DownloadLinkError.Unauthorized |> Error |> Task.FromResult
+          | HttpStatusCode.NotFound -> Conversion.New.DownloadLinkError.NotFound |> Error |> Task.FromResult
+          | HttpStatusCode.InternalServerError -> Conversion.New.DownloadLinkError.ServerError |> Error |> Task.FromResult
+          | _ ->
+            task {
+              let fileName = link.Url |> Uri |> _.Segments |> Seq.last
+
+              use! converterBlobStream = getBlobStream fileName settings.Converter.Input.Container
+              use! thumbnailerBlobStream = getBlobStream fileName settings.Thumbnailer.Input.Container
+
+              do! response.Content.CopyToAsync(converterBlobStream)
+              do! response.Content.CopyToAsync(thumbnailerBlobStream)
+
+              return Ok(fileName)
+            }
+      }

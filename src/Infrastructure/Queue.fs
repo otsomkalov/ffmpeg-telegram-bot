@@ -52,37 +52,7 @@ module Queue =
     [<RequireQualifiedAccess>]
     module Prepared =
       [<CLIMutable>]
-      type private ConverterMessage = { Id: string; Name: string }
-
-      let queueConversion (workersSettings: WorkersSettings) operationId : Conversion.Prepared.QueueConversion =
-        fun conversion ->
-          let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
-
-          let queueClient =
-            queueServiceClient.GetQueueClient(workersSettings.Converter.Input.Queue)
-
-          { OperationId = operationId
-            Data =
-              { Id = conversion.Id |> ConversionId.value
-                Name = conversion.InputFile } }
-          |> JSON.serialize
-          |> queueClient.SendMessageAsync
-          |> Task.ignore
-
-      let queueThumbnailing (workersSettings: WorkersSettings) operationId : Conversion.Prepared.QueueThumbnailing =
-        fun conversion ->
-          let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
-
-          let queueClient =
-            queueServiceClient.GetQueueClient(workersSettings.Thumbnailer.Input.Queue)
-
-          { OperationId = operationId
-            Data =
-              { Id = conversion.Id |> ConversionId.value
-                Name = conversion.InputFile } }
-          |> JSON.serialize
-          |> queueClient.SendMessageAsync
-          |> Task.ignore
+      type internal ConverterMessage = { Id: string; Name: string }
 
     [<RequireQualifiedAccess>]
     module Completed =
@@ -95,6 +65,6 @@ module Queue =
           let messageBody =
             JSON.serialize
               { OperationId = operationId
-                Data = { ConversionId = (conversion.Id |> ConversionId.value) } }
+                Data = { ConversionId = conversion.Id.Value } }
 
           queueClient.SendMessageAsync(messageBody) |> Task.ignore

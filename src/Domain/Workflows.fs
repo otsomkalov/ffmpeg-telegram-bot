@@ -1,5 +1,6 @@
 ﻿namespace Domain
 
+open System.Threading.Tasks
 open Domain.Core
 open Domain.Core.Conversion
 open Microsoft.FSharp.Core
@@ -14,88 +15,77 @@ module Workflows =
 
   [<RequireQualifiedAccess>]
   module Conversion =
-    let create (generateId: ConversionId.Generate) (saveConversion: Conversion.Save) : Create =
+    let create (generateId: ConversionId.Generate) (repo: #ISaveConversion) : Create =
       fun () ->
         task {
           let newConversion: Conversion.New = { Id = generateId () }
 
-          do! saveConversion (Conversion.New newConversion)
+          do! repo.SaveConversion(Conversion.New newConversion)
 
           return newConversion
         }
 
-    [<RequireQualifiedAccess>]
-    module New =
-      let prepare
-        (downloadLink: Conversion.New.InputFile.DownloadLink)
-        (downloadDocument: Conversion.New.InputFile.DownloadDocument)
-        (saveConversion: Conversion.Save)
-        (queueConversion: Conversion.Prepared.QueueConversion)
-        (queueThumbnailing: Conversion.Prepared.QueueThumbnailing)
-        : Conversion.New.Prepare =
-        fun conversionId file ->
-          match file with
-          | New.Link l -> downloadLink l
-          | New.Document d -> downloadDocument d |> Task.map Ok
-          |> TaskResult.map (fun downloadedFile ->
-            { Id = conversionId
-              InputFile = downloadedFile })
-          |> TaskResult.taskTap (Conversion.Prepared >> saveConversion)
-          |> TaskResult.taskTap queueConversion
-          |> TaskResult.taskTap queueThumbnailing
+type ConversionService(repo: IConversionRepo) =
+  interface IConversionService with
+    member this.CleanupConversion(conversion) =
+      task {
+        do! repo.DeleteVideo conversion.OutputFile
+        do! repo.DeleteThumbnail conversion.ThumbnailFile
+      }
 
-    [<RequireQualifiedAccess>]
-    module Thumbnailed =
-      let complete (saveConversion: Conversion.Save) : Thumbnailed.Complete =
-        fun conversion video ->
-          let completedConversion: Conversion.Completed =
-            { Id = conversion.Id
-              OutputFile = video |> Video
-              ThumbnailFile = conversion.ThumbnailName |> Thumbnail }
+    member this.CompleteConversion(conversion: Converted, thumbnail: Thumbnail) : Task<Completed> =
+      task {
+        let completedConversion: Conversion.Completed =
+          { Id = conversion.Id
+            OutputFile = conversion.OutputFile
+            ThumbnailFile = thumbnail }
 
-          saveConversion (Conversion.Completed completedConversion)
-          |> Task.map (fun _ -> completedConversion)
+        do! repo.SaveConversion(Conversion.Completed completedConversion)
 
-    [<RequireQualifiedAccess>]
-    module Prepared =
-      let saveThumbnail (saveConversion: Conversion.Save) : Prepared.SaveThumbnail =
-        fun conversion thumbnail ->
-          let thumbnailedConversion: Thumbnailed =
-            { Id = conversion.Id
-              ThumbnailName = thumbnail }
+        return completedConversion
+      }
 
-          saveConversion (Conversion.Thumbnailed thumbnailedConversion)
-          |> Task.map (fun _ -> thumbnailedConversion)
+    member this.CompleteConversion(conversion: Thumbnailed, video: Video) : Task<Completed> =
+      task {
+        let completedConversion: Conversion.Completed =
+          { Id = conversion.Id
+            OutputFile = video
+            ThumbnailFile = conversion.ThumbnailName }
 
-      let saveVideo (saveConversion: Conversion.Save) : Prepared.SaveVideo =
-        fun conversion video ->
-          let convertedConversion: Conversion.Converted =
-            { Id = conversion.Id
-              OutputFile = video }
+        do! repo.SaveConversion(Conversion.Completed completedConversion)
 
-          saveConversion (Conversion.Converted convertedConversion)
-          |> Task.map (fun _ -> convertedConversion)
+        return completedConversion
+      }
 
-    [<RequireQualifiedAccess>]
-    module Converted =
-      let complete (saveConversion: Conversion.Save) : Converted.Complete =
-        fun conversion thumbnail ->
-          let completedConversion: Conversion.Completed =
-            { Id = conversion.Id
-              OutputFile = (conversion.OutputFile |> Video)
-              ThumbnailFile = (thumbnail |> Thumbnail) }
+    member this.SaveThumbnail(conversion, thumbnail) =
+      task {
+        let thumbnailedConversion: Thumbnailed =
+          { Id = conversion.Id
+            ThumbnailName = thumbnail }
 
-          saveConversion (Conversion.Completed completedConversion)
-          |> Task.map (fun _ -> completedConversion)
+        do! repo.SaveConversion(Conversion.Thumbnailed thumbnailedConversion)
 
-    [<RequireQualifiedAccess>]
-    module Completed =
-      let cleanup
-        (deleteVideo: Conversion.Completed.DeleteVideo)
-        (deleteThumbnail: Conversion.Completed.DeleteThumbnail)
-        : Completed.Cleanup =
-        fun conversion ->
-          task {
-            do! deleteVideo conversion.OutputFile
-            do! deleteThumbnail conversion.ThumbnailFile
-          }
+        return thumbnailedConversion
+      }
+
+    member this.SaveVideo(conversion, video) =
+      task {
+        let convertedConversion: Conversion.Converted =
+          { Id = conversion.Id
+            OutputFile = video }
+
+        do! repo.SaveConversion(Conversion.Converted convertedConversion)
+
+        return convertedConversion
+      }
+
+    member this.PrepareConversion(conversionId, file) =
+      match file with
+      | New.Link l -> repo.DownloadLink l
+      | New.Document d -> repo.DownloadDocument d |> Task.map Ok
+      |> TaskResult.map (fun downloadedFile ->
+        { Id = conversionId
+          InputFile = downloadedFile })
+      |> TaskResult.taskTap (Conversion.Prepared >> repo.SaveConversion)
+      |> TaskResult.taskTap repo.QueueConversion
+      |> TaskResult.taskTap repo.QueueThumbnailing
