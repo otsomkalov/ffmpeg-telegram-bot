@@ -29,9 +29,16 @@ type UserRepo(collection: IMongoCollection<Entities.User>, logger: ILogger<UserR
     member this.LoadUser(UserId id) =
       Logf.logfi logger "Loading user %i{UserId}" id
 
-      collection.AsQueryable().FirstOrDefaultAsync(fun u -> u.Id = id)
-      |> Task.map Option.ofObj
-      |> TaskOption.map _.ToDomain()
+      task {
+        let! entity = collection.AsQueryable().FirstOrDefaultAsync(fun u -> u.Id = id)
+
+        Logf.logfi logger "Loaded user for id %i{UserId}" id
+
+        return
+          entity
+          |> Option.ofObj
+          |> Option.map _.ToDomain()
+      }
 
     member _.SaveUser user =
       task { do! collection.InsertOneAsync(Entities.User.FromDomain user) }
