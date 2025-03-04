@@ -30,14 +30,13 @@ type UserRepo(collection: IMongoCollection<Entities.User>, logger: ILogger<UserR
       Logf.logfi logger "Loading user %i{UserId}" id
 
       task {
-        let! entity = collection.AsQueryable().FirstOrDefaultAsync(fun u -> u.Id = id)
+        let filter = Builders<Entities.User>.Filter.Eq(_.Id, id)
+
+        let! entity = collection.Find(filter).FirstOrDefaultAsync()
 
         Logf.logfi logger "Loaded user for id %i{UserId}" id
 
-        return
-          entity
-          |> Option.ofObj
-          |> Option.map _.ToDomain()
+        return entity |> Option.ofObj |> Option.map _.ToDomain()
       }
 
     member _.SaveUser user =
