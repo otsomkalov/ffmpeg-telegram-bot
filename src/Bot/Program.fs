@@ -34,6 +34,8 @@ module Startup =
   let configureLogging (builder: ILoggingBuilder) =
     builder.AddFilter<ApplicationInsightsLoggerProvider>(String.Empty, LogLevel.Information)
 
+    builder.AddFilter<ApplicationInsightsLoggerProvider>("MongoDB.Connection", LogLevel.Debug)
+
     ()
 
   let private configureServices (ctx: HostBuilderContext) (services: IServiceCollection) =
