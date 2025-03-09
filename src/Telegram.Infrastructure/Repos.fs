@@ -42,11 +42,9 @@ type UserRepo(collection: IMongoCollection<Entities.User>, logger: ILogger<UserR
     member _.SaveUser user =
       task { do! collection.InsertOneAsync(Entities.User.FromDomain user) }
 
-type ChannelRepo(collection: IMongoCollection<Entities.Channel>, logger: ILogger<ChannelRepo>) =
+type ChannelRepo(collection: IMongoCollection<Entities.Channel>) =
   interface IChannelRepo with
     member _.LoadChannel(ChannelId id) =
-      Logf.logfi logger "Loading channel %i{ChannelId}" id
-
       collection.AsQueryable().FirstOrDefaultAsync(fun c -> c.Id = id)
       |> Task.map Option.ofObj
       |> TaskOption.map _.ToDomain()
@@ -54,11 +52,9 @@ type ChannelRepo(collection: IMongoCollection<Entities.Channel>, logger: ILogger
     member _.SaveChannel channel =
       task { do! collection.InsertOneAsync(Entities.Channel.FromDomain channel) }
 
-type GroupRepo(collection: IMongoCollection<Entities.Group>, logger: ILogger<GroupRepo>) =
+type GroupRepo(collection: IMongoCollection<Entities.Group>) =
   interface IGroupRepo with
     member _.LoadGroup(GroupId id) =
-      Logf.logfi logger "Loading group %i{GroupId}" id
-
       collection.AsQueryable().FirstOrDefaultAsync(fun g -> g.Id = id)
       |> Task.map Option.ofObj
       |> TaskOption.map _.ToDomain()
