@@ -16,7 +16,7 @@
 
   <ItemGroup>
     <PackageReference Include="FSharp.Logf" Version="1.2.2"/>
-    <PackageReference Include="otsom.fs.Resources.Mongo" Version="0.0.6"/>
+    <PackageReference Include="otsom.fs.Resources.Mongo" Version="0.0.7"/>
   </ItemGroup>
 
   <ItemGroup>

@@ -12,14 +12,11 @@ open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Options
-open MongoDB.ApplicationInsights
 open MongoDB.Driver
-open MongoDB.Driver.Core.Configuration
 open Polly.Extensions.Http
 open otsom.fs.Extensions.DependencyInjection
 open Queue
 open Polly
-open MongoDB.ApplicationInsights.DependencyInjection
 
 module Startup =
   [<Literal>]
@@ -31,14 +28,11 @@ module Startup =
       .HandleTransientHttpError()
       .WaitAndRetryAsync(5, (fun retryAttempt -> TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))))
 
-  let private configureMongoClient loggerFactory (factory: IMongoClientFactory) (settings: DatabaseSettings) =
+  let private configureMongoClient loggerFactory (settings: DatabaseSettings) =
     let mongoClientSettings = MongoClientSettings.FromConnectionString settings.ConnectionString
 
-    let loggingSettings = LoggingSettings(loggerFactory)
 
-    mongoClientSettings.LoggingSettings <- loggingSettings
-
-    factory.GetClient(mongoClientSettings)
+    new MongoClient(mongoClientSettings) :> IMongoClient
 
   let private configureMongoDatabase (settings: DatabaseSettings) (mongoClient: IMongoClient) =
     mongoClient.GetDatabase(settings.Name)
@@ -49,8 +43,7 @@ module Startup =
       .AddPolicyHandler(retryPolicy)
 
     services
-      .AddMongoClientFactory()
-      .BuildSingleton<IMongoClient, ILoggerFactory, IMongoClientFactory, DatabaseSettings>(configureMongoClient)
+      .BuildSingleton<IMongoClient, ILoggerFactory, DatabaseSettings>(configureMongoClient)
       .BuildSingleton<IMongoDatabase, DatabaseSettings, IMongoClient>(configureMongoDatabase)
 
       .BuildSingleton<IMongoCollection<Entities.Conversion>, IMongoDatabase>(_.GetCollection("conversions"))
@@ -64,6 +57,5 @@ module Startup =
     services.AddSingleton<IConversionRepo, ConversionRepo>()
 
     services
-      .BuildSingleton<Conversion.Create, IConversionRepo>(Conversion.create)
 
       .BuildSingleton<Conversion.New.QueuePreparation, WorkersSettings>(Conversion.New.queuePreparation)
