@@ -7,6 +7,7 @@ open Domain.Workflows
 open FSharp
 open Infrastructure.Core
 open Infrastructure.Queue
+open Infrastructure.Settings
 open Microsoft.ApplicationInsights
 open Microsoft.ApplicationInsights.DataContracts
 open Microsoft.AspNetCore.Http
@@ -62,8 +63,6 @@ type Functions
 
     let processChannelPost =
       processChannelPost replyToUserMessage createDefaultResourceProvider channelRepo queueUserConversion parseCommand logger
-
-    ctx.CancellationToken.Register(fun () -> Logf.logfw logger "Function execution cancelled") |> ignore
 
     task {
       try
