@@ -52,11 +52,11 @@ module Workflows =
 
   [<RequireQualifiedAccess>]
   module User =
-    let loadResources (repo: #ILoadUser) (loadResources: Resources.LoadResources)  : User.LoadResources =
-      fun (userId, ct) ->
-        match userId with
-        | Some id -> repo.LoadUser(id, ct) |> Task.bind (Option.bind _.Lang >> loadResources)
-        | None -> loadResources None
+    let loadResources (repo: #ILoadUser) (loadResources: Resources.LoadResources) : User.LoadResources =
+      function
+      | Some id -> repo.LoadUser id |> Task.bind (Option.bind _.Lang >> loadResources)
+
+      | None -> loadResources None
 
   let private processLinks replyToMessage (resp: IResourceProvider) queueUserConversion links =
     let sendUrlToQueue (url: string) =
@@ -128,7 +128,6 @@ module Workflows =
     (queueUserConversion: UserConversion.QueueProcessing)
     (parseCommand: ParseCommand)
     (logger: ILogger)
-    ct
     : ProcessPrivateMessage =
     fun message ->
       let userId = message.From.Id |> UserId
@@ -144,7 +143,7 @@ module Workflows =
       Logf.logfi logger "Processing private message from user %i{UserId}" (userId |> UserId.value)
 
       task {
-        let! user = userRepo.LoadUser(userId, ct)
+        let! user = userRepo.LoadUser userId
 
         return!
           match user with
@@ -166,7 +165,6 @@ module Workflows =
     (queueUserConversion: UserConversion.QueueProcessing)
     (parseCommand: ParseCommand)
     (logger: ILogger)
-    ct
     : ProcessGroupMessage =
     fun message ->
       let groupId = message.Chat.Id |> GroupId
@@ -184,7 +182,7 @@ module Workflows =
       Logf.logfi logger "Processing message from user %i{UserId} in group %i{ChatId}" (userId |> UserId.value) groupId.Value
 
       task {
-        let! user = userRepo.LoadUser(userId, ct)
+        let! user = userRepo.LoadUser userId
         let! group = groupRepo.LoadGroup groupId
 
         return!
@@ -254,7 +252,6 @@ module Workflows =
     (userConversionRepo: #ILoadUserConversion)
     (loadTranslations: User.LoadResources)
     (conversion: #IPrepareConversion)
-    ct
     : DownloadFileAndQueueConversion =
 
     let onSuccess editMessage (resp: IResourceProvider) =
@@ -271,7 +268,7 @@ module Workflows =
       task {
         let! userConversion = userConversionRepo.LoadUserConversion conversionId
 
-        let! resp = loadTranslations(userConversion.UserId, ct)
+        let! resp = userConversion.UserId |> loadTranslations
 
         let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
@@ -289,7 +286,6 @@ module Workflows =
     (conversionRepo: #ILoadConversion & #IQueueUpload)
     (loadTranslations: User.LoadResources)
     (conversionService: #ISaveVideo & #ICompleteConversion)
-    ct
     : ProcessConversionResult =
 
     let processResult editMessage (resp: IResourceProvider) conversion =
@@ -313,7 +309,7 @@ module Workflows =
 
         let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
-        let! resp = loadTranslations(userConversion.UserId, ct)
+        let! resp = userConversion.UserId |> loadTranslations
 
         let! conversion = conversionRepo.LoadConversion conversionId
 
@@ -326,7 +322,6 @@ module Workflows =
     (conversionRepo: #ILoadConversion & #IQueueUpload)
     (loadTranslations: User.LoadResources)
     (conversionService: #ISaveThumbnail & #ICompleteConversion)
-    ct
     : ProcessThumbnailingResult =
 
     let processResult editMessage (resp: IResourceProvider) conversion =
@@ -350,7 +345,7 @@ module Workflows =
 
         let editMessage = editBotMessage userConversion.ChatId userConversion.SentMessageId
 
-        let! resp = loadTranslations(userConversion.UserId, ct)
+        let! resp = userConversion.UserId |> loadTranslations
 
         let! conversion = conversionRepo.LoadConversion conversionId
 
@@ -364,13 +359,12 @@ module Workflows =
     (replyWithVideo: ReplyWithVideo)
     (loadTranslations: User.LoadResources)
     (conversionService: #ICleanupConversion)
-    ct
     : UploadCompletedConversion =
     let uploadAndClean userConversion =
       function
       | Completed conversion ->
         task {
-          let! resp = loadTranslations(userConversion.UserId, ct)
+          let! resp = userConversion.UserId |> loadTranslations
 
           do!
             replyWithVideo

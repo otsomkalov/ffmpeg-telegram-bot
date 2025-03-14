@@ -1,6 +1,5 @@
 ﻿namespace Telegram.Repos
 
-open System.Threading
 open System.Threading.Tasks
 open Domain.Core
 open Telegram.Core
@@ -27,7 +26,7 @@ type IChannelRepo =
   inherit ISaveChannel
 
 type ILoadUser =
-  abstract LoadUser: UserId * CancellationToken -> Task<User option>
+  abstract LoadUser: UserId -> Task<User option>
 
 type ISaveUser =
   abstract SaveUser: User -> Task<unit>
