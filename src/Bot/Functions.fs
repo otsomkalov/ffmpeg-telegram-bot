@@ -55,10 +55,10 @@ type Functions
       UserConversion.queueProcessing createConversion userConversionRepo queueConversionPreparation
 
     let processPrivateMessage =
-      processPrivateMessage replyToUserMessage loadResources userRepo queueUserConversion parseCommand logger
+      processPrivateMessage replyToUserMessage loadResources userRepo queueUserConversion parseCommand logger ctx.CancellationToken
 
     let processGeoupMessage =
-      processGroupMessage replyToUserMessage loadResources userRepo groupRepo queueUserConversion parseCommand logger
+      processGroupMessage replyToUserMessage loadResources userRepo groupRepo queueUserConversion parseCommand logger ctx.CancellationToken
 
     let processChannelPost =
       processChannelPost replyToUserMessage createDefaultResourceProvider channelRepo queueUserConversion parseCommand logger
@@ -84,12 +84,12 @@ type Functions
   member this.DownloadFile
     (
       [<QueueTrigger("%Workers:Downloader:Queue%", Connection = "Workers:ConnectionString")>] message: BaseMessage<DownloaderMessage>,
-      _: FunctionContext
+      ctx: FunctionContext
     ) : Task<unit> =
     let data = message.Data
 
     let downloadFileAndQueueConversion =
-      downloadFileAndQueueConversion editBotMessage userConversionRepo loadUserResources conversionService
+      downloadFileAndQueueConversion editBotMessage userConversionRepo loadUserResources conversionService ctx.CancellationToken
 
     task {
       use activity = (new Activity("Downloader")).SetParentId(message.OperationId)
@@ -105,10 +105,10 @@ type Functions
     (
       [<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>] message:
         BaseMessage<ConverterResultMessage>,
-      _: FunctionContext
+      ctx: FunctionContext
     ) : Task<unit> =
     let processConversionResult =
-      processConversionResult userConversionRepo editBotMessage conversionRepo loadUserResources conversionService
+      processConversionResult userConversionRepo editBotMessage conversionRepo loadUserResources conversionService ctx.CancellationToken
 
     task {
       use activity =
@@ -128,10 +128,10 @@ type Functions
     (
       [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>] message:
         BaseMessage<ConverterResultMessage>,
-      _: FunctionContext
+      ctx: FunctionContext
     ) : Task<unit> =
     let processThumbnailingResult =
-      processThumbnailingResult userConversionRepo editBotMessage conversionRepo loadUserResources conversionService
+      processThumbnailingResult userConversionRepo editBotMessage conversionRepo loadUserResources conversionService ctx.CancellationToken
 
     task {
       use activity =
@@ -150,12 +150,12 @@ type Functions
   member this.Upload
     (
       [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>] message: BaseMessage<UploaderMessage>,
-      _: FunctionContext
+      ctx: FunctionContext
     ) : Task =
     let conversionId = message.Data.ConversionId |> ConversionId
 
     let uploadSuccessfulConversion =
-      uploadCompletedConversion userConversionRepo conversionRepo deleteBotMessage replyWithVideo loadUserResources conversionService
+      uploadCompletedConversion userConversionRepo conversionRepo deleteBotMessage replyWithVideo loadUserResources conversionService ctx.CancellationToken
 
     task {
       use activity = (new Activity("Uploader")).SetParentId(message.OperationId)

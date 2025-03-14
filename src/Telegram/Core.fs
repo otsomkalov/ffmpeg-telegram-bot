@@ -1,5 +1,6 @@
 ﻿namespace Telegram
 
+open System.Threading
 open System.Threading.Tasks
 open Domain.Core
 open Telegram.Bot.Types
@@ -92,4 +93,4 @@ module Core =
 
   [<RequireQualifiedAccess>]
   module User =
-    type LoadResources = UserId option -> Task<IResourceProvider>
+    type LoadResources = UserId option * CancellationToken -> Task<IResourceProvider>
