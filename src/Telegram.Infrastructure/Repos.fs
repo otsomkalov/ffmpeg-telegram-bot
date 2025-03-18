@@ -24,20 +24,11 @@ type UserConversionRepo(db: IMongoDatabase) =
     member _.SaveUserConversion(conversion) =
       task { do! collection.InsertOneAsync(Entities.Conversion.FromUserConversion conversion) }
 
-type UserRepo(collection: IMongoCollection<Entities.User>, logger: ILogger<UserRepo>) =
+type UserRepo(collection: IMongoCollection<Entities.User>) =
   interface IUserRepo with
     member this.LoadUser(UserId id) =
-      Logf.logfi logger "Loading user %i{UserId}" id
-
-      task {
-        let filter = Builders<Entities.User>.Filter.Eq(_.Id, id)
-
-        let! entity = collection.Find(filter).FirstOrDefaultAsync()
-
-        Logf.logfi logger "Loaded user for id %i{UserId}" id
-
-        return entity |> Option.ofObj |> Option.map _.ToDomain()
-      }
+      collection.AsQueryable().FirstOrDefaultAsync(fun u -> u.Id = id)
+      &|> (Option.ofObj >> Option.map _.ToDomain())
 
     member _.SaveUser user =
       task { do! collection.InsertOneAsync(Entities.User.FromDomain user) }
