@@ -1,8 +1,7 @@
 ﻿namespace Telegram.Infrastructure
 
 open Domain.Core
-open FSharp
-open Microsoft.Extensions.Logging
+open MongoDB.Bson
 open MongoDB.Driver
 open MongoDB.Driver.Linq
 open Telegram.Core
@@ -18,7 +17,7 @@ type UserConversionRepo(db: IMongoDatabase) =
 
   interface IUserConversionRepo with
     member _.LoadUserConversion(ConversionId id) =
-      collection.AsQueryable().FirstOrDefaultAsync(fun c -> c.Id = id)
+      collection.AsQueryable().FirstOrDefaultAsync(fun c -> c.Id = ObjectId(id))
       |> Task.map _.ToUserConversion()
 
     member _.SaveUserConversion(conversion) =

@@ -36,10 +36,10 @@ type ConversionRepo
       ObjectId.GenerateNewId().ToString() |> ConversionId
 
     member _.LoadConversion(ConversionId id) =
-      collection.AsQueryable().FirstOrDefaultAsync(fun c -> c.Id = id) &|> _.ToDomain
+      collection.AsQueryable().FirstOrDefaultAsync(fun c -> c.Id = ObjectId(id)) &|> _.ToDomain
 
     member _.SaveConversion conversion =
-      let filter = Builders<Entities.Conversion>.Filter.Eq(_.Id, conversion.Id.Value)
+      let filter = Builders<Entities.Conversion>.Filter.Eq(_.Id, ObjectId(conversion.Id.Value))
 
       collection.ReplaceOneAsync(filter, Entities.Conversion.FromDomain conversion, ReplaceOptions(IsUpsert = true))
       &|> ignore

@@ -2,6 +2,7 @@
 
 open System.Text.RegularExpressions
 open Domain.Core
+open MongoDB.Bson
 open Telegram.Bot.Types
 open Telegram.Core
 open otsom.fs.Extensions.String
@@ -15,7 +16,7 @@ module Helpers =
 
   type Entities.Conversion with
     member this.ToUserConversion(): UserConversion =
-      { ConversionId = (this.Id |> ConversionId)
+      { ConversionId = (this.Id |> string |> ConversionId)
         UserId = (this.UserId |> Option.ofNullable |> Option.map Core.UserId)
         ReceivedMessageId = (this.ReceivedMessageId |> UserMessageId)
         SentMessageId = Core.BotMessageId this.SentMessageId
@@ -23,7 +24,7 @@ module Helpers =
 
     static member FromUserConversion(conversion: UserConversion) : Entities.Conversion =
       Entities.Conversion(
-        Id = conversion.ConversionId.Value,
+        Id = ObjectId(conversion.ConversionId.Value),
         UserId = (conversion.UserId |> Option.map _.Value |> Option.toNullable),
         ReceivedMessageId = conversion.ReceivedMessageId.Value,
         SentMessageId = conversion.SentMessageId.Value,
@@ -73,4 +74,4 @@ module Helpers =
     if matches |> Seq.isEmpty then
       None
     else
-      matches |> Seq.map (_.Value) |> Some
+      matches |> Seq.map _.Value |> Some
