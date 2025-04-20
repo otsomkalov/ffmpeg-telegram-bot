@@ -7,7 +7,6 @@ open Infrastructure.Helpers
 open Infrastructure.Settings
 open Microsoft.FSharp.Core
 open otsom.fs.Extensions
-open Domain.Repos
 open Infrastructure.Core
 
 module Queue =
@@ -53,18 +52,3 @@ module Queue =
     module Prepared =
       [<CLIMutable>]
       type internal ConverterMessage = { Id: string; Name: string }
-
-    [<RequireQualifiedAccess>]
-    module Completed =
-      let queueUpload (workersSettings: WorkersSettings) operationId : Conversion.Completed.QueueUpload =
-        fun conversion ->
-          let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
-
-          let queueClient = queueServiceClient.GetQueueClient(workersSettings.Uploader.Queue)
-
-          let messageBody =
-            JSON.serialize
-              { OperationId = operationId
-                Data = { ConversionId = conversion.Id.Value } }
-
-          queueClient.SendMessageAsync(messageBody) |> Task.ignore

@@ -76,25 +76,25 @@ resource "azurerm_storage_queue" "stq-thumbnailer-output-tg-bot" {
 }
 
 resource "azurerm_storage_container" "stc-converter-input-tg-bot" {
-  storage_account_name = azurerm_storage_account.st-tg-bot.name
+  storage_account_id = azurerm_storage_account.st-tg-bot.id
 
   name = "converter-input"
 }
 
 resource "azurerm_storage_container" "stc-converter-output-tg-bot" {
-  storage_account_name = azurerm_storage_account.st-tg-bot.name
+  storage_account_id = azurerm_storage_account.st-tg-bot.id
 
   name = "converter-output"
 }
 
 resource "azurerm_storage_container" "stc-thumbnailer-input-tg-bot" {
-  storage_account_name = azurerm_storage_account.st-tg-bot.name
+  storage_account_id = azurerm_storage_account.st-tg-bot.id
 
   name = "thumbnailer-input"
 }
 
 resource "azurerm_storage_container" "stc-thumbnailer-output-tg-bot" {
-  storage_account_name = azurerm_storage_account.st-tg-bot.name
+  storage_account_id = azurerm_storage_account.st-tg-bot.id
 
   name = "thumbnailer-output"
 }
@@ -149,6 +149,8 @@ resource "azurerm_linux_function_app" "func-tg-bot" {
       Database__ConnectionString = var.database-connection-string
       Database__Name             = var.database-name
 
+      Resources__DefaultLang = var.default-lang
+
       Workers__ConnectionString  = azurerm_storage_account.st-tg-bot.primary_connection_string
       Workers__Downloader__Queue = azurerm_storage_queue.stq-downloader-tg-bot.name
 
@@ -167,7 +169,6 @@ resource "azurerm_linux_function_app" "func-tg-bot" {
       Workers__Uploader__Queue = azurerm_storage_queue.stq-uploader-tg-bot.name
 
       Validation__LinkRegex = var.link-regex
-
     },
     {
       for idx, type in var.mime-types : "Validation__MimeTypes__${idx}" => type

@@ -4,18 +4,6 @@ open System.Threading.Tasks
 open Domain.Core
 open Domain.Core.Conversion
 
-module Repos =
-  [<RequireQualifiedAccess>]
-  module Conversion =
-    [<RequireQualifiedAccess>]
-    module Prepared =
-      type QueueConversion = Conversion.Prepared -> Task<unit>
-      type QueueThumbnailing = Conversion.Prepared -> Task<unit>
-
-    [<RequireQualifiedAccess>]
-    module Completed =
-      type QueueUpload = Conversion.Completed -> Task<unit>
-
 type IDownloadLink =
   abstract DownloadLink: Conversion.New.InputLink -> Task<Result<string, Conversion.New.DownloadLinkError>>
 
@@ -40,7 +28,15 @@ type IDeleteVideo =
 type IDeleteThumbnail =
   abstract DeleteThumbnail: Thumbnail -> Task<unit>
 
+type IGenerateConversionId =
+  abstract GenerateConversionId: unit -> ConversionId
+
+type IQueueUpload =
+  abstract QueueUpload: Completed -> Task<unit>
+
 type IConversionRepo =
+  inherit IGenerateConversionId
+
   inherit IDownloadLink
   inherit IDownloadDocument
 
@@ -52,3 +48,5 @@ type IConversionRepo =
 
   inherit IDeleteVideo
   inherit IDeleteThumbnail
+
+  inherit IQueueUpload

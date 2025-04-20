@@ -10,15 +10,13 @@ open Domain.Workflows
 open Infrastructure.Settings
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Options
-open MongoDB.ApplicationInsights
 open MongoDB.Driver
 open Polly.Extensions.Http
 open otsom.fs.Extensions.DependencyInjection
 open Queue
-open Domain.Repos
 open Polly
-open MongoDB.ApplicationInsights.DependencyInjection
 
 module Startup =
   [<Literal>]
@@ -30,8 +28,11 @@ module Startup =
       .HandleTransientHttpError()
       .WaitAndRetryAsync(5, (fun retryAttempt -> TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))))
 
-  let private configureMongoClient (factory: IMongoClientFactory) (settings: DatabaseSettings) =
-    factory.GetClient(settings.ConnectionString)
+  let private configureMongoClient loggerFactory (settings: DatabaseSettings) =
+    let mongoClientSettings = MongoClientSettings.FromConnectionString settings.ConnectionString
+
+
+    new MongoClient(mongoClientSettings) :> IMongoClient
 
   let private configureMongoDatabase (settings: DatabaseSettings) (mongoClient: IMongoClient) =
     mongoClient.GetDatabase(settings.Name)
@@ -42,8 +43,7 @@ module Startup =
       .AddPolicyHandler(retryPolicy)
 
     services
-      .AddMongoClientFactory()
-      .BuildSingleton<IMongoClient, IMongoClientFactory, DatabaseSettings>(configureMongoClient)
+      .BuildSingleton<IMongoClient, ILoggerFactory, DatabaseSettings>(configureMongoClient)
       .BuildSingleton<IMongoDatabase, DatabaseSettings, IMongoClient>(configureMongoDatabase)
 
       .BuildSingleton<IMongoCollection<Entities.Conversion>, IMongoDatabase>(_.GetCollection("conversions"))
@@ -52,19 +52,10 @@ module Startup =
 
     services
       .BuildSingleton<WorkersSettings, IOptions<WorkersSettings>>(_.Value)
-      .BuildSingleton<DatabaseSettings, IConfiguration>(fun cfg ->
-        cfg
-          .GetSection(DatabaseSettings.SectionName)
-          .Get<DatabaseSettings>())
+      .BuildSingleton<DatabaseSettings, IConfiguration>(fun cfg -> cfg.GetSection(DatabaseSettings.SectionName).Get<DatabaseSettings>())
 
     services.AddSingleton<IConversionRepo, ConversionRepo>()
 
     services
-      .AddSingleton<ConversionId.Generate>(ConversionId.generate)
-      .BuildSingleton<Conversion.Create, ConversionId.Generate, IConversionRepo>(Conversion.create)
 
       .BuildSingleton<Conversion.New.QueuePreparation, WorkersSettings>(Conversion.New.queuePreparation)
-
-      // TODO: Functions of same type. How to register?
-      // .BuildSingleton<Conversion.Prepared.QueueConversion, WorkersSettings>(Conversion.Prepared.queueConversion)
-      // .BuildSingleton<Conversion.Prepared.QueueThumbnailing, WorkersSettings>(Conversion.Prepared.queueThumbnailing)

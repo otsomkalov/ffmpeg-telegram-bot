@@ -1,11 +1,9 @@
 module Tests.Conversion.New
 
 open System
-open System.Threading.Tasks
 open Domain
 open Domain.Core
 open Domain.Core.Conversion
-open Domain.Repos
 open Domain.Workflows
 open Moq
 open Xunit
@@ -15,15 +13,14 @@ open FsUnit.Xunit
 let ``New Conversion is created and saved`` () =
   let conversionId = Guid.NewGuid().ToString() |> ConversionId
 
-  let generateId () = conversionId
-
   let expected = { Id = conversionId }
 
   let repo = Mock<IConversionRepo>()
 
   repo.Setup(_.SaveConversion(New expected)).ReturnsAsync(())
+  repo.Setup(_.GenerateConversionId()).Returns(conversionId)
 
-  let sut = Conversion.create generateId repo.Object
+  let sut = Conversion.create repo.Object
 
   task {
     let! result = sut ()

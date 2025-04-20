@@ -49,15 +49,3 @@ with
 
   static member FromDomain(user: Telegram.Core.User) =
     { Id = user.Id.Value; Banned = user.Banned; Lang = user.Lang |> Option.toObj }
-
-type Translation() =
-  [<BsonId;BsonElement>]
-  member val Id: ObjectId = ObjectId() with get, set
-
-  member val Key: string = "" with get, set
-  member val Value: string = "" with get, set
-  member val Lang: string = "" with get, set
-
-  member this.ToDomain(): Telegram.Core.Translation =
-    { Key = this.Key
-      Value = this.Value }

@@ -5,20 +5,14 @@ open Domain.Core
 open Domain.Core.Conversion
 open Microsoft.FSharp.Core
 open otsom.fs.Extensions
-open Domain.Repos
-open shortid
 
 module Workflows =
   [<RequireQualifiedAccess>]
-  module ConversionId =
-    let generate: ConversionId.Generate = fun () -> ShortId.Generate() |> ConversionId
-
-  [<RequireQualifiedAccess>]
   module Conversion =
-    let create (generateId: ConversionId.Generate) (repo: #ISaveConversion) : Create =
+    let create (repo: #ISaveConversion & #IGenerateConversionId) : Create =
       fun () ->
         task {
-          let newConversion: Conversion.New = { Id = generateId () }
+          let newConversion: Conversion.New = { Id = repo.GenerateConversionId() }
 
           do! repo.SaveConversion(Conversion.New newConversion)
 

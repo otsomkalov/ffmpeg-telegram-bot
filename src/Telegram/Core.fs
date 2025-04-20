@@ -2,8 +2,8 @@
 
 open System.Threading.Tasks
 open Domain.Core
-open Domain.Repos
 open Telegram.Bot.Types
+open otsom.fs.Resources
 open otsom.fs.Telegram.Bot.Core
 
 module Core =
@@ -73,19 +73,6 @@ module Core =
   module UserConversion =
     type QueueProcessing = UserMessageId -> UserId option -> UserId -> BotMessageId -> Conversion.New.InputFile -> Task<unit>
 
-  type Translation = { Key: string; Value: string }
-
-  [<RequireQualifiedAccess>]
-  module Translation =
-    [<Literal>]
-    let DefaultLang = "en"
-
-    type GetTranslation = string -> string
-    type FormatTranslation = string * obj array -> string
-
-    type LoadTranslations = string option -> Task<GetTranslation * FormatTranslation>
-    type LoadDefaultTranslations = unit -> Task<GetTranslation * FormatTranslation>
-
   type ProcessPrivateMessage = Message -> Task<unit>
   type ProcessGroupMessage = Message -> Task<unit>
   type ProcessChannelPost = Message -> Task<unit>
@@ -100,5 +87,9 @@ module Core =
   type ParseCommand = Message -> Task<Command option>
 
   [<RequireQualifiedAccess>]
+  module Resources =
+    type LoadResources = string option -> Task<IResourceProvider>
+
+  [<RequireQualifiedAccess>]
   module User =
-    type LoadTranslations = UserId option -> Task<Translation.GetTranslation * Translation.FormatTranslation>
+    type LoadResources = UserId option -> Task<IResourceProvider>

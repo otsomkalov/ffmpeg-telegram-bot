@@ -9,9 +9,6 @@ module Core =
 
     member this.Value = let (ConversionId id) = this in id
 
-  module ConversionId =
-    type Generate = unit -> ConversionId
-
   module Conversion =
     type New = { Id: ConversionId }
 

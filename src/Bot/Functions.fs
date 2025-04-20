@@ -18,33 +18,32 @@ open Telegram.Bot.Types.Enums
 open Telegram.Core
 open Telegram.Workflows
 open otsom.fs.Telegram.Bot.Core
-open Domain.Repos
 open Domain.Core
 open Telegram.Repos
+open otsom.fs.Resources
 
 type ConverterResultMessage =
   { Id: string; Result: ConversionResult }
 
 type Functions
   (
-    workersSettings: WorkersSettings,
     replyToUserMessage: ReplyToUserMessage,
     editBotMessage: EditBotMessage,
     deleteBotMessage: DeleteBotMessage,
     replyWithVideo: ReplyWithVideo,
-    loadLangTranslations: Translation.LoadTranslations,
     queueConversionPreparation: Conversion.New.QueuePreparation,
     parseCommand: ParseCommand,
     createConversion: Conversion.Create,
     telemetryClient: TelemetryClient,
-    loadTranslations: User.LoadTranslations,
-    loadDefaultTranslations: Translation.LoadDefaultTranslations,
     userRepo: IUserRepo,
     channelRepo: IChannelRepo,
     groupRepo: IGroupRepo,
     userConversionRepo: IUserConversionRepo,
     conversionRepo: IConversionRepo,
-    conversionService: IConversionService
+    conversionService: IConversionService,
+    loadResources: Resources.LoadResources,
+    loadUserResources: User.LoadResources,
+    createDefaultResourceProvider: CreateDefaultResourceProvider
   ) =
 
   [<Function("HandleUpdate")>]
@@ -57,21 +56,13 @@ type Functions
       UserConversion.queueProcessing createConversion userConversionRepo queueConversionPreparation
 
     let processPrivateMessage =
-      processPrivateMessage replyToUserMessage loadLangTranslations userRepo queueUserConversion parseCommand logger
+      processPrivateMessage replyToUserMessage loadResources userRepo queueUserConversion parseCommand logger
 
     let processGeoupMessage =
-      processGroupMessage
-        replyToUserMessage
-        loadLangTranslations
-        loadDefaultTranslations
-        userRepo
-        groupRepo
-        queueUserConversion
-        parseCommand
-        logger
+      processGroupMessage replyToUserMessage loadResources userRepo groupRepo queueUserConversion parseCommand logger
 
     let processChannelPost =
-      processChannelPost replyToUserMessage loadDefaultTranslations channelRepo queueUserConversion parseCommand logger
+      processChannelPost replyToUserMessage createDefaultResourceProvider channelRepo queueUserConversion parseCommand logger
 
     task {
       try
@@ -97,7 +88,7 @@ type Functions
     let data = message.Data
 
     let downloadFileAndQueueConversion =
-      downloadFileAndQueueConversion editBotMessage userConversionRepo loadTranslations conversionService
+      downloadFileAndQueueConversion editBotMessage userConversionRepo loadUserResources conversionService
 
     task {
       use activity = (new Activity("Downloader")).SetParentId(message.OperationId)
@@ -116,13 +107,7 @@ type Functions
       _: FunctionContext
     ) : Task<unit> =
     let processConversionResult =
-      processConversionResult
-        userConversionRepo
-        editBotMessage
-        conversionRepo
-        loadTranslations
-        (Conversion.Completed.queueUpload workersSettings message.OperationId)
-        conversionService
+      processConversionResult userConversionRepo editBotMessage conversionRepo loadUserResources conversionService
 
     task {
       use activity =
@@ -145,13 +130,7 @@ type Functions
       _: FunctionContext
     ) : Task<unit> =
     let processThumbnailingResult =
-      processThumbnailingResult
-        userConversionRepo
-        editBotMessage
-        conversionRepo
-        loadTranslations
-        (Conversion.Completed.queueUpload workersSettings message.OperationId)
-        conversionService
+      processThumbnailingResult userConversionRepo editBotMessage conversionRepo loadUserResources conversionService
 
     task {
       use activity =
@@ -175,7 +154,7 @@ type Functions
     let conversionId = message.Data.ConversionId |> ConversionId
 
     let uploadSuccessfulConversion =
-      uploadCompletedConversion userConversionRepo conversionRepo deleteBotMessage replyWithVideo loadTranslations conversionService
+      uploadCompletedConversion userConversionRepo conversionRepo deleteBotMessage replyWithVideo loadUserResources conversionService
 
     task {
       use activity = (new Activity("Uploader")).SetParentId(message.OperationId)

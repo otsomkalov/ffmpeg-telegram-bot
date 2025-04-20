@@ -47,3 +47,9 @@ module Resources =
 
   [<Literal>]
   let ChannelBan = "channel-ban"
+
+  [<Literal>]
+  let ConversionError = "conversion-error"
+
+  [<Literal>]
+  let ThumbnailingError = "thumbnailing-error"

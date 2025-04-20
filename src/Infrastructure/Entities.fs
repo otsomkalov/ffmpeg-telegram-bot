@@ -5,6 +5,7 @@ open System
 open Domain.Core
 open Domain.Core.Conversion
 open Infrastructure.Core
+open MongoDB.Bson
 open MongoDB.Bson.Serialization.Attributes
 
 type ConversionState =
@@ -16,7 +17,7 @@ type ConversionState =
 
 type Conversion() =
   [<BsonId; BsonElement>]
-  member val Id: string = "" with get, set
+  member val Id: ObjectId = ObjectId.GenerateNewId() with get, set
 
   [<BsonElement>]
   member val ChatId: int64 = 0L with get, set
@@ -45,24 +46,24 @@ type Conversion() =
   [<BsonElement>]
   member val CreatedAt: DateTime = DateTime.Now with get
 
-  member this.ToNew(): Conversion.New = { Id = (this.Id |> ConversionId) }
+  member this.ToNew(): Conversion.New = { Id = (this.Id |> string |> ConversionId) }
 
   member this.ToPrepared(): Conversion.Prepared =
-    { Id = (this.Id |> ConversionId)
+    { Id = (this.Id |> string |> ConversionId)
       InputFile = this.InputFileName }
 
   member this.ToConverted(): Conversion.Converted =
-    { Id = (this.Id |> ConversionId)
+    { Id = (this.Id |> string |> ConversionId)
       OutputFile = Video this.OutputFileName }
 
   member this.ToThumbnailed(): Conversion.Thumbnailed =
-    { Id = (this.Id |> ConversionId)
+    { Id = (this.Id |> string |> ConversionId)
       ThumbnailName = Thumbnail this.ThumbnailFileName }
 
   member this.ToCompleted(): Conversion.Completed =
-    { Id = (this.Id |> ConversionId)
-      OutputFile = (this.OutputFileName |> Conversion.Video)
-      ThumbnailFile = (this.ThumbnailFileName |> Conversion.Thumbnail) }
+    { Id = (this.Id |> string |> ConversionId)
+      OutputFile = (this.OutputFileName |> Video)
+      ThumbnailFile = (this.ThumbnailFileName |> Thumbnail) }
 
   member this.ToDomain: Domain.Core.Conversion =
     match this.State with
@@ -73,20 +74,20 @@ type Conversion() =
     | ConversionState.Completed -> Completed (this.ToCompleted())
 
   static member FromNew(conversion: Conversion.New) : Conversion =
-    Conversion(Id = conversion.Id.Value, State = ConversionState.New)
+    Conversion(Id = ObjectId(conversion.Id.Value), State = ConversionState.New)
 
   static member FromPrepared(conversion: Conversion.Prepared) : Conversion =
-    Conversion(Id = conversion.Id.Value, State = ConversionState.Prepared, InputFileName = conversion.InputFile)
+    Conversion(Id = ObjectId(conversion.Id.Value), State = ConversionState.Prepared, InputFileName = conversion.InputFile)
 
   static member FromConverted(conversion: Conversion.Converted) : Conversion =
-    Conversion(Id = conversion.Id.Value, State = ConversionState.Converted, OutputFileName = conversion.OutputFile.value)
+    Conversion(Id = ObjectId(conversion.Id.Value), State = ConversionState.Converted, OutputFileName = conversion.OutputFile.value)
 
   static member FromThumbnailed(conversion: Conversion.Thumbnailed) : Conversion =
-    Conversion(Id = conversion.Id.Value, State = ConversionState.Thumbnailed, ThumbnailFileName = conversion.ThumbnailName.value)
+    Conversion(Id = ObjectId(conversion.Id.Value), State = ConversionState.Thumbnailed, ThumbnailFileName = conversion.ThumbnailName.value)
 
   static member FromCompleted(conversion: Conversion.Completed) : Conversion =
     Conversion(
-      Id = conversion.Id.Value,
+      Id = ObjectId(conversion.Id.Value),
       State = ConversionState.Completed,
       OutputFileName = (conversion.OutputFile |> Conversion.Video.value),
       ThumbnailFileName = (conversion.ThumbnailFile |> Conversion.Thumbnail.value)
