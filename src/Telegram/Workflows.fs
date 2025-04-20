@@ -301,7 +301,7 @@ module Workflows =
           conversionService.CompleteConversion(thumbnailedConversion, video)
           |> Task.bind conversionRepo.QueueUpload
           |> Task.bind (fun _ -> editMessage (resp[Resources.Uploading]))
-      | ConversionResult.Error error -> editMessage error
+      | ConversionResult.Error _ -> editMessage(resp[Resources.ConversionError])
 
     fun conversionId result ->
       task {
@@ -337,7 +337,7 @@ module Workflows =
           conversionService.CompleteConversion(convertedConversion, video)
           |> Task.bind conversionRepo.QueueUpload
           |> Task.bind (fun _ -> editMessage (resp[Resources.Uploading]))
-      | ConversionResult.Error error -> editMessage error
+      | ConversionResult.Error _ -> editMessage (resp[Resources.ThumbnailingError])
 
     fun conversionId result ->
       task {
