@@ -1,13 +1,10 @@
 ﻿namespace Telegram.Infrastructure
 
+open System.IO
 open System.Text.RegularExpressions
 open Azure.Storage.Blobs
 open Domain.Core
-open FSharp
-open Infrastructure.Helpers
 open Infrastructure.Settings
-open Microsoft.Extensions.Logging
-open MongoDB.Driver
 open Telegram.Bot
 open Telegram.Core
 open Telegram.Bot.Types
@@ -16,7 +13,6 @@ open Telegram.Workflows
 open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
 open System.Threading.Tasks
-open System
 open Telegram.Infrastructure.Helpers
 open otsom.fs.Extensions.String
 
@@ -66,5 +62,15 @@ module Workflows =
         | Regex linkRegex matches -> matches |> Command.Links |> Some |> Task.FromResult
         | _ -> None |> Task.FromResult
       | Document settings.MimeTypes doc -> Command.Document(doc.FileId, doc.FileName) |> Some |> Task.FromResult
-      | Video settings.MimeTypes vid -> Command.Video(vid.FileId, vid.FileName) |> Some |> Task.FromResult
+      | Video settings.MimeTypes vid ->
+        let videoName =
+          vid.FileName
+          |> Option.ofObj
+          |> Option.defaultWith(fun _ ->
+            let tmpFile = Path.GetTempFileName()
+            let fileInfo = FileInfo(tmpFile)
+
+            fileInfo.Name)
+
+        Command.Video(vid.FileId, videoName) |> Some |> Task.FromResult
       | _ -> None |> Task.FromResult
