@@ -5,6 +5,7 @@ open Domain.Core
 open MongoDB.Bson
 open Telegram.Bot.Types
 open Telegram.Core
+open otsom.fs.Bot
 open otsom.fs.Extensions.String
 open System
 open Infrastructure
@@ -18,7 +19,7 @@ module Helpers =
     member this.ToUserConversion(): UserConversion =
       { ConversionId = (this.Id |> string |> ConversionId)
         UserId = (this.UserId |> Option.ofNullable |> Option.map Core.UserId)
-        ReceivedMessageId = (this.ReceivedMessageId |> UserMessageId)
+        ReceivedMessageId = (this.ReceivedMessageId |> ChatMessageId)
         SentMessageId = Core.BotMessageId this.SentMessageId
         ChatId = Core.UserId this.ChatId }
 

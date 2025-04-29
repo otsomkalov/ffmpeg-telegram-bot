@@ -3,6 +3,7 @@
 open System.Threading.Tasks
 open Domain.Core
 open Telegram.Bot.Types
+open otsom.fs.Bot
 open otsom.fs.Resources
 open otsom.fs.Telegram.Bot.Core
 
@@ -37,11 +38,6 @@ module Core =
 
   type Group = { Id: GroupId; Banned: bool }
 
-  type UserMessageId =
-    | UserMessageId of int
-
-    member this.Value = let (UserMessageId id) = this in id
-
   type UploadCompletedConversion = ConversionId -> Task<unit>
 
   type User =
@@ -63,7 +59,7 @@ module Core =
   type ProcessConversionResult = ConversionId -> ConversionResult -> Task<unit>
 
   type UserConversion =
-    { ReceivedMessageId: UserMessageId
+    { ReceivedMessageId: ChatMessageId
       SentMessageId: BotMessageId
       ConversionId: ConversionId
       UserId: UserId option
@@ -71,7 +67,7 @@ module Core =
 
   [<RequireQualifiedAccess>]
   module UserConversion =
-    type QueueProcessing = UserMessageId -> UserId option -> UserId -> BotMessageId -> Conversion.New.InputFile -> Task<unit>
+    type QueueProcessing = ChatMessageId -> UserId option -> UserId -> BotMessageId -> Conversion.New.InputFile -> Task<unit>
 
   type ProcessPrivateMessage = Message -> Task<unit>
   type ProcessGroupMessage = Message -> Task<unit>

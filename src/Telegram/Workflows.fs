@@ -9,6 +9,7 @@ open Microsoft.Extensions.Logging
 open Microsoft.FSharp.Core
 open Telegram.Bot.Types
 open Telegram.Core
+open otsom.fs.Bot
 open otsom.fs.Resources
 open otsom.fs.Telegram.Bot.Core
 open otsom.fs.Extensions
@@ -16,7 +17,7 @@ open Telegram.Repos
 
 module Workflows =
   type DeleteBotMessage = UserId -> BotMessageId -> Task
-  type ReplyWithVideo = UserId -> UserMessageId -> string -> Conversion.Video -> Conversion.Thumbnail -> Task<unit>
+  type ReplyWithVideo = UserId -> ChatMessageId -> string -> Conversion.Video -> Conversion.Thumbnail -> Task<unit>
 
   [<RequireQualifiedAccess>]
   module UserConversion =
@@ -132,7 +133,7 @@ module Workflows =
     fun message ->
       let userId = message.From.Id |> UserId
       let replyToMessage = replyToUserMessage userId message.MessageId
-      let userMessageId = message.MessageId |> UserMessageId
+      let userMessageId = message.MessageId |> ChatMessageId
 
       let processMessageFromKnownUser =
         processMessageFromKnownUser loadResources queueUserConversion parseCommand replyToMessage
@@ -171,7 +172,7 @@ module Workflows =
       let groupId' = message.Chat.Id |> UserId
       let userId = message.From.Id |> UserId
       let replyToMessage = replyToUserMessage groupId' message.MessageId
-      let userMessageId = message.MessageId |> UserMessageId
+      let userMessageId = message.MessageId |> ChatMessageId
 
       let processMessageFromKnownUser =
         processMessageFromKnownUser loadResources queueUserConversion parseCommand replyToMessage
@@ -226,7 +227,7 @@ module Workflows =
       let channelId = post.Chat.Id |> ChannelId.Create
       let chatId = post.Chat.Id |> UserId
       let replyToMessage = replyToUserMessage chatId post.MessageId
-      let postId = (post.MessageId |> UserMessageId)
+      let postId = (post.MessageId |> ChatMessageId)
       let queueConversion = (queueUserConversion postId None chatId)
 
       Logf.logfi logger "Processing post from channel %i{ChannelId}" channelId.Value
