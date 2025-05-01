@@ -2,50 +2,13 @@
 
 open System.IO
 open System.Text.RegularExpressions
-open Azure.Storage.Blobs
-open Domain.Core
-open Infrastructure.Settings
-open Telegram.Bot
 open Telegram.Core
-open Telegram.Bot.Types
 open Telegram.Infrastructure.Settings
-open Telegram.Workflows
-open otsom.fs.Extensions
 open System.Threading.Tasks
 open Telegram.Infrastructure.Helpers
 open otsom.fs.Extensions.String
 
 module Workflows =
-  let replyWithVideo (workersSettings: WorkersSettings) (bot: ITelegramBotClient) : ReplyWithVideo =
-    let blobServiceClient = BlobServiceClient(workersSettings.ConnectionString)
-
-    fun userId messageId ->
-      fun text video thumbnail ->
-        let (Conversion.Video video) = video
-        let (Conversion.Thumbnail thumbnail) = thumbnail
-
-        let videoContainer =
-          blobServiceClient.GetBlobContainerClient workersSettings.Converter.Output.Container
-
-        let thumbnailContainer =
-          blobServiceClient.GetBlobContainerClient workersSettings.Thumbnailer.Output.Container
-
-        let videoBlob = videoContainer.GetBlobClient(video)
-        let thumbnailBlob = thumbnailContainer.GetBlobClient(thumbnail)
-
-        [ videoBlob.DownloadStreamingAsync(); thumbnailBlob.DownloadStreamingAsync() ]
-        |> Task.WhenAll
-        |> Task.bind (fun [| videoStreamResponse; thumbnailStreamResponse |] ->
-          bot.SendVideo(
-            (userId.Value |> ChatId),
-            InputFileStream(videoStreamResponse.Value.Content, video),
-            caption = text,
-            replyParameters = messageId.Value,
-            thumbnail = InputFileStream(thumbnailStreamResponse.Value.Content, thumbnail),
-            disableNotification = true
-          ))
-        |> Task.ignore
-
   let parseCommand (settings: InputValidationSettings) : ParseCommand =
     let linkRegex = Regex(settings.LinkRegex)
 
