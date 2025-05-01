@@ -26,7 +26,6 @@ type ConverterResultMessage =
 
 type Functions
   (
-    queueConversionPreparation: Conversion.New.QueuePreparation,
     parseCommand: ParseCommand,
     createConversion: Conversion.Create,
     telemetryClient: TelemetryClient,
@@ -49,7 +48,7 @@ type Functions
     let logger = nameof (this.HandleUpdate) |> ctx.GetLogger
 
     let queueUserConversion =
-      UserConversion.queueProcessing createConversion userConversionRepo queueConversionPreparation
+      UserConversion.queueProcessing createConversion userConversionRepo conversionRepo
 
     let processPrivateMessage =
       processPrivateMessage loadResources userRepo queueUserConversion parseCommand logger buildBotService

@@ -1,12 +1,7 @@
 ﻿namespace Infrastructure
 
-open System.Diagnostics
-open Azure.Storage.Queues
 open Domain.Core
-open Infrastructure.Helpers
-open Infrastructure.Settings
 open Microsoft.FSharp.Core
-open otsom.fs.Extensions
 open Infrastructure.Core
 
 module Queue =
@@ -24,30 +19,8 @@ module Queue =
   [<CLIMutable>]
   type CleanerMessage = { ConversionId: string }
 
-  [<CLIMutable>]
-
   [<RequireQualifiedAccess>]
   module Conversion =
-
-    [<RequireQualifiedAccess>]
-    module New =
-      let queuePreparation (workersSettings: WorkersSettings) : Conversion.New.QueuePreparation =
-        fun conversionId inputFile ->
-          let queueServiceClient = QueueServiceClient(workersSettings.ConnectionString)
-
-          let queueClient =
-            queueServiceClient.GetQueueClient(workersSettings.Downloader.Queue)
-
-          let message =
-            { OperationId = Activity.Current.ParentId
-              Data =
-                { ConversionId = conversionId
-                  File = inputFile } }
-
-          let messageBody = JSON.serialize message
-
-          queueClient.SendMessageAsync(messageBody) |> Task.ignore
-
     [<RequireQualifiedAccess>]
     module Prepared =
       [<CLIMutable>]
