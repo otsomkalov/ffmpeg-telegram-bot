@@ -3,7 +3,6 @@
 open System.Threading.Tasks
 open Domain.Core
 open Telegram.Core
-open otsom.fs.Telegram.Bot.Core
 
 type ILoadGroup =
   abstract LoadGroup: GroupId -> Task<Group option>

@@ -1,11 +1,8 @@
 [<RequireQualifiedAccess>]
 module Telegram.Infrastructure.Entities
 
-open Infrastructure
-open MongoDB.Bson
 open MongoDB.Bson.Serialization.Attributes
 open Telegram.Core
-open otsom.fs.Telegram.Bot
 
 [<CLIMutable>]
 type Channel = {
@@ -43,7 +40,7 @@ type User ={
 }
 with
   member this.ToDomain(): Telegram.Core.User =
-    { Id = Core.UserId(this.Id)
+    { Id = UserId(this.Id)
       Banned = this.Banned
       Lang = this.Lang |> Option.ofObj }
 

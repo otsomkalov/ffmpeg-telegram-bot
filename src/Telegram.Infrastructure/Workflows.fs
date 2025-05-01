@@ -11,15 +11,11 @@ open Telegram.Bot.Types
 open Telegram.Infrastructure.Settings
 open Telegram.Workflows
 open otsom.fs.Extensions
-open otsom.fs.Telegram.Bot.Core
 open System.Threading.Tasks
 open Telegram.Infrastructure.Helpers
 open otsom.fs.Extensions.String
 
 module Workflows =
-  let deleteBotMessage (bot: ITelegramBotClient) : DeleteBotMessage =
-    fun userId messageId -> bot.DeleteMessageAsync((userId |> UserId.value |> ChatId), (messageId |> BotMessageId.value))
-
   let replyWithVideo (workersSettings: WorkersSettings) (bot: ITelegramBotClient) : ReplyWithVideo =
     let blobServiceClient = BlobServiceClient(workersSettings.ConnectionString)
 
@@ -40,11 +36,11 @@ module Workflows =
         [ videoBlob.DownloadStreamingAsync(); thumbnailBlob.DownloadStreamingAsync() ]
         |> Task.WhenAll
         |> Task.bind (fun [| videoStreamResponse; thumbnailStreamResponse |] ->
-          bot.SendVideoAsync(
-            (userId |> UserId.value |> ChatId),
+          bot.SendVideo(
+            (userId.Value |> ChatId),
             InputFileStream(videoStreamResponse.Value.Content, video),
             caption = text,
-            replyToMessageId = messageId.Value,
+            replyParameters = messageId.Value,
             thumbnail = InputFileStream(thumbnailStreamResponse.Value.Content, thumbnail),
             disableNotification = true
           ))
@@ -66,7 +62,7 @@ module Workflows =
         let videoName =
           vid.FileName
           |> Option.ofObj
-          |> Option.defaultWith(fun _ ->
+          |> Option.defaultWith (fun _ ->
             let tmpFile = Path.GetTempFileName()
             let fileInfo = FileInfo(tmpFile)
 
