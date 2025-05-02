@@ -14,6 +14,8 @@ open Microsoft.Extensions.Logging.ApplicationInsights
 open otsom.fs.Telegram.Bot
 open Infrastructure
 open Telegram.Infrastructure
+open Domain
+open Telegram
 
 #nowarn "20"
 
@@ -32,16 +34,20 @@ module Startup =
   let configureLogging (builder: ILoggingBuilder) =
     builder.AddFilter<ApplicationInsightsLoggerProvider>(String.Empty, LogLevel.Information)
 
+    builder.AddFilter<ApplicationInsightsLoggerProvider>("MongoDB.Command", LogLevel.Debug)
+
     ()
 
-  let private configureServices _ (services: IServiceCollection) =
+  let private configureServices (ctx: HostBuilderContext) (services: IServiceCollection) =
     services.AddApplicationInsightsTelemetryWorkerService()
     services.ConfigureFunctionsApplicationInsights()
 
     services
-    |> Startup.addTelegramBotCore
     |> Startup.addDomain
-    |> Startup.addTelegram
+    |> Startup.addTelegramBotCore
+    |> Startup.addInfra ctx.Configuration
+    |> Startup.addTelegram ctx.Configuration
+    |> Startup.addTelegramInfra ctx.Configuration
 
     services.AddMvcCore().AddNewtonsoftJson()
 

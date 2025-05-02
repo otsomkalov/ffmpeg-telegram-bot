@@ -2,43 +2,52 @@
 
 open System.Threading.Tasks
 open Domain.Core
-open Domain.Repos
 open Telegram.Bot.Types
+open otsom.fs.Resources
 open otsom.fs.Telegram.Bot.Core
 
 module Core =
+  type UserId with
+    member this.Value = let (UserId id) = this in id
+
   type ChatId = ChatId of int64
 
-  type ChannelId = ChannelId of int64
+  type ChannelId =
+    | ChannelId of int64
 
-  [<RequireQualifiedAccess>]
-  module ChannelId =
-    let create id =
+    member this.Value = let (ChannelId id) = this in id
+
+    static member Create id =
       if id < 0L then
         ChannelId id
       else
         failwith "ChannelId cannot be greater than 0"
 
-    let value (ChannelId id) = id
+  type GroupId =
+    | GroupId of int64
 
-  type GroupId = GroupId of int64
+    member this.Value = let (GroupId id) = this in id
 
-  [<RequireQualifiedAccess>]
-  module GroupId =
-    let create id =
+    static member Create id =
       if id < 0L then
         GroupId id
       else
         failwith "GroupId cannot be greater than 0"
 
-    let value (GroupId id) = id
 
   type Group = { Id: GroupId; Banned: bool }
 
-  type UserMessageId = UserMessageId of int
+  type UserMessageId =
+    | UserMessageId of int
+
+    member this.Value = let (UserMessageId id) = this in id
+
   type UploadCompletedConversion = ConversionId -> Task<unit>
 
-  type User = { Id: UserId; Lang: string option; Banned: bool }
+  type User =
+    { Id: UserId
+      Lang: string option
+      Banned: bool }
 
   type Channel = { Id: ChannelId; Banned: bool }
 
@@ -64,19 +73,6 @@ module Core =
   module UserConversion =
     type QueueProcessing = UserMessageId -> UserId option -> UserId -> BotMessageId -> Conversion.New.InputFile -> Task<unit>
 
-  type Translation = { Key: string; Value: string }
-
-  [<RequireQualifiedAccess>]
-  module Translation =
-    [<Literal>]
-    let DefaultLang = "en"
-
-    type GetTranslation = string -> string
-    type FormatTranslation = string * obj array -> string
-
-    type LoadTranslations = string option -> Task<GetTranslation * FormatTranslation>
-    type LoadDefaultTranslations = unit -> Task<GetTranslation * FormatTranslation>
-
   type ProcessPrivateMessage = Message -> Task<unit>
   type ProcessGroupMessage = Message -> Task<unit>
   type ProcessChannelPost = Message -> Task<unit>
@@ -91,5 +87,9 @@ module Core =
   type ParseCommand = Message -> Task<Command option>
 
   [<RequireQualifiedAccess>]
+  module Resources =
+    type LoadResources = string option -> Task<IResourceProvider>
+
+  [<RequireQualifiedAccess>]
   module User =
-    type LoadTranslations = UserId option -> Task<Translation.GetTranslation * Translation.FormatTranslation>
+    type LoadResources = UserId option -> Task<IResourceProvider>

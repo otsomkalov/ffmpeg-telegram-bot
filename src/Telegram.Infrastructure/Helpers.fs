@@ -1,11 +1,36 @@
 ﻿namespace Telegram.Infrastructure
 
 open System.Text.RegularExpressions
+open Domain.Core
+open MongoDB.Bson
 open Telegram.Bot.Types
+open Telegram.Core
 open otsom.fs.Extensions.String
 open System
+open Infrastructure
+open otsom.fs.Telegram.Bot
 
 module Helpers =
+  type Core.BotMessageId with
+    member this.Value = let (Core.BotMessageId id) = this in id
+
+  type Entities.Conversion with
+    member this.ToUserConversion(): UserConversion =
+      { ConversionId = (this.Id |> string |> ConversionId)
+        UserId = (this.UserId |> Option.ofNullable |> Option.map Core.UserId)
+        ReceivedMessageId = (this.ReceivedMessageId |> UserMessageId)
+        SentMessageId = Core.BotMessageId this.SentMessageId
+        ChatId = Core.UserId this.ChatId }
+
+    static member FromUserConversion(conversion: UserConversion) : Entities.Conversion =
+      Entities.Conversion(
+        Id = ObjectId(conversion.ConversionId.Value),
+        UserId = (conversion.UserId |> Option.map _.Value |> Option.toNullable),
+        ReceivedMessageId = conversion.ReceivedMessageId.Value,
+        SentMessageId = conversion.SentMessageId.Value,
+        ChatId = conversion.ChatId.Value
+      )
+
   let (|Text|_|) (message: Message) =
     message
     |> Option.ofObj
@@ -49,4 +74,4 @@ module Helpers =
     if matches |> Seq.isEmpty then
       None
     else
-      matches |> Seq.map (_.Value) |> Some
+      matches |> Seq.map _.Value |> Some

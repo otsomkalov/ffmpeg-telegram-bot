@@ -3,11 +3,9 @@
 namespace Telegram.Infrastructure
 
 open System.Net.Http
-open Domain.Repos
 open Infrastructure.Settings
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
-open Microsoft.Extensions.Logging
 open MongoDB.Driver
 open Telegram.Bot
 open Telegram.Core
@@ -16,10 +14,10 @@ open Telegram.Infrastructure.Workflows
 open Telegram.Workflows
 open otsom.fs.Extensions.DependencyInjection
 open Telegram.Repos
-open Telegram.Infrastructure.Repos
+open otsom.fs.Resources.Mongo
 
 module Startup =
-  let addTelegram (services: IServiceCollection) =
+  let addTelegramInfra (cfg: IConfiguration) (services: IServiceCollection) =
     services
       .BuildSingleton<InputValidationSettings, IConfiguration>(fun cfg ->
         cfg
@@ -35,37 +33,22 @@ module Startup =
         TelegramBotClient(options, client) :> ITelegramBotClient)
 
     services
-      .BuildSingleton<IMongoCollection<Database.User>, IMongoDatabase>(_.GetCollection<Database.User>("users"))
-      .BuildSingleton<IMongoCollection<Database.Channel>, IMongoDatabase>(_.GetCollection<Database.Channel>("channels"))
-      .BuildSingleton<IMongoCollection<Database.Group>, IMongoDatabase>(_.GetCollection<Database.Group>("groups"))
-      .BuildSingleton<IMongoCollection<Database.Translation>, IMongoDatabase>(_.GetCollection<Database.Translation>("resources"))
+      .BuildSingleton<IMongoCollection<Entities.User>, IMongoDatabase>(_.GetCollection("users"))
+      .BuildSingleton<IMongoCollection<Entities.Channel>, IMongoDatabase>(_.GetCollection("channels"))
+      .BuildSingleton<IMongoCollection<Entities.Group>, IMongoDatabase>(_.GetCollection("groups"))
 
     services
-      .BuildSingleton<UserConversion.Load, IMongoDatabase>(UserConversion.load)
-      .BuildSingleton<UserConversion.Save, IMongoDatabase>(UserConversion.save)
+    |> Startup.addMongoResources cfg
+
+    services
+
+      .AddSingleton<IUserRepo, UserRepo>()
+      .AddSingleton<IUserConversionRepo, UserConversionRepo>()
+
+      .AddSingleton<IChannelRepo, ChannelRepo>()
+      .AddSingleton<IGroupRepo, GroupRepo>()
 
       .BuildSingleton<DeleteBotMessage, ITelegramBotClient>(deleteBotMessage)
       .BuildSingleton<ReplyWithVideo, WorkersSettings, ITelegramBotClient>(replyWithVideo)
-      .BuildSingleton<Translation.LoadDefaultTranslations, IMongoCollection<Database.Translation>, ILoggerFactory>(Translation.loadDefaultTranslations)
-      .BuildSingleton<Translation.LoadTranslations, IMongoCollection<Database.Translation>, ILoggerFactory, Translation.LoadDefaultTranslations>(
-        Translation.loadTranslations
-      )
-
-      .BuildSingleton<User.LoadTranslations, User.Load, Translation.LoadTranslations, Translation.LoadDefaultTranslations>(
-        User.loadTranslations
-      )
-
-      .BuildSingleton<User.Load, IMongoCollection<Database.User>>(User.load)
-      .BuildSingleton<User.Create, IMongoCollection<Database.User>>(User.create)
-
-      .BuildSingleton<Channel.Load, IMongoCollection<Database.Channel>>(Channel.load)
-      .BuildSingleton<Channel.Save, IMongoCollection<Database.Channel>>(Channel.save)
-
-      .BuildSingleton<Group.Load, IMongoCollection<Database.Group>>(Group.load)
-      .BuildSingleton<Group.Save, IMongoCollection<Database.Group>>(Group.save)
-
-      .BuildSingleton<Conversion.New.InputFile.DownloadDocument, ITelegramBotClient, WorkersSettings>(
-        Conversion.New.InputFile.downloadDocument
-      )
 
       .BuildSingleton<ParseCommand, InputValidationSettings>(parseCommand)

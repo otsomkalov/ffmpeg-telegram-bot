@@ -1,28 +1,46 @@
-﻿namespace Telegram
+﻿namespace Telegram.Repos
 
 open System.Threading.Tasks
 open Domain.Core
 open Telegram.Core
 open otsom.fs.Telegram.Bot.Core
 
-module Repos =
-  [<RequireQualifiedAccess>]
-  module UserConversion =
-    type Load = ConversionId -> Task<UserConversion>
-    type Save = UserConversion -> Task<unit>
+type ILoadGroup =
+  abstract LoadGroup: GroupId -> Task<Group option>
 
-  [<RequireQualifiedAccess>]
-  module User =
-    type Load = UserId -> Task<User option>
-    type Create = User -> Task<unit>
+type ISaveGroup =
+  abstract SaveGroup: Group -> Task<unit>
 
-  [<RequireQualifiedAccess>]
-  module Channel =
-    type Load = ChannelId -> Task<Channel option>
-    type Save = Channel -> Task<unit>
+type IGroupRepo =
+  inherit ILoadGroup
+  inherit ISaveGroup
 
-  [<RequireQualifiedAccess>]
-  module Group =
-    type Load = GroupId -> Task<Group option>
+type ILoadChannel =
+  abstract LoadChannel: ChannelId -> Task<Channel option>
 
-    type Save = Group -> Task<unit>
+type ISaveChannel =
+  abstract SaveChannel: Channel -> Task<unit>
+
+type IChannelRepo =
+  inherit ILoadChannel
+  inherit ISaveChannel
+
+type ILoadUser =
+  abstract LoadUser: UserId -> Task<User option>
+
+type ISaveUser =
+  abstract SaveUser: User -> Task<unit>
+
+type IUserRepo =
+  inherit ILoadUser
+  inherit ISaveUser
+
+type ILoadUserConversion =
+  abstract LoadUserConversion: ConversionId -> Task<UserConversion>
+
+type ISaveUserConversion =
+  abstract SaveUserConversion: UserConversion -> Task<unit>
+
+type IUserConversionRepo =
+  inherit ILoadUserConversion
+  inherit ISaveUserConversion

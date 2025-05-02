@@ -2,28 +2,51 @@
 
 open System.Threading.Tasks
 open Domain.Core
+open Domain.Core.Conversion
 
-module Repos =
-  [<RequireQualifiedAccess>]
-  module Conversion =
-    type Load = ConversionId -> Task<Conversion>
-    type Save = Conversion -> Task<unit>
+type IDownloadLink =
+  abstract DownloadLink: Conversion.New.InputLink -> Task<Result<string, Conversion.New.DownloadLinkError>>
 
-    [<RequireQualifiedAccess>]
-    module New =
-      [<RequireQualifiedAccess>]
-      module InputFile =
-        type DownloadLink = Conversion.New.InputLink -> Task<Result<string, Conversion.New.DownloadLinkError>>
-        type DownloadDocument = Conversion.New.InputDocument -> Task<string>
+type IDownloadDocument =
+  abstract DownloadDocument: Conversion.New.InputDocument -> Task<string>
 
-    [<RequireQualifiedAccess>]
-    module Prepared =
-      type QueueConversion = Conversion.Prepared -> Task<unit>
-      type QueueThumbnailing = Conversion.Prepared -> Task<unit>
+type ILoadConversion =
+  abstract LoadConversion: ConversionId -> Task<Conversion>
 
-    [<RequireQualifiedAccess>]
-    module Completed =
-      type DeleteVideo = Conversion.Video -> Task<unit>
-      type DeleteThumbnail = Conversion.Thumbnail -> Task<unit>
+type ISaveConversion =
+  abstract SaveConversion: Conversion -> Task<unit>
 
-      type QueueUpload = Conversion.Completed -> Task<unit>
+type IQueueConversion =
+  abstract QueueConversion: Conversion.Prepared -> Task<unit>
+
+type IQueueThumbnailing =
+  abstract QueueThumbnailing: Conversion.Prepared -> Task<unit>
+
+type IDeleteVideo =
+  abstract DeleteVideo: Video -> Task<unit>
+
+type IDeleteThumbnail =
+  abstract DeleteThumbnail: Thumbnail -> Task<unit>
+
+type IGenerateConversionId =
+  abstract GenerateConversionId: unit -> ConversionId
+
+type IQueueUpload =
+  abstract QueueUpload: Completed -> Task<unit>
+
+type IConversionRepo =
+  inherit IGenerateConversionId
+
+  inherit IDownloadLink
+  inherit IDownloadDocument
+
+  inherit IQueueConversion
+  inherit IQueueThumbnailing
+
+  inherit ILoadConversion
+  inherit ISaveConversion
+
+  inherit IDeleteVideo
+  inherit IDeleteThumbnail
+
+  inherit IQueueUpload

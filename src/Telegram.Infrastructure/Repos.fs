@@ -1,68 +1,53 @@
 ﻿namespace Telegram.Infrastructure
 
 open Domain.Core
+open MongoDB.Bson
 open MongoDB.Driver
 open MongoDB.Driver.Linq
 open Telegram.Core
 open Telegram.Repos
 open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
+open Infrastructure
+open Telegram.Infrastructure
+open Telegram.Infrastructure.Helpers
 
-module Repos =
-  [<RequireQualifiedAccess>]
-  module UserConversion =
-    let load (db: IMongoDatabase) : UserConversion.Load =
-      let collection = db.GetCollection "users-conversions"
+type UserConversionRepo(db: IMongoDatabase) =
+  let collection = db.GetCollection<Entities.Conversion>("users-conversions")
 
-      fun conversionId ->
-        let (ConversionId conversionId) = conversionId
-        let filter = Builders<Database.Conversion>.Filter.Eq((fun c -> c.Id), conversionId)
+  interface IUserConversionRepo with
+    member _.LoadUserConversion(ConversionId id) =
+      collection.AsQueryable().FirstOrDefaultAsync(fun c -> c.Id = ObjectId(id))
+      |> Task.map _.ToUserConversion()
 
-        collection.Find(filter).SingleOrDefaultAsync()
-        |> Task.map Mappings.UserConversion.fromDb
+    member _.SaveUserConversion(conversion) =
+      task { do! collection.InsertOneAsync(Entities.Conversion.FromUserConversion conversion) }
 
-    let save (db: IMongoDatabase) : UserConversion.Save =
-      let collection = db.GetCollection "users-conversions"
+type UserRepo(collection: IMongoCollection<Entities.User>) =
+  interface IUserRepo with
+    member this.LoadUser(UserId id) =
+      collection.AsQueryable().FirstOrDefaultAsync(fun u -> u.Id = id)
+      &|> (Option.ofObj >> Option.map _.ToDomain())
 
-      fun conversion ->
-        let entity = conversion |> Mappings.UserConversion.toDb
-        task { do! collection.InsertOneAsync(entity) }
+    member _.SaveUser user =
+      task { do! collection.InsertOneAsync(Entities.User.FromDomain user) }
 
-  [<RequireQualifiedAccess>]
-  module User =
-    let load (collection: IMongoCollection<Database.User>) : User.Load =
-      fun userId ->
-        let userId' = userId |> UserId.value
+type ChannelRepo(collection: IMongoCollection<Entities.Channel>) =
+  interface IChannelRepo with
+    member _.LoadChannel(ChannelId id) =
+      collection.AsQueryable().FirstOrDefaultAsync(fun c -> c.Id = id)
+      |> Task.map Option.ofObj
+      |> TaskOption.map _.ToDomain()
 
-        collection.AsQueryable().SingleOrDefaultAsync(fun u -> u.Id = userId')
-        |> Task.map Option.ofObj
-        |> TaskOption.map Mappings.User.fromDb
+    member _.SaveChannel channel =
+      task { do! collection.InsertOneAsync(Entities.Channel.FromDomain channel) }
 
-    let create (collection: IMongoCollection<Database.User>) : User.Create =
-      fun user -> task { do! collection.InsertOneAsync(user |> Mappings.User.toDb) }
+type GroupRepo(collection: IMongoCollection<Entities.Group>) =
+  interface IGroupRepo with
+    member _.LoadGroup(GroupId id) =
+      collection.AsQueryable().FirstOrDefaultAsync(fun g -> g.Id = id)
+      |> Task.map Option.ofObj
+      |> TaskOption.map _.ToDomain()
 
-  [<RequireQualifiedAccess>]
-  module Channel =
-    let load (collection: IMongoCollection<Database.Channel>) : Channel.Load =
-      fun channelId ->
-        let channelId' = channelId |> ChannelId.value
-
-        collection.AsQueryable().SingleOrDefaultAsync(fun c -> c.Id = channelId')
-        |> Task.map Option.ofObj
-        |> TaskOption.map Mappings.Channel.fromDb
-
-    let save (collection: IMongoCollection<Database.Channel>) : Channel.Save =
-      fun channel -> task { do! collection.InsertOneAsync(channel |> Mappings.Channel.toDb) }
-
-  [<RequireQualifiedAccess>]
-  module Group =
-    let load (collection: IMongoCollection<Database.Group>) : Group.Load =
-      fun groupId ->
-        let groupId' = groupId |> GroupId.value
-
-        collection.AsQueryable().SingleOrDefaultAsync(fun g -> g.Id = groupId')
-        |> Task.map Option.ofObj
-        |> TaskOption.map Mappings.Group.fromDb
-
-    let save (collection: IMongoCollection<Database.Group>) : Group.Save =
-      fun group -> task { do! collection.InsertOneAsync(group |> Mappings.Group.toDb) }
+    member _.SaveGroup group =
+      task { do! collection.InsertOneAsync(Entities.Group.FromDomain group) }

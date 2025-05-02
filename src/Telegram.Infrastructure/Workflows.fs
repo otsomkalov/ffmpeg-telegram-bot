@@ -1,24 +1,18 @@
 ﻿namespace Telegram.Infrastructure
 
+open System.IO
 open System.Text.RegularExpressions
 open Azure.Storage.Blobs
 open Domain.Core
-open FSharp
-open Infrastructure.Helpers
 open Infrastructure.Settings
-open Microsoft.Extensions.Logging
-open MongoDB.Driver
 open Telegram.Bot
 open Telegram.Core
 open Telegram.Bot.Types
 open Telegram.Infrastructure.Settings
 open Telegram.Workflows
-open Telegram.Infrastructure.Core
 open otsom.fs.Extensions
 open otsom.fs.Telegram.Bot.Core
 open System.Threading.Tasks
-open System
-open Domain.Repos
 open Telegram.Infrastructure.Helpers
 open otsom.fs.Extensions.String
 
@@ -50,7 +44,7 @@ module Workflows =
             (userId |> UserId.value |> ChatId),
             InputFileStream(videoStreamResponse.Value.Content, video),
             caption = text,
-            replyToMessageId = (messageId |> UserMessageId.value),
+            replyToMessageId = messageId.Value,
             thumbnail = InputFileStream(thumbnailStreamResponse.Value.Content, thumbnail),
             disableNotification = true
           ))
@@ -68,86 +62,15 @@ module Workflows =
         | Regex linkRegex matches -> matches |> Command.Links |> Some |> Task.FromResult
         | _ -> None |> Task.FromResult
       | Document settings.MimeTypes doc -> Command.Document(doc.FileId, doc.FileName) |> Some |> Task.FromResult
-      | Video settings.MimeTypes vid -> Command.Video(vid.FileId, vid.FileName) |> Some |> Task.FromResult
+      | Video settings.MimeTypes vid ->
+        let videoName =
+          vid.FileName
+          |> Option.ofObj
+          |> Option.defaultWith(fun _ ->
+            let tmpFile = Path.GetTempFileName()
+            let fileInfo = FileInfo(tmpFile)
+
+            fileInfo.Name)
+
+        Command.Video(vid.FileId, videoName) |> Some |> Task.FromResult
       | _ -> None |> Task.FromResult
-
-[<RequireQualifiedAccess>]
-module Conversion =
-
-  [<RequireQualifiedAccess>]
-  module New =
-    [<RequireQualifiedAccess>]
-    module InputFile =
-      let downloadDocument (bot: ITelegramBotClient) (workersSettings: WorkersSettings) : Conversion.New.InputFile.DownloadDocument =
-        fun document ->
-          task {
-            use! converterBlobStream = Storage.getBlobStream workersSettings document.Name workersSettings.Converter.Input.Container
-
-            do! bot.GetInfoAndDownloadFileAsync(document.Id, converterBlobStream) |> Task.ignore
-
-            use! thumbnailerBlobStream = Storage.getBlobStream workersSettings document.Name workersSettings.Thumbnailer.Input.Container
-
-            do!
-              bot.GetInfoAndDownloadFileAsync(document.Id, thumbnailerBlobStream)
-              |> Task.ignore
-
-            return document.Name
-          }
-
-[<RequireQualifiedAccess>]
-module Translation =
-  let private loadTranslationsMap (collection: IMongoCollection<Database.Translation>) key =
-    collection.Find(fun t -> t.Lang = key).ToListAsync()
-    |> Task.map (
-      Seq.groupBy (_.Key)
-      >> Seq.map (fun (key, translations) -> (key, translations |> Seq.map (_.Value) |> Seq.head))
-      >> Map.ofSeq
-    )
-
-  let private formatWithFallback formats fallback =
-    fun (key, args) ->
-      match formats |> Map.tryFind key with
-      | Some fmt -> String.Format(fmt, args)
-      | None -> fallback
-
-  let loadDefaultTranslations (collection: IMongoCollection<Database.Translation>) (loggerFactory: ILoggerFactory) : Translation.LoadDefaultTranslations =
-    let logger = loggerFactory.CreateLogger(nameof Translation.LoadDefaultTranslations)
-
-    fun () ->
-      task {
-        Logf.logfi logger "Loading default translations"
-        let! translations = loadTranslationsMap collection Translation.DefaultLang
-        Logf.logfi logger "Default translations map loaded from DB"
-
-        let getTranslation =
-          fun key -> translations |> Map.tryFind key |> Option.defaultValue key
-
-        let formatTranslation =
-          fun (key, args) -> formatWithFallback translations key (key, args)
-
-        return (getTranslation, formatTranslation)
-      }
-
-  let loadTranslations (collection: IMongoCollection<Database.Translation>) (loggerFactory: ILoggerFactory) (loadDefaultTranslations: Translation.LoadDefaultTranslations) : Translation.LoadTranslations =
-    let logger = loggerFactory.CreateLogger(nameof Translation.LoadTranslations)
-
-    function
-    | Some l when l <> Translation.DefaultLang ->
-      task {
-        let! tran, tranf = loadDefaultTranslations ()
-
-        Logf.logfi logger "Loading translations for lang %s{Lang}" l
-
-        let! localeTranslations = loadTranslationsMap collection l
-
-        Logf.logfi logger "Translations for lang %s{Lang} is loaded" l
-
-        let getTranslation: Translation.GetTranslation =
-          fun key -> localeTranslations |> Map.tryFind key |> Option.defaultValue (tran key)
-
-        let formatTranslation: Translation.FormatTranslation =
-          fun (key, args) -> formatWithFallback localeTranslations (tranf (key, args)) (key, args)
-
-        return (getTranslation, formatTranslation)
-      }
-    | _ -> loadDefaultTranslations ()
