@@ -34,18 +34,17 @@ type Functions
     groupRepo: IGroupRepo,
     userConversionRepo: IUserConversionRepo,
     conversionRepo: IConversionRepo,
-    conversionService: IConversionService,
     loadResources: Resources.LoadResources,
-    loadUserResources: User.LoadResources,
     createDefaultResourceProvider: CreateDefaultResourceProvider,
-    buildBotService: BuildExtendedBotService
+    buildBotService: BuildExtendedBotService,
+    ffMpegBot: IFFMpegBot
   ) =
 
   [<Function("HandleUpdate")>]
   member this.HandleUpdate
     ([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update, ctx: FunctionContext)
     : Task<unit> =
-    let logger = nameof (this.HandleUpdate) |> ctx.GetLogger
+    let logger = nameof this.HandleUpdate |> ctx.GetLogger
 
     let queueUserConversion =
       UserConversion.queueProcessing createConversion userConversionRepo conversionRepo
@@ -75,88 +74,76 @@ type Functions
     }
 
   [<Function("Downloader")>]
-  member this.DownloadFile
+  member this.Downloader
     (
-      [<QueueTrigger("%Workers:Downloader:Queue%", Connection = "Workers:ConnectionString")>] message: BaseMessage<DownloaderMessage>,
+      [<QueueTrigger("%Workers:Downloader:Queue%", Connection = "Workers:ConnectionString")>]
+      message: BaseMessage<DownloaderMessage>,
       _: FunctionContext
     ) : Task<unit> =
     let data = message.Data
-
-    let downloadFileAndQueueConversion =
-      downloadFileAndQueueConversion userConversionRepo loadUserResources conversionService buildBotService
 
     task {
       use activity = (new Activity("Downloader")).SetParentId(message.OperationId)
       use operation = telemetryClient.StartOperation<RequestTelemetry>(activity)
 
-      do! downloadFileAndQueueConversion data.ConversionId data.File
+      do! ffMpegBot.PrepareConversion(data.ConversionId, data.File)
 
       operation.Telemetry.Success <- true
     }
 
-  [<Function("SaveConversionResult")>]
-  member this.SaveConversionResult
+  [<Function("Converter")>]
+  member this.Converter
     (
-      [<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>] message:
-        BaseMessage<ConverterResultMessage>,
+      [<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>]
+      message: BaseMessage<ConverterResultMessage>,
       _: FunctionContext
     ) : Task<unit> =
-    let processConversionResult =
-      processConversionResult userConversionRepo conversionRepo loadUserResources conversionService buildBotService
+    let data = message.Data
 
     task {
-      use activity =
-        (new Activity("SaveConversionResult")).SetParentId(message.OperationId)
+      use activity = (new Activity("Converter")).SetParentId(message.OperationId)
 
       use operation = telemetryClient.StartOperation<RequestTelemetry>(activity)
 
-      let data = message.Data
-
-      do! processConversionResult (ConversionId data.Id) data.Result
+      do! ffMpegBot.SaveVideo(ConversionId data.Id, data.Result)
 
       operation.Telemetry.Success <- true
     }
 
-  [<Function("SaveThumbnailingResult")>]
-  member this.SaveThumbnailingResult
+  [<Function("Thumbnailer")>]
+  member this.Thumbnailer
     (
-      [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>] message:
-        BaseMessage<ConverterResultMessage>,
+      [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>]
+      message: BaseMessage<ConverterResultMessage>,
       _: FunctionContext
     ) : Task<unit> =
-    let processThumbnailingResult =
-      processThumbnailingResult userConversionRepo conversionRepo loadUserResources conversionService buildBotService
+    let data = message.Data
 
     task {
-      use activity =
-        (new Activity("SaveThumbnailingResult")).SetParentId(message.OperationId)
+      use activity = (new Activity("Thumbnailer")).SetParentId(message.OperationId)
 
       use operation = telemetryClient.StartOperation<RequestTelemetry>(activity)
 
-      let data = message.Data
-
-      do! processThumbnailingResult (ConversionId data.Id) data.Result
+      do! ffMpegBot.SaveThumbnail(ConversionId data.Id, data.Result)
 
       operation.Telemetry.Success <- true
     }
 
   [<Function("Uploader")>]
-  member this.Upload
+  member this.Uploader
     (
-      [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>] message: BaseMessage<UploaderMessage>,
+      [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>]
+      message: BaseMessage<UploaderMessage>,
       _: FunctionContext
     ) : Task =
     let conversionId = message.Data.ConversionId |> ConversionId
-
-    let uploadSuccessfulConversion =
-      uploadCompletedConversion userConversionRepo conversionRepo loadUserResources conversionService buildBotService
 
     task {
       use activity = (new Activity("Uploader")).SetParentId(message.OperationId)
 
       use operation = telemetryClient.StartOperation<RequestTelemetry>(activity)
 
-      do! uploadSuccessfulConversion conversionId
+      do! ffMpegBot.UploadConversion conversionId
 
       operation.Telemetry.Success <- true
     }
