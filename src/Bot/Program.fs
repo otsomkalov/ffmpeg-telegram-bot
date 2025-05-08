@@ -11,7 +11,6 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.ApplicationInsights
-open otsom.fs.Telegram.Bot
 open Infrastructure
 open Telegram.Infrastructure
 open Domain
@@ -44,7 +43,6 @@ module Startup =
 
     services
     |> Startup.addDomain
-    |> Startup.addTelegramBotCore
     |> Startup.addInfra ctx.Configuration
     |> Startup.addTelegram ctx.Configuration
     |> Startup.addTelegramInfra ctx.Configuration

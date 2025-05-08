@@ -15,6 +15,7 @@ open Telegram.Workflows
 open otsom.fs.Extensions.DependencyInjection
 open Telegram.Repos
 open otsom.fs.Resources.Mongo
+open otsom.fs.Bot.Telegram
 
 module Startup =
   let addTelegramInfra (cfg: IConfiguration) (services: IServiceCollection) =
@@ -39,6 +40,9 @@ module Startup =
 
     services
     |> Startup.addMongoResources cfg
+    |> Startup.addTelegramBot cfg
+
+    services.ConfigureTelegramBotMvc()
 
     services
 
@@ -48,7 +52,6 @@ module Startup =
       .AddSingleton<IChannelRepo, ChannelRepo>()
       .AddSingleton<IGroupRepo, GroupRepo>()
 
-      .BuildSingleton<DeleteBotMessage, ITelegramBotClient>(deleteBotMessage)
       .BuildSingleton<ReplyWithVideo, WorkersSettings, ITelegramBotClient>(replyWithVideo)
 
       .BuildSingleton<ParseCommand, InputValidationSettings>(parseCommand)

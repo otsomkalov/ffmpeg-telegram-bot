@@ -1,11 +1,9 @@
 module Tests.Conversion.Thumbnailed
 
 open System
-open System.Threading.Tasks
 open Domain
 open Domain.Core
 open Domain.Core.Conversion
-open Domain.Workflows
 open Moq
 open Xunit
 open FsUnit.Xunit

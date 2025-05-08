@@ -7,7 +7,6 @@ open Domain.Workflows
 open FSharp
 open Infrastructure.Core
 open Infrastructure.Queue
-open Infrastructure.Settings
 open Microsoft.ApplicationInsights
 open Microsoft.ApplicationInsights.DataContracts
 open Microsoft.AspNetCore.Http
@@ -17,19 +16,16 @@ open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
 open Telegram.Core
 open Telegram.Workflows
-open otsom.fs.Telegram.Bot.Core
 open Domain.Core
 open Telegram.Repos
 open otsom.fs.Resources
+open otsom.fs.Bot
 
 type ConverterResultMessage =
   { Id: string; Result: ConversionResult }
 
 type Functions
   (
-    replyToUserMessage: ReplyToUserMessage,
-    editBotMessage: EditBotMessage,
-    deleteBotMessage: DeleteBotMessage,
     replyWithVideo: ReplyWithVideo,
     queueConversionPreparation: Conversion.New.QueuePreparation,
     parseCommand: ParseCommand,
@@ -43,7 +39,8 @@ type Functions
     conversionService: IConversionService,
     loadResources: Resources.LoadResources,
     loadUserResources: User.LoadResources,
-    createDefaultResourceProvider: CreateDefaultResourceProvider
+    createDefaultResourceProvider: CreateDefaultResourceProvider,
+    buildBotService: BuildBotService
   ) =
 
   [<Function("HandleUpdate")>]
@@ -56,13 +53,13 @@ type Functions
       UserConversion.queueProcessing createConversion userConversionRepo queueConversionPreparation
 
     let processPrivateMessage =
-      processPrivateMessage replyToUserMessage loadResources userRepo queueUserConversion parseCommand logger
+      processPrivateMessage loadResources userRepo queueUserConversion parseCommand logger buildBotService
 
     let processGeoupMessage =
-      processGroupMessage replyToUserMessage loadResources userRepo groupRepo queueUserConversion parseCommand logger
+      processGroupMessage loadResources userRepo groupRepo queueUserConversion parseCommand logger buildBotService
 
     let processChannelPost =
-      processChannelPost replyToUserMessage createDefaultResourceProvider channelRepo queueUserConversion parseCommand logger
+      processChannelPost createDefaultResourceProvider channelRepo queueUserConversion parseCommand logger buildBotService
 
     task {
       try
@@ -88,7 +85,7 @@ type Functions
     let data = message.Data
 
     let downloadFileAndQueueConversion =
-      downloadFileAndQueueConversion editBotMessage userConversionRepo loadUserResources conversionService
+      downloadFileAndQueueConversion userConversionRepo loadUserResources conversionService buildBotService
 
     task {
       use activity = (new Activity("Downloader")).SetParentId(message.OperationId)
@@ -107,7 +104,7 @@ type Functions
       _: FunctionContext
     ) : Task<unit> =
     let processConversionResult =
-      processConversionResult userConversionRepo editBotMessage conversionRepo loadUserResources conversionService
+      processConversionResult userConversionRepo conversionRepo loadUserResources conversionService buildBotService
 
     task {
       use activity =
@@ -130,7 +127,7 @@ type Functions
       _: FunctionContext
     ) : Task<unit> =
     let processThumbnailingResult =
-      processThumbnailingResult userConversionRepo editBotMessage conversionRepo loadUserResources conversionService
+      processThumbnailingResult userConversionRepo conversionRepo loadUserResources conversionService buildBotService
 
     task {
       use activity =
@@ -154,7 +151,7 @@ type Functions
     let conversionId = message.Data.ConversionId |> ConversionId
 
     let uploadSuccessfulConversion =
-      uploadCompletedConversion userConversionRepo conversionRepo deleteBotMessage replyWithVideo loadUserResources conversionService
+      uploadCompletedConversion userConversionRepo conversionRepo replyWithVideo loadUserResources conversionService buildBotService
 
     task {
       use activity = (new Activity("Uploader")).SetParentId(message.OperationId)

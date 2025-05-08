@@ -5,22 +5,19 @@ open Domain.Core
 open MongoDB.Bson
 open Telegram.Bot.Types
 open Telegram.Core
+open otsom.fs.Bot
 open otsom.fs.Extensions.String
 open System
 open Infrastructure
-open otsom.fs.Telegram.Bot
 
 module Helpers =
-  type Core.BotMessageId with
-    member this.Value = let (Core.BotMessageId id) = this in id
-
   type Entities.Conversion with
     member this.ToUserConversion(): UserConversion =
       { ConversionId = (this.Id |> string |> ConversionId)
-        UserId = (this.UserId |> Option.ofNullable |> Option.map Core.UserId)
-        ReceivedMessageId = (this.ReceivedMessageId |> UserMessageId)
-        SentMessageId = Core.BotMessageId this.SentMessageId
-        ChatId = Core.UserId this.ChatId }
+        UserId = (this.UserId |> Option.ofNullable |> Option.map UserId)
+        ReceivedMessageId = (this.ReceivedMessageId |> ChatMessageId)
+        SentMessageId = BotMessageId this.SentMessageId
+        ChatId = ChatId this.ChatId }
 
     static member FromUserConversion(conversion: UserConversion) : Entities.Conversion =
       Entities.Conversion(
