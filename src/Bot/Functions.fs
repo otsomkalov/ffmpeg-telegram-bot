@@ -12,6 +12,7 @@ open Microsoft.ApplicationInsights.DataContracts
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
+open Telegram
 open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
 open Telegram.Core
@@ -26,7 +27,6 @@ type ConverterResultMessage =
 
 type Functions
   (
-    replyWithVideo: ReplyWithVideo,
     queueConversionPreparation: Conversion.New.QueuePreparation,
     parseCommand: ParseCommand,
     createConversion: Conversion.Create,
@@ -40,7 +40,7 @@ type Functions
     loadResources: Resources.LoadResources,
     loadUserResources: User.LoadResources,
     createDefaultResourceProvider: CreateDefaultResourceProvider,
-    buildBotService: BuildBotService
+    buildBotService: BuildExtendedBotService
   ) =
 
   [<Function("HandleUpdate")>]
@@ -55,7 +55,7 @@ type Functions
     let processPrivateMessage =
       processPrivateMessage loadResources userRepo queueUserConversion parseCommand logger buildBotService
 
-    let processGeoupMessage =
+    let processGroupMessage =
       processGroupMessage loadResources userRepo groupRepo queueUserConversion parseCommand logger buildBotService
 
     let processChannelPost =
@@ -66,7 +66,7 @@ type Functions
         let processUpdateTask =
           match update.Type with
           | UpdateType.Message when update.Message.From.Id = update.Message.Chat.Id -> processPrivateMessage update.Message
-          | UpdateType.Message -> processGeoupMessage update.Message
+          | UpdateType.Message -> processGroupMessage update.Message
           | UpdateType.ChannelPost -> processChannelPost update.ChannelPost
           | _ -> Task.FromResult()
 
@@ -151,7 +151,7 @@ type Functions
     let conversionId = message.Data.ConversionId |> ConversionId
 
     let uploadSuccessfulConversion =
-      uploadCompletedConversion userConversionRepo conversionRepo replyWithVideo loadUserResources conversionService buildBotService
+      uploadCompletedConversion userConversionRepo conversionRepo loadUserResources conversionService buildBotService
 
     task {
       use activity = (new Activity("Uploader")).SetParentId(message.OperationId)

@@ -16,8 +16,6 @@ open otsom.fs.Extensions
 open Telegram.Repos
 
 module Workflows =
-  type ReplyWithVideo = ChatId -> ChatMessageId -> string -> Conversion.Video -> Conversion.Thumbnail -> Task<unit>
-
   [<RequireQualifiedAccess>]
   module UserConversion =
     let queueProcessing
@@ -127,7 +125,7 @@ module Workflows =
     (queueUserConversion: UserConversion.QueueProcessing)
     (parseCommand: ParseCommand)
     (logger: ILogger)
-    (buildBotService: BuildBotService)
+    (buildBotService: BuildExtendedBotService)
     : ProcessPrivateMessage =
     fun message ->
       let userId = message.From.Id |> UserId
@@ -166,7 +164,7 @@ module Workflows =
     (queueUserConversion: UserConversion.QueueProcessing)
     (parseCommand: ParseCommand)
     (logger: ILogger)
-    (buildBotService: BuildBotService)
+    (buildBotService: BuildExtendedBotService)
     : ProcessGroupMessage =
     fun message ->
       let groupId = message.Chat.Id |> GroupId
@@ -224,7 +222,7 @@ module Workflows =
     (queueUserConversion: UserConversion.QueueProcessing)
     (parseCommand: ParseCommand)
     (logger: ILogger)
-    (buildBotService: BuildBotService)
+    (buildBotService: BuildExtendedBotService)
     : ProcessChannelPost =
     fun post ->
       let channelId = post.Chat.Id |> ChannelId.Create
@@ -257,7 +255,7 @@ module Workflows =
     (userConversionRepo: #ILoadUserConversion)
     (loadTranslations: User.LoadResources)
     (conversion: #IPrepareConversion)
-    (buildBotService: BuildBotService)
+    (buildBotService: BuildExtendedBotService)
     : DownloadFileAndQueueConversion =
     fun conversionId file ->
       task {
@@ -280,7 +278,7 @@ module Workflows =
     (conversionRepo: #ILoadConversion & #IQueueUpload)
     (loadTranslations: User.LoadResources)
     (conversionService: #ISaveVideo & #ICompleteConversion)
-    (buildBotService: BuildBotService)
+    (buildBotService: BuildExtendedBotService)
     : ProcessConversionResult =
 
     fun conversionId result ->
@@ -314,7 +312,7 @@ module Workflows =
     (conversionRepo: #ILoadConversion & #IQueueUpload)
     (loadTranslations: User.LoadResources)
     (conversionService: #ISaveThumbnail & #ICompleteConversion)
-    (buildBotService: BuildBotService)
+    (buildBotService: BuildExtendedBotService)
     : ProcessThumbnailingResult =
 
     fun conversionId result ->
@@ -346,10 +344,9 @@ module Workflows =
   let uploadCompletedConversion
     (userConversionRepo: #ILoadUserConversion)
     (conversionRepo: #ILoadConversion)
-    (replyWithVideo: ReplyWithVideo)
     (loadTranslations: User.LoadResources)
     (conversionService: #ICleanupConversion)
-    (buildBotService: BuildBotService)
+    (buildBotService: BuildExtendedBotService)
     : UploadCompletedConversion =
     fun id ->
       task {
@@ -364,12 +361,12 @@ module Workflows =
           let! resp = userConversion.UserId |> loadTranslations
 
           do!
-            replyWithVideo
-              userConversion.ChatId
-              userConversion.ReceivedMessageId
-              (resp[Resources.Completed])
-              conversion.OutputFile
+            botService.ReplyWithVideo(
+              userConversion.ReceivedMessageId,
+              resp[Resources.Completed],
+              conversion.OutputFile,
               conversion.ThumbnailFile
+            )
 
           do! conversionService.CleanupConversion conversion
           do! botService.DeleteBotMessage userConversion.SentMessageId

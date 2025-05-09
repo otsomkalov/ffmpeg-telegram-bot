@@ -88,3 +88,10 @@ module Core =
   [<RequireQualifiedAccess>]
   module User =
     type LoadResources = UserId option -> Task<IResourceProvider>
+
+type IExtendedBotService =
+  abstract ReplyWithVideo: ChatMessageId * string * Conversion.Video * Conversion.Thumbnail -> Task<unit>
+
+  inherit IBotService
+
+type BuildExtendedBotService = ChatId -> IExtendedBotService
