@@ -43,8 +43,6 @@ module Startup =
 
     services |> Startup.addMongoResources cfg |> Startup.addTelegramBot cfg
 
-    services.ConfigureTelegramBotMvc()
-
     services
 
       .AddSingleton<IUserRepo, UserRepo>()
