@@ -3,21 +3,24 @@
 namespace Telegram.Infrastructure
 
 open System.Net.Http
-open Infrastructure.Settings
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open MongoDB.Driver
+open Telegram
 open Telegram.Bot
 open Telegram.Core
+open Telegram.Infrastructure.Services
 open Telegram.Infrastructure.Settings
 open Telegram.Infrastructure.Workflows
-open Telegram.Workflows
 open otsom.fs.Extensions.DependencyInjection
 open Telegram.Repos
 open otsom.fs.Resources.Mongo
 open otsom.fs.Bot.Telegram
 
 module Startup =
+  let buildExtendedBotService workerOptions bot : BuildExtendedBotService =
+    fun chatId -> ExtendedBotService(workerOptions, bot, chatId)
+
   let addTelegramInfra (cfg: IConfiguration) (services: IServiceCollection) =
     services
       .BuildSingleton<InputValidationSettings, IConfiguration>(fun cfg ->
@@ -38,11 +41,7 @@ module Startup =
       .BuildSingleton<IMongoCollection<Entities.Channel>, IMongoDatabase>(_.GetCollection("channels"))
       .BuildSingleton<IMongoCollection<Entities.Group>, IMongoDatabase>(_.GetCollection("groups"))
 
-    services
-    |> Startup.addMongoResources cfg
-    |> Startup.addTelegramBot cfg
-
-    services.ConfigureTelegramBotMvc()
+    services |> Startup.addMongoResources cfg |> Startup.addTelegramBot cfg
 
     services
 
@@ -52,6 +51,6 @@ module Startup =
       .AddSingleton<IChannelRepo, ChannelRepo>()
       .AddSingleton<IGroupRepo, GroupRepo>()
 
-      .BuildSingleton<ReplyWithVideo, WorkersSettings, ITelegramBotClient>(replyWithVideo)
+      .BuildSingleton<BuildExtendedBotService, _, _>(buildExtendedBotService)
 
       .BuildSingleton<ParseCommand, InputValidationSettings>(parseCommand)
