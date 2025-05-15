@@ -20,6 +20,7 @@ open Telegram.Workflows
 open Domain.Core
 open Telegram.Repos
 open otsom.fs.Resources
+open otsom.fs.Bot
 
 type ConverterResultMessage =
   { Id: string; Result: ConversionResult }

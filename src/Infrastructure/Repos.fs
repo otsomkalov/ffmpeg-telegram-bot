@@ -89,12 +89,12 @@ type ConversionRepo
       task {
         use! converterBlobStream = Storage.getBlobStream settings document.Name settings.Converter.Input.Container
 
-        do! bot.GetInfoAndDownloadFileAsync(document.Id, converterBlobStream) |> Task.ignore
+        do! bot.GetInfoAndDownloadFile(document.Id, converterBlobStream) |> Task.ignore
 
         use! thumbnailerBlobStream = Storage.getBlobStream settings document.Name settings.Thumbnailer.Input.Container
 
         do!
-          bot.GetInfoAndDownloadFileAsync(document.Id, thumbnailerBlobStream)
+          bot.GetInfoAndDownloadFile(document.Id, thumbnailerBlobStream)
           |> Task.ignore
 
         return document.Name
