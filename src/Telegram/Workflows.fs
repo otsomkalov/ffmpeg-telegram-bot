@@ -21,7 +21,7 @@ module Workflows =
     let queueProcessing
       (createConversion: Create)
       (repo: #ISaveUserConversion)
-      (queueConversionPreparation: Conversion.New.QueuePreparation)
+      (conversionRepo: #IQueuePreparation)
       : UserConversion.QueueProcessing =
       fun userMessageId userId chatId sentMessageId inputFile ->
         task {
@@ -35,7 +35,7 @@ module Workflows =
                 ReceivedMessageId = userMessageId
                 ConversionId = conversion.Id }
 
-          return! queueConversionPreparation conversion.Id inputFile
+          return! conversionRepo.QueuePreparation(conversion.Id, inputFile)
         }
 
   [<RequireQualifiedAccess>]

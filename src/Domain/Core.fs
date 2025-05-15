@@ -52,8 +52,6 @@ module Core =
         | NotFound
         | ServerError
 
-      type QueuePreparation = ConversionId -> InputFile -> Task<unit>
-
   type Conversion =
     | New of Conversion.New
     | Prepared of Conversion.Prepared

@@ -36,10 +36,12 @@ type ConversionRepo
       ObjectId.GenerateNewId().ToString() |> ConversionId
 
     member _.LoadConversion(ConversionId id) =
-      collection.AsQueryable().FirstOrDefaultAsync(fun c -> c.Id = ObjectId(id)) &|> _.ToDomain
+      collection.AsQueryable().FirstOrDefaultAsync(fun c -> c.Id = ObjectId(id))
+      &|> _.ToDomain
 
     member _.SaveConversion conversion =
-      let filter = Builders<Entities.Conversion>.Filter.Eq(_.Id, ObjectId(conversion.Id.Value))
+      let filter =
+        Builders<Entities.Conversion>.Filter.Eq(_.Id, ObjectId(conversion.Id.Value))
 
       collection.ReplaceOneAsync(filter, Entities.Conversion.FromDomain conversion, ReplaceOptions(IsUpsert = true))
       &|> ignore
@@ -106,23 +108,20 @@ type ConversionRepo
         use request = new HttpRequestMessage(HttpMethod.Get, link.Url)
         use! response = client.SendAsync(request)
 
-        return!
-          match response.StatusCode with
-          | HttpStatusCode.Unauthorized -> Conversion.New.DownloadLinkError.Unauthorized |> Error |> Task.FromResult
-          | HttpStatusCode.NotFound -> Conversion.New.DownloadLinkError.NotFound |> Error |> Task.FromResult
-          | HttpStatusCode.InternalServerError -> Conversion.New.DownloadLinkError.ServerError |> Error |> Task.FromResult
-          | _ ->
-            task {
-              let fileName = link.Url |> Uri |> _.Segments |> Seq.last
+        match response.StatusCode with
+        | HttpStatusCode.Unauthorized -> return Error Conversion.New.DownloadLinkError.Unauthorized
+        | HttpStatusCode.NotFound -> return Error Conversion.New.DownloadLinkError.NotFound
+        | HttpStatusCode.InternalServerError -> return Error Conversion.New.DownloadLinkError.ServerError
+        | _ ->
+          let fileName = link.Url |> Uri |> _.Segments |> Seq.last
 
-              use! converterBlobStream = getBlobStream fileName settings.Converter.Input.Container
-              use! thumbnailerBlobStream = getBlobStream fileName settings.Thumbnailer.Input.Container
+          use! converterBlobStream = getBlobStream fileName settings.Converter.Input.Container
+          use! thumbnailerBlobStream = getBlobStream fileName settings.Thumbnailer.Input.Container
 
-              do! response.Content.CopyToAsync(converterBlobStream)
-              do! response.Content.CopyToAsync(thumbnailerBlobStream)
+          do! response.Content.CopyToAsync(converterBlobStream)
+          do! response.Content.CopyToAsync(thumbnailerBlobStream)
 
-              return Ok(fileName)
-            }
+          return Ok(fileName)
       }
 
     member this.QueueUpload(conversion) =
@@ -132,5 +131,18 @@ type ConversionRepo
         JSON.serialize
           { OperationId = Activity.Current.ParentId
             Data = { ConversionId = conversion.Id.Value } }
+
+      queueClient.SendMessageAsync(messageBody) |> Task.ignore
+
+    member this.QueuePreparation(conversionId, inputFile) =
+      let queueClient = queueServiceClient.GetQueueClient(settings.Downloader.Queue)
+
+      let message =
+        { OperationId = Activity.Current.ParentId
+          Data =
+            { ConversionId = conversionId
+              File = inputFile } }
+
+      let messageBody = JSON.serialize message
 
       queueClient.SendMessageAsync(messageBody) |> Task.ignore
