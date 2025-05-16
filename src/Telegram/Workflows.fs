@@ -35,7 +35,7 @@ module Workflows =
                 ReceivedMessageId = userMessageId
                 ConversionId = conversion.Id }
 
-          return! conversionRepo.QueuePreparation(conversion.Id, inputFile)
+          do! conversionRepo.QueuePreparation(conversion.Id, inputFile)
         }
 
   [<RequireQualifiedAccess>]
@@ -60,7 +60,7 @@ module Workflows =
       task {
         let! sentMessageId = replyToMessage (resp[Resources.LinkDownload, [| url |]])
 
-        return! queueUserConversion sentMessageId (Conversion.New.InputFile.Link { Url = url })
+        do! queueUserConversion sentMessageId (Conversion.New.InputFile.Link { Url = url })
       }
 
     links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.ignore
@@ -69,14 +69,14 @@ module Workflows =
     task {
       let! sentMessageId = replyToMessage (resp[Resources.DocumentDownload, [| fileName |]])
 
-      return! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
+      do! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
     }
 
   let private processVideo replyToMessage (resp: IResourceProvider) queueUserConversion fileId fileName =
     task {
       let! sentMessageId = replyToMessage (resp[Resources.VideoDownload, [| fileName |]])
 
-      return! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
+      do! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
     }
 
   let private processIncomingMessage parseCommand (resp: IResourceProvider) queueConversion replyToMessage =
@@ -109,8 +109,7 @@ module Workflows =
 
         let! translations = getLocaleTranslations user.Lang
 
-        return!
-          processIncomingMessage parseCommand translations (queueUserConversion userMessageId (Some userId) chatId) replyToMessage message
+        do! processIncomingMessage parseCommand translations (queueUserConversion userMessageId (Some userId) chatId) replyToMessage message
       }
 
   let private processMessageFromKnownUser getLocaleTranslations queueUserConversion parseCommand replyToMessage =
@@ -118,8 +117,7 @@ module Workflows =
       task {
         let! translations = getLocaleTranslations user.Lang
 
-        return!
-          processIncomingMessage parseCommand translations (queueUserConversion userMessageId (Some user.Id) chatId) replyToMessage message
+        do! processIncomingMessage parseCommand translations (queueUserConversion userMessageId (Some user.Id) chatId) replyToMessage message
       }
 
   let processPrivateMessage
@@ -197,16 +195,18 @@ module Workflows =
           let! resp = loadResources u.Lang
 
           do! replyToMessage (resp[Resources.UserBan]) |> Task.ignore
-        | Some u, Some g -> processMessageFromKnownUser u userMessageId chatId message
+        | Some u, Some g ->
+          do! processMessageFromKnownUser u userMessageId chatId message
         | Some u, None ->
           do! groupRepo.SaveGroup { Id = groupId; Banned = false }
 
-          return! processMessageFromKnownUser u userMessageId chatId message
-        | None, Some g -> processMessageFromNewUser userId chatId userMessageId message
+          do! processMessageFromKnownUser u userMessageId chatId message
+        | None, Some g ->
+          do! processMessageFromNewUser userId chatId userMessageId message
         | _ ->
           do! groupRepo.SaveGroup { Id = groupId; Banned = false }
 
-          return! processMessageFromNewUser userId chatId userMessageId message
+          do! processMessageFromNewUser userId chatId userMessageId message
       }
 
   let processChannelPost
@@ -240,7 +240,7 @@ module Workflows =
         | None ->
           do! channelRepo.SaveChannel { Id = channelId; Banned = false }
 
-          return! processIncomingMessage parseCommand resp queueConversion replyToMessage post
+          do! processIncomingMessage parseCommand resp queueConversion replyToMessage post
       }
 
 type FFMpegBot
