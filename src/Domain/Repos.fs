@@ -16,6 +16,9 @@ type ILoadConversion =
 type ISaveConversion =
   abstract SaveConversion: Conversion -> Task<unit>
 
+type IQueuePreparation =
+  abstract QueuePreparation: ConversionId * New.InputFile -> Task<unit>
+
 type IQueueConversion =
   abstract QueueConversion: Conversion.Prepared -> Task<unit>
 
@@ -40,6 +43,7 @@ type IConversionRepo =
   inherit IDownloadLink
   inherit IDownloadDocument
 
+  inherit IQueuePreparation
   inherit IQueueConversion
   inherit IQueueThumbnailing
 

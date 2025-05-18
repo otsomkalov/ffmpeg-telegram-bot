@@ -55,7 +55,3 @@ module Startup =
       .BuildSingleton<DatabaseSettings, IConfiguration>(fun cfg -> cfg.GetSection(DatabaseSettings.SectionName).Get<DatabaseSettings>())
 
     services.AddSingleton<IConversionRepo, ConversionRepo>()
-
-    services
-
-      .BuildSingleton<Conversion.New.QueuePreparation, WorkersSettings>(Conversion.New.queuePreparation)
