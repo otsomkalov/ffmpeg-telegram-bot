@@ -16,5 +16,6 @@ let addTelegram (cfg: IConfiguration) (services: IServiceCollection) =
   |> Startup.addResources cfg
 
   services
+    .AddSingleton<IFFMpegBot, FFMpegBot>()
     .BuildSingleton<Resources.LoadResources, _, _>(Resources.loadResources)
     .BuildSingleton<User.LoadResources, IUserRepo, _>(User.loadResources)

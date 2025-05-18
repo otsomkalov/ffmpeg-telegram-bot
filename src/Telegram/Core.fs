@@ -34,10 +34,7 @@ module Core =
       else
         failwith "GroupId cannot be greater than 0"
 
-
   type Group = { Id: GroupId; Banned: bool }
-
-  type UploadCompletedConversion = ConversionId -> Task<unit>
 
   type User =
     { Id: UserId
@@ -46,16 +43,10 @@ module Core =
 
   type Channel = { Id: ChannelId; Banned: bool }
 
-
   [<RequireQualifiedAccess>]
   type ConversionResult =
     | Success of name: string
     | Error of error: string
-
-  type DownloadFileAndQueueConversion = ConversionId -> Conversion.New.InputFile -> Task<unit>
-
-  type ProcessThumbnailingResult = ConversionId -> ConversionResult -> Task<unit>
-  type ProcessConversionResult = ConversionId -> ConversionResult -> Task<unit>
 
   type UserConversion =
     { ReceivedMessageId: ChatMessageId
@@ -89,9 +80,17 @@ module Core =
   module User =
     type LoadResources = UserId option -> Task<IResourceProvider>
 
+open Core
+
 type IExtendedBotService =
   abstract ReplyWithVideo: ChatMessageId * string * Conversion.Video * Conversion.Thumbnail -> Task<unit>
 
   inherit IBotService
+
+type IFFMpegBot =
+  abstract PrepareConversion: ConversionId * Conversion.New.InputFile -> Task<unit>
+  abstract SaveVideo: ConversionId * ConversionResult -> Task<unit>
+  abstract SaveThumbnail: ConversionId * ConversionResult -> Task<unit>
+  abstract UploadConversion: ConversionId -> Task<unit>
 
 type BuildExtendedBotService = ChatId -> IExtendedBotService
