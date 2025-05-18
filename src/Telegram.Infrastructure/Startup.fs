@@ -37,19 +37,15 @@ module Startup =
         TelegramBotClient(options, client) :> ITelegramBotClient)
 
     services
-      .BuildSingleton<IMongoCollection<Entities.User>, IMongoDatabase>(_.GetCollection("users"))
-      .BuildSingleton<IMongoCollection<Entities.Channel>, IMongoDatabase>(_.GetCollection("channels"))
-      .BuildSingleton<IMongoCollection<Entities.Group>, IMongoDatabase>(_.GetCollection("groups"))
+      .BuildSingleton<IMongoCollection<Entities.Chat>, IMongoDatabase>(_.GetCollection("chats"))
 
     services |> Startup.addMongoResources cfg |> Startup.addTelegramBot cfg
 
     services
 
-      .AddSingleton<IUserRepo, UserRepo>()
       .AddSingleton<IUserConversionRepo, UserConversionRepo>()
 
-      .AddSingleton<IChannelRepo, ChannelRepo>()
-      .AddSingleton<IGroupRepo, GroupRepo>()
+      .AddSingleton<IChatRepo, ChatRepo>()
 
       .BuildSingleton<BuildExtendedBotService, _, _>(buildExtendedBotService)
 

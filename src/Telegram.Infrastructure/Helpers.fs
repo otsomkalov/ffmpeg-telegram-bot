@@ -14,7 +14,6 @@ module Helpers =
   type Entities.Conversion with
     member this.ToUserConversion(): UserConversion =
       { ConversionId = (this.Id |> string |> ConversionId)
-        UserId = (this.UserId |> Option.ofNullable |> Option.map UserId)
         ReceivedMessageId = (this.ReceivedMessageId |> ChatMessageId)
         SentMessageId = BotMessageId this.SentMessageId
         ChatId = ChatId this.ChatId }
@@ -22,7 +21,6 @@ module Helpers =
     static member FromUserConversion(conversion: UserConversion) : Entities.Conversion =
       Entities.Conversion(
         Id = ObjectId(conversion.ConversionId.Value),
-        UserId = (conversion.UserId |> Option.map _.Value |> Option.toNullable),
         ReceivedMessageId = conversion.ReceivedMessageId.Value,
         SentMessageId = conversion.SentMessageId.Value,
         ChatId = conversion.ChatId.Value

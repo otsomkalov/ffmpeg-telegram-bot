@@ -20,7 +20,6 @@ open Telegram.Workflows
 open Domain.Core
 open Telegram.Repos
 open otsom.fs.Resources
-open otsom.fs.Bot
 
 type ConverterResultMessage =
   { Id: string; Result: ConversionResult }
@@ -30,15 +29,13 @@ type Functions
     parseCommand: ParseCommand,
     createConversion: Conversion.Create,
     telemetryClient: TelemetryClient,
-    userRepo: IUserRepo,
-    channelRepo: IChannelRepo,
-    groupRepo: IGroupRepo,
     userConversionRepo: IUserConversionRepo,
     conversionRepo: IConversionRepo,
-    loadResources: Resources.LoadResources,
-    createDefaultResourceProvider: CreateDefaultResourceProvider,
     buildBotService: BuildExtendedBotService,
-    ffMpegBot: IFFMpegBot
+    ffMpegBot: IFFMpegBot,
+    chatRepo: IChatRepo,
+    chatSvc: IChatSvc,
+    createResourceProvider: CreateResourceProvider
   ) =
 
   [<Function("HandleUpdate")>]
@@ -51,13 +48,13 @@ type Functions
       UserConversion.queueProcessing createConversion userConversionRepo conversionRepo
 
     let processPrivateMessage =
-      processPrivateMessage loadResources userRepo queueUserConversion parseCommand logger buildBotService
+      processPrivateMessage chatRepo chatSvc queueUserConversion parseCommand logger createResourceProvider buildBotService
 
     let processGroupMessage =
-      processGroupMessage loadResources userRepo groupRepo queueUserConversion parseCommand logger buildBotService
+      processGroupMessage chatRepo chatSvc queueUserConversion parseCommand logger createResourceProvider buildBotService
 
     let processChannelPost =
-      processChannelPost createDefaultResourceProvider channelRepo queueUserConversion parseCommand logger buildBotService
+      processChannelPost chatRepo chatSvc queueUserConversion parseCommand logger createResourceProvider buildBotService
 
     task {
       try
