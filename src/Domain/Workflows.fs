@@ -6,21 +6,17 @@ open Domain.Core.Conversion
 open Microsoft.FSharp.Core
 open otsom.fs.Extensions
 
-module Workflows =
-  [<RequireQualifiedAccess>]
-  module Conversion =
-    let create (repo: #ISaveConversion & #IGenerateConversionId) : Create =
-      fun () ->
-        task {
-          let newConversion: Conversion.New = { Id = repo.GenerateConversionId() }
-
-          do! repo.SaveConversion(Conversion.New newConversion)
-
-          return newConversion
-        }
-
 type ConversionService(repo: IConversionRepo) =
   interface IConversionService with
+    member this.InitConversion() =
+      let newConversion: Conversion.New = { Id = repo.GenerateConversionId() }
+
+      task {
+        do! repo.SaveConversion(Conversion.New newConversion)
+
+        return newConversion
+      }
+
     member this.CleanupConversion(conversion) =
       task {
         do! repo.DeleteVideo conversion.OutputFile

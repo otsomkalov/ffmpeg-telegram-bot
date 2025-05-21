@@ -4,7 +4,6 @@ open System
 open Domain
 open Domain.Core
 open Domain.Core.Conversion
-open Domain.Workflows
 open Moq
 open Xunit
 open FsUnit.Xunit
@@ -20,10 +19,10 @@ let ``New Conversion is created and saved`` () =
   repo.Setup(_.SaveConversion(New expected)).ReturnsAsync(())
   repo.Setup(_.GenerateConversionId()).Returns(conversionId)
 
-  let sut = Conversion.create repo.Object
+  let sut: IConversionService = ConversionService(repo.Object)
 
   task {
-    let! result = sut ()
+    let! result = sut.InitConversion()
 
     result |> should equal expected
 

@@ -12,8 +12,6 @@ module Core =
   module Conversion =
     type New = { Id: ConversionId }
 
-    type Create = unit -> Task<New>
-
     type Prepared = { Id: ConversionId; InputFile: string }
 
     type Video =
@@ -70,6 +68,9 @@ module Core =
 open Core
 open Core.Conversion
 
+type IInitConversion =
+  abstract InitConversion: unit -> Task<Conversion.New>
+
 type IPrepareConversion =
   abstract PrepareConversion: ConversionId * New.InputFile -> Task<Result<Prepared, New.DownloadLinkError>>
 
@@ -87,6 +88,7 @@ type ICleanupConversion =
   abstract CleanupConversion: Completed -> Task<unit>
 
 type IConversionService =
+  inherit IInitConversion
   inherit IPrepareConversion
 
   inherit ISaveVideo

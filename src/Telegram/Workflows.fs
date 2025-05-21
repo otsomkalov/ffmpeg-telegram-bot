@@ -20,13 +20,13 @@ module Workflows =
   [<RequireQualifiedAccess>]
   module UserConversion =
     let queueProcessing
-      (createConversion: Create)
+      (conversionSvc: #IInitConversion)
       (repo: #ISaveUserConversion)
       (conversionRepo: #IQueuePreparation)
       : UserConversion.QueueProcessing =
       fun userMessageId chatId sentMessageId inputFile ->
         task {
-          let! conversion = createConversion ()
+          let! conversion = conversionSvc.InitConversion()
 
           do!
             repo.SaveUserConversion

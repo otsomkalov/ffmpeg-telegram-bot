@@ -3,9 +3,7 @@
 open System.Diagnostics
 open System.Threading.Tasks
 open Domain
-open Domain.Workflows
 open FSharp
-open Infrastructure.Core
 open Infrastructure.Queue
 open Microsoft.ApplicationInsights
 open Microsoft.ApplicationInsights.DataContracts
@@ -27,7 +25,6 @@ type ConverterResultMessage =
 type Functions
   (
     parseCommand: ParseCommand,
-    createConversion: Conversion.Create,
     telemetryClient: TelemetryClient,
     userConversionRepo: IUserConversionRepo,
     conversionRepo: IConversionRepo,
@@ -35,6 +32,7 @@ type Functions
     ffMpegBot: IFFMpegBot,
     chatRepo: IChatRepo,
     chatSvc: IChatSvc,
+    conversionSvc: IConversionService,
     createResourceProvider: CreateResourceProvider
   ) =
 
@@ -45,7 +43,7 @@ type Functions
     let logger = nameof this.HandleUpdate |> ctx.GetLogger
 
     let queueUserConversion =
-      UserConversion.queueProcessing createConversion userConversionRepo conversionRepo
+      UserConversion.queueProcessing conversionSvc userConversionRepo conversionRepo
 
     let processPrivateMessage =
       processPrivateMessage chatRepo chatSvc queueUserConversion parseCommand logger createResourceProvider buildBotService

@@ -5,8 +5,6 @@ namespace Infrastructure
 open System
 open System.Net.Http
 open Domain
-open Domain.Core
-open Domain.Workflows
 open Infrastructure.Settings
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
@@ -15,7 +13,6 @@ open Microsoft.Extensions.Options
 open MongoDB.Driver
 open Polly.Extensions.Http
 open otsom.fs.Extensions.DependencyInjection
-open Queue
 open Polly
 
 module Startup =
