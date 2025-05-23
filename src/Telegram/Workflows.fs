@@ -22,8 +22,7 @@ module Workflows =
     let queueProcessing
       (conversionSvc: #IInitConversion)
       (repo: #ISaveUserConversion)
-      (conversionRepo: #IQueuePreparation)
-      : UserConversion.QueueProcessing =
+      (conversionRepo: #IQueuePreparation) =
       fun userMessageId chatId sentMessageId inputFile ->
         task {
           let! conversion = conversionSvc.InitConversion()
@@ -112,8 +111,10 @@ module Workflows =
   let processPrivateMessage
     (chatRepo: IChatRepo)
     (chatSvc: IChatSvc)
-    (queueUserConversion: UserConversion.QueueProcessing)
     (parseCommand: ParseCommand)
+    (conversionSvc: IConversionService)
+    (userConversionRepo: IUserConversionRepo)
+    (conversionRepo: IConversionRepo)
     (logger: ILogger)
     (createResourceProvider: CreateResourceProvider)
     (buildBotService: BuildExtendedBotService)
@@ -123,6 +124,7 @@ module Workflows =
       let botService = buildBotService chatId
       let userMessageId = message.MessageId |> ChatMessageId
       let replyToMessage = Func.wrap2 botService.ReplyToMessage userMessageId
+      let queueUserConversion = (UserConversion.queueProcessing conversionSvc userConversionRepo conversionRepo)
 
       let processMessageFromKnownUser =
         processMessageFromKnownUser createResourceProvider queueUserConversion parseCommand replyToMessage
@@ -149,7 +151,9 @@ module Workflows =
   let processGroupMessage
     (chatRepo: #ILoadChat)
     (chatSvc: #ICreateChat)
-    (queueUserConversion: UserConversion.QueueProcessing)
+    (conversionSvc: IConversionService)
+    (userConversionRepo: IUserConversionRepo)
+    (conversionRepo: IConversionRepo)
     (parseCommand: ParseCommand)
     (logger: ILogger)
     (createResourceProvider: CreateResourceProvider)
@@ -162,6 +166,7 @@ module Workflows =
 
       let botService = buildBotService groupId
       let replyToMessage = Func.wrap2 botService.ReplyToMessage userMessageId
+      let queueUserConversion = (UserConversion.queueProcessing conversionSvc userConversionRepo conversionRepo)
 
       let processMessageFromKnownUser =
         processMessageFromKnownUser createResourceProvider queueUserConversion parseCommand replyToMessage
@@ -200,7 +205,9 @@ module Workflows =
   let processChannelPost
     (chatRepo: IChatRepo)
     (chatSvc: IChatSvc)
-    (queueUserConversion: UserConversion.QueueProcessing)
+    (conversionSvc: IConversionService)
+    (userConversionRepo: IUserConversionRepo)
+    (conversionRepo: IConversionRepo)
     (parseCommand: ParseCommand)
     (logger: ILogger)
     (createResourceProvider: CreateResourceProvider)
@@ -209,7 +216,7 @@ module Workflows =
     fun post ->
       let chatId = post.Chat.Id |> ChatId
       let postId = (post.MessageId |> ChatMessageId)
-      let queueConversion = (queueUserConversion postId chatId)
+      let queueConversion = (UserConversion.queueProcessing conversionSvc userConversionRepo conversionRepo postId chatId)
 
       let botService = buildBotService (post.Chat.Id |> ChatId)
       let replyToMessage = Func.wrap2 botService.ReplyToMessage postId

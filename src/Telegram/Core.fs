@@ -34,10 +34,6 @@ module Core =
       ConversionId: ConversionId
       ChatId: ChatId }
 
-  [<RequireQualifiedAccess>]
-  module UserConversion =
-    type QueueProcessing = ChatMessageId -> ChatId -> BotMessageId -> Conversion.New.InputFile -> Task<unit>
-
   type ProcessPrivateMessage = Message -> Task<unit>
   type ProcessGroupMessage = Message -> Task<unit>
   type ProcessChannelPost = Message -> Task<unit>

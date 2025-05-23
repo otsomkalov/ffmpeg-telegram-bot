@@ -42,17 +42,14 @@ type Functions
     : Task<unit> =
     let logger = nameof this.HandleUpdate |> ctx.GetLogger
 
-    let queueUserConversion =
-      UserConversion.queueProcessing conversionSvc userConversionRepo conversionRepo
-
     let processPrivateMessage =
-      processPrivateMessage chatRepo chatSvc queueUserConversion parseCommand logger createResourceProvider buildBotService
+      processPrivateMessage chatRepo chatSvc parseCommand conversionSvc userConversionRepo conversionRepo logger createResourceProvider buildBotService
 
     let processGroupMessage =
-      processGroupMessage chatRepo chatSvc queueUserConversion parseCommand logger createResourceProvider buildBotService
+      processGroupMessage chatRepo chatSvc conversionSvc userConversionRepo conversionRepo parseCommand logger createResourceProvider buildBotService
 
     let processChannelPost =
-      processChannelPost chatRepo chatSvc queueUserConversion parseCommand logger createResourceProvider buildBotService
+      processChannelPost chatRepo chatSvc conversionSvc userConversionRepo conversionRepo parseCommand logger createResourceProvider buildBotService
 
     task {
       try
