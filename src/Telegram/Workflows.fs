@@ -35,7 +35,7 @@ module Workflows =
                 ReceivedMessageId = userMessageId
                 ConversionId = conversion.Id }
 
-          return! conversionRepo.QueuePreparation(conversion.Id, inputFile)
+          do! conversionRepo.QueuePreparation(conversion.Id, inputFile)
         }
 
   [<RequireQualifiedAccess>]
@@ -53,7 +53,6 @@ module Workflows =
     let loadResources (repo: #ILoadUser) (loadResources: Resources.LoadResources) : User.LoadResources =
       function
       | Some id -> repo.LoadUser id |> Task.bind (Option.bind _.Lang >> loadResources)
-
       | None -> loadResources None
 
   let private processLinks replyToMessage (resp: IResourceProvider) queueUserConversion links =
@@ -61,7 +60,7 @@ module Workflows =
       task {
         let! sentMessageId = replyToMessage (resp[Resources.LinkDownload, [| url |]])
 
-        return! queueUserConversion sentMessageId (Conversion.New.InputFile.Link { Url = url })
+        do! queueUserConversion sentMessageId (Conversion.New.InputFile.Link { Url = url })
       }
 
     links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.ignore
@@ -70,14 +69,14 @@ module Workflows =
     task {
       let! sentMessageId = replyToMessage (resp[Resources.DocumentDownload, [| fileName |]])
 
-      return! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
+      do! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
     }
 
   let private processVideo replyToMessage (resp: IResourceProvider) queueUserConversion fileId fileName =
     task {
       let! sentMessageId = replyToMessage (resp[Resources.VideoDownload, [| fileName |]])
 
-      return! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
+      do! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
     }
 
   let private processIncomingMessage parseCommand (resp: IResourceProvider) queueConversion replyToMessage =
@@ -85,13 +84,17 @@ module Workflows =
       task {
         let! command = parseCommand message
 
-        return!
-          match command with
-          | Some(Command.Start) -> replyToMessage (resp[Resources.Welcome]) |> Task.ignore
-          | Some(Command.Links links) -> processLinks replyToMessage resp queueConversion links
-          | Some(Command.Document(fileId, fileName)) -> processDocument replyToMessage resp queueConversion fileId fileName
-          | Some(Command.Video(fileId, fileName)) -> processVideo replyToMessage resp queueConversion fileId fileName
-          | None -> Task.FromResult()
+        match command with
+        | Some(Command.Start) ->
+          do! replyToMessage (resp[Resources.Welcome]) |> Task.ignore
+        | Some(Command.Links links) ->
+          do! processLinks replyToMessage resp queueConversion links
+        | Some(Command.Document(fileId, fileName)) ->
+          do! processDocument replyToMessage resp queueConversion fileId fileName
+        | Some(Command.Video(fileId, fileName)) ->
+          do! processVideo replyToMessage resp queueConversion fileId fileName
+        | None ->
+          return ()
       }
 
   let private processMessageFromNewUser (repo: #ISaveUser) getLocaleTranslations queueUserConversion parseCommand replyToMessage =
@@ -106,8 +109,7 @@ module Workflows =
 
         let! translations = getLocaleTranslations user.Lang
 
-        return!
-          processIncomingMessage parseCommand translations (queueUserConversion userMessageId (Some userId) chatId) replyToMessage message
+        do! processIncomingMessage parseCommand translations (queueUserConversion userMessageId (Some userId) chatId) replyToMessage message
       }
 
   let private processMessageFromKnownUser getLocaleTranslations queueUserConversion parseCommand replyToMessage =
@@ -115,8 +117,7 @@ module Workflows =
       task {
         let! translations = getLocaleTranslations user.Lang
 
-        return!
-          processIncomingMessage parseCommand translations (queueUserConversion userMessageId (Some user.Id) chatId) replyToMessage message
+        do! processIncomingMessage parseCommand translations (queueUserConversion userMessageId (Some user.Id) chatId) replyToMessage message
       }
 
   let processPrivateMessage
@@ -145,16 +146,15 @@ module Workflows =
       task {
         let! user = userRepo.LoadUser userId
 
-        return!
-          match user with
-          | Some u when u.Banned ->
-            task {
-              let! resp = loadResources u.Lang
+        match user with
+        | Some u when u.Banned ->
+            let! resp = loadResources u.Lang
 
-              do! replyToMessage (resp[Resources.UserBan]) |> Task.ignore
-            }
-          | Some u -> processMessageFromKnownUser u userMessageId chatId message
-          | None -> processMessageFromNewUser userId chatId userMessageId message
+            do! replyToMessage (resp[Resources.UserBan]) |> Task.ignore
+        | Some u ->
+          do! processMessageFromKnownUser u userMessageId chatId message
+        | None ->
+          do! processMessageFromNewUser userId chatId userMessageId message
       }
 
   let processGroupMessage
@@ -187,33 +187,26 @@ module Workflows =
         let! user = userRepo.LoadUser userId
         let! group = groupRepo.LoadGroup groupId
 
-        return!
-          match user, group with
-          | _, Some g when g.Banned ->
-            task {
-              let! resp = loadResources None
-              do! replyToMessage (resp[Resources.GroupBan]) |> Task.ignore
-            }
-          | Some u, _ when u.Banned ->
-            task {
-              let! resp = loadResources u.Lang
+        match user, group with
+        | _, Some g when g.Banned ->
+          let! resp = loadResources None
+          do! replyToMessage (resp[Resources.GroupBan]) |> Task.ignore
+        | Some u, _ when u.Banned ->
+          let! resp = loadResources u.Lang
 
-              do! replyToMessage (resp[Resources.UserBan]) |> Task.ignore
-            }
-          | Some u, Some g -> processMessageFromKnownUser u userMessageId chatId message
-          | Some u, None ->
-            task {
-              do! groupRepo.SaveGroup { Id = groupId; Banned = false }
+          do! replyToMessage (resp[Resources.UserBan]) |> Task.ignore
+        | Some u, Some g ->
+          do! processMessageFromKnownUser u userMessageId chatId message
+        | Some u, None ->
+          do! groupRepo.SaveGroup { Id = groupId; Banned = false }
 
-              return! processMessageFromKnownUser u userMessageId chatId message
-            }
-          | None, Some g -> processMessageFromNewUser userId chatId userMessageId message
-          | _ ->
-            task {
-              do! groupRepo.SaveGroup { Id = groupId; Banned = false }
+          do! processMessageFromKnownUser u userMessageId chatId message
+        | None, Some g ->
+          do! processMessageFromNewUser userId chatId userMessageId message
+        | _ ->
+          do! groupRepo.SaveGroup { Id = groupId; Banned = false }
 
-              return! processMessageFromNewUser userId chatId userMessageId message
-            }
+          do! processMessageFromNewUser userId chatId userMessageId message
       }
 
   let processChannelPost
@@ -239,25 +232,28 @@ module Workflows =
         let! resp = createDefaultResourceProvider ()
         let! channel = channelRepo.LoadChannel channelId
 
-        return!
-          match channel with
-          | Some c when c.Banned -> replyToMessage (resp[Resources.ChannelBan]) |> Task.ignore
-          | Some _ -> processIncomingMessage parseCommand resp queueConversion replyToMessage post
-          | None ->
-            task {
-              do! channelRepo.SaveChannel { Id = channelId; Banned = false }
+        match channel with
+        | Some c when c.Banned ->
+          do! replyToMessage (resp[Resources.ChannelBan]) |> Task.ignore
+        | Some _ ->
+          do! processIncomingMessage parseCommand resp queueConversion replyToMessage post
+        | None ->
+          do! channelRepo.SaveChannel { Id = channelId; Banned = false }
 
-              return! processIncomingMessage parseCommand resp queueConversion replyToMessage post
-            }
+          do! processIncomingMessage parseCommand resp queueConversion replyToMessage post
       }
 
-  let downloadFileAndQueueConversion
-    (userConversionRepo: #ILoadUserConversion)
-    (loadTranslations: User.LoadResources)
-    (conversion: #IPrepareConversion)
-    (buildBotService: BuildExtendedBotService)
-    : DownloadFileAndQueueConversion =
-    fun conversionId file ->
+type FFMpegBot
+  (
+    userConversionRepo: IUserConversionRepo,
+    conversionRepo: IConversionRepo,
+    conversionService: IConversionService,
+    loadTranslations: User.LoadResources,
+    buildBotService: BuildExtendedBotService,
+    logger: ILogger<FFMpegBot>
+  ) =
+  interface IFFMpegBot with
+    member this.PrepareConversion(conversionId, file) =
       task {
         let! userConversion = userConversionRepo.LoadUserConversion conversionId
 
@@ -266,22 +262,14 @@ module Workflows =
         let botService = buildBotService userConversion.ChatId
         let editMessage = Func.wrap2 botService.EditMessage userConversion.SentMessageId
 
-        match! conversion.PrepareConversion(conversionId, file) with
+        match! conversionService.PrepareConversion(conversionId, file) with
         | Ok _ -> do! editMessage resp[Resources.ConversionInProgress]
         | Error New.DownloadLinkError.Unauthorized -> do! editMessage resp[Resources.NotAuthorized]
         | Error New.DownloadLinkError.NotFound -> do! editMessage resp[Resources.NotFound]
         | Error New.DownloadLinkError.ServerError -> do! editMessage resp[Resources.ServerError]
       }
 
-  let processConversionResult
-    (userConversionRepo: #ILoadUserConversion)
-    (conversionRepo: #ILoadConversion & #IQueueUpload)
-    (loadTranslations: User.LoadResources)
-    (conversionService: #ISaveVideo & #ICompleteConversion)
-    (buildBotService: BuildExtendedBotService)
-    : ProcessConversionResult =
-
-    fun conversionId result ->
+    member this.SaveVideo(conversionId, result) =
       task {
         let! userConversion = userConversionRepo.LoadUserConversion conversionId
 
@@ -304,18 +292,14 @@ module Workflows =
             let! completed = conversionService.CompleteConversion(thumbnailedConversion, video)
             do! conversionRepo.QueueUpload completed
             do! editMessage resp[Resources.Uploading]
+          | _ ->
+            logger.LogError("Conversion {ConversionId} is not thumbnailed to be completed!", conversionId.Value)
+
+            do! editMessage resp[Resources.ConversionError]
         | ConversionResult.Error _ -> do! editMessage resp[Resources.ConversionError]
       }
 
-  let processThumbnailingResult
-    (userConversionRepo: #ILoadUserConversion)
-    (conversionRepo: #ILoadConversion & #IQueueUpload)
-    (loadTranslations: User.LoadResources)
-    (conversionService: #ISaveThumbnail & #ICompleteConversion)
-    (buildBotService: BuildExtendedBotService)
-    : ProcessThumbnailingResult =
-
-    fun conversionId result ->
+    member this.SaveThumbnail(conversionId, result) =
       task {
         let! userConversion = userConversionRepo.LoadUserConversion conversionId
 
@@ -338,27 +322,24 @@ module Workflows =
             let! completed = conversionService.CompleteConversion(convertedConversion, video)
             do! conversionRepo.QueueUpload completed
             do! editMessage resp[Resources.Uploading]
+          | _ ->
+            logger.LogError("Conversion {ConversionId} is not converted to be completed!", conversionId.Value)
+
+            do! editMessage resp[Resources.ConversionError]
         | ConversionResult.Error _ -> do! editMessage resp[Resources.ThumbnailingError]
       }
 
-  let uploadCompletedConversion
-    (userConversionRepo: #ILoadUserConversion)
-    (conversionRepo: #ILoadConversion)
-    (loadTranslations: User.LoadResources)
-    (conversionService: #ICleanupConversion)
-    (buildBotService: BuildExtendedBotService)
-    : UploadCompletedConversion =
-    fun id ->
+    member this.UploadConversion(id) =
       task {
         let! userConversion = userConversionRepo.LoadUserConversion id
 
         let botService = buildBotService userConversion.ChatId
 
         let! conversion = conversionRepo.LoadConversion id
+        let! resp = userConversion.UserId |> loadTranslations
 
         match conversion with
         | Completed conversion ->
-          let! resp = userConversion.UserId |> loadTranslations
 
           do!
             botService.ReplyWithVideo(
@@ -370,4 +351,8 @@ module Workflows =
 
           do! conversionService.CleanupConversion conversion
           do! botService.DeleteBotMessage userConversion.SentMessageId
+        | _ ->
+          logger.LogError("Conversion {ConversionId} is not completed to be uploaded!", id.Value)
+
+          do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ConversionError])
       }
