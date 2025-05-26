@@ -31,11 +31,10 @@ type Functions
     telemetryClient: TelemetryClient,
     userConversionRepo: IUserConversionRepo,
     conversionRepo: IConversionRepo,
+    loadResources: Resources.LoadResources,
+    createDefaultResourceProvider: CreateDefaultResourceProvider,
     buildBotService: BuildExtendedBotService,
-    ffMpegBot: IFFMpegBot,
-    chatRepo: IChatRepo,
-    chatSvc: IChatSvc,
-    createResourceProvider: CreateResourceProvider
+    ffMpegBot: IFFMpegBot
   ) =
 
   [<Function("HandleUpdate")>]

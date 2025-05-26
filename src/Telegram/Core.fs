@@ -53,6 +53,8 @@ module Core =
 
 open Core
 
+open Core
+
 type IExtendedBotService =
   abstract ReplyWithVideo: ChatMessageId * string * Conversion.Video * Conversion.Thumbnail -> Task<unit>
 
