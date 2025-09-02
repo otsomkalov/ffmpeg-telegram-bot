@@ -76,10 +76,10 @@ stages:
                 - download: current
                   artifact: drop
 
-                - ${{ each function in split(parameters.functions, ';') }}:
+                - ${{ each function in split(variables.functions, ';') }}:
                   - task: AzureFunctionApp@2
                     inputs:
                       azureSubscription: '$(subscription)'
                       appType: 'functionAppLinux'
-                      appName: ${{ function }}
+                      appName: '${{ function }}'
                       package: '$(Pipeline.Workspace)/**/*.zip'
