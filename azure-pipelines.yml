@@ -77,6 +77,7 @@ stages:
                   artifact: drop
 
                 - ${{ each function in split(variables.functions, ';') }}:
+                  - script: echo "Deploying ${{ function }}"
                   - task: AzureFunctionApp@2
                     inputs:
                       azureSubscription: '$(subscription)'
