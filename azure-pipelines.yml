@@ -76,7 +76,7 @@ stages:
                 - download: current
                   artifact: drop
 
-                - ${{ each function in split(variables.functions, ';') }}:
+                - ${{ each function in split(functions, ';') }}:
                   - task: AzureFunctionApp@2
                     inputs:
                       azureSubscription: '$(subscription)'
