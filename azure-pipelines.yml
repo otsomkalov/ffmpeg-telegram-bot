@@ -63,7 +63,6 @@ stages:
   - stage: deploy_dev
     displayName: 'Deploy DEV'
     trigger: manual
-    condition: succeeded('build')
     variables:
       - group: dev
     jobs:
