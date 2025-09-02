@@ -63,6 +63,7 @@ stages:
   - stage: deploy_dev
     displayName: 'Deploy DEV'
     trigger: manual
+    condition: succeeded('build')
     variables:
       - group: dev
     jobs:
@@ -76,9 +77,10 @@ stages:
                 - download: current
                   artifact: drop
 
-                - task: AzureFunctionApp@2
-                  inputs:
-                    azureSubscription: '$(subscription)'
-                    appType: 'functionAppLinux'
-                    appName: '$(functions-name)'
-                    package: '$(Pipeline.Workspace)/**/*.zip'
+                - ${{ each function in split(variables.functions, ';') }}:
+                  - task: AzureFunctionApp@2
+                    inputs:
+                      azureSubscription: '$(subscription)'
+                      appType: 'functionAppLinux'
+                      appName: ${{ function }}
+                      package: '$(Pipeline.Workspace)/**/*.zip'
