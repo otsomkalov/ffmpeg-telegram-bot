@@ -76,6 +76,8 @@ stages:
                 - download: current
                   artifact: drop
 
+                - script: echo 'Deploying $(functions)'
+
                 - ${{ each function in split(variables.functions, ';') }}:
                   - script: echo "Deploying ${{ function }}"
                   - task: AzureFunctionApp@2
