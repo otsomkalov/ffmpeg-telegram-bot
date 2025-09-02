@@ -16,7 +16,7 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.8" />
     <PackageReference Include="otsom.fs.Extensions" Version="0.0.44"/>
     <PackageReference Include="shortid" Version="4.0.0"/>
-    <PackageReference Include="otsom.fs.Extensions.DependencyInjection" Version="0.0.5"/>
+    <PackageReference Include="otsom.fs.Extensions.DependencyInjection" Version="0.0.14"/>
   </ItemGroup>
 
 </Project>
