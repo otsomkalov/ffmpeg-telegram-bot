@@ -5,3 +5,5 @@ updates:
     directory: "/src"
     schedule:
       interval: "monthly"
+    ignore:
+      - dependency-name: "FSharp.Core"
