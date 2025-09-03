@@ -13,6 +13,10 @@ parameters:
   - name: functions
     displayName: 'Functions'
     type: stringList
+    values:
+      - func-mp4towebm-tg-bot
+      - func-removesound-tg-bot
+      - func-webmtomp4-tg-bot
     default:
       - func-mp4towebm-tg-bot
       - func-removesound-tg-bot
