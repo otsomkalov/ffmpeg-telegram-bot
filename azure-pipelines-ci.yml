@@ -11,9 +11,6 @@ pr:
 pool:
   vmImage: 'ubuntu-latest'
 
-variables:
-  Runtime: 'linux-x64'
-
 stages:
   - stage: build
     displayName: 'Build'
@@ -60,29 +57,3 @@ stages:
             inputs:
               PathtoPublish: '$(Build.ArtifactStagingDirectory)'
               ArtifactName: 'drop'
-  - stage: deploy_dev
-    displayName: 'Deploy DEV'
-    trigger: manual
-    variables:
-      - group: dev
-    jobs:
-      - deployment: deploy_dev
-        displayName: Deploy DEV
-        environment: 'dev'
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - download: current
-                  artifact: drop
-
-                - script: echo 'Deploying $(functions)'
-
-                - ${{ each function in split(variables.functions, ';') }}:
-                  - script: echo "Deploying ${{ function }}"
-                  - task: AzureFunctionApp@2
-                    inputs:
-                      azureSubscription: '$(subscription)'
-                      appType: 'functionAppLinux'
-                      appName: '${{ function }}'
-                      package: '$(Pipeline.Workspace)/**/*.zip'

@@ -1,0 +1,43 @@
+trigger: none
+
+resources:
+  pipelines:
+    - pipeline: build
+      source: 'Build'
+      trigger: trigger
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+parameters:
+  - name: functions
+    displayName: 'Functions'
+    type: stringList
+    default:
+      - func-mp4towebm-tg-bot
+      - func-removesound-tg-bot
+      - func-webmtomp4-tg-bot
+
+stages:
+  - stage: deploy_dev
+    displayName: 'Deploy DEV'
+    trigger: manual
+    jobs:
+      - deployment: deploy_dev
+        displayName: Deploy DEV
+        environment: 'dev'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: build
+                  artifact: drop
+
+                - ${{ each function in parameters.functions }}:
+                    - script: echo "Deploying ${{ function }}"
+                    - task: AzureFunctionApp@2
+                      inputs:
+                        azureSubscription: '$(subscription)'
+                        appType: 'functionAppLinux'
+                        appName: '${{ function }}-dev'
+                        package: '$(Pipeline.Workspace)/**/*.zip'
