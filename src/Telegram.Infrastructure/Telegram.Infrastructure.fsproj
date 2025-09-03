@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <PackageReference Include="FSharp.Logf" Version="1.2.2"/>
-    <PackageReference Include="otsom.fs.Resources.Mongo" Version="0.0.14"/>
+    <PackageReference Include="otsom.fs.Resources.Mongo" Version="0.0.24"/>
     <PackageReference Include="otsom.fs.Bot.Telegram" Version="0.0.37"/>
   </ItemGroup>
 
