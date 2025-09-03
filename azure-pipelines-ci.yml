@@ -8,6 +8,9 @@ pr:
     include:
       - main
 
+variables:
+  Runtime: 'linux-x64'
+
 pool:
   vmImage: 'ubuntu-latest'
 
