@@ -25,7 +25,6 @@ parameters:
 stages:
   - stage: deploy_dev
     displayName: 'Deploy DEV'
-    trigger: manual
     jobs:
       - deployment: deploy_dev
         displayName: Deploy DEV
