@@ -37,10 +37,32 @@ stages:
                   artifact: drop
 
                 - ${{ each function in parameters.functions }}:
-                    - script: echo "Deploying ${{ function }}"
                     - task: AzureFunctionApp@2
+                      displayName: 'Deploy ${{ function }}'
                       inputs:
                         azureSubscription: '$(subscription)'
                         appType: 'functionAppLinux'
                         appName: '${{ function }}-dev'
+                        package: '$(Pipeline.Workspace)/**/*.zip'
+  - stage: deploy_prd
+    displayName: 'Deploy PRD'
+    trigger: manual
+    jobs:
+      - deployment: deploy_prd
+        displayName: Deploy PRD
+        environment: 'prd'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: build
+                  artifact: drop
+
+                - ${{ each function in parameters.functions }}:
+                    - task: AzureFunctionApp@2
+                      displayName: 'Deploy ${{ function }}'
+                      inputs:
+                        azureSubscription: '$(subscription)'
+                        appType: 'functionAppLinux'
+                        appName: '${{ function }}-prd'
                         package: '$(Pipeline.Workspace)/**/*.zip'
