@@ -4,7 +4,7 @@ resources:
   pipelines:
     - pipeline: build
       source: 'Build'
-      trigger: trigger
+      trigger: true
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -25,6 +25,7 @@ parameters:
 stages:
   - stage: deploy_dev
     displayName: 'Deploy DEV'
+    trigger: manual
     jobs:
       - deployment: deploy_dev
         displayName: Deploy DEV
