@@ -5,8 +5,6 @@ namespace Infrastructure
 open System
 open System.Net.Http
 open Domain
-open Domain.Core
-open Domain.Workflows
 open Infrastructure.Settings
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
@@ -15,13 +13,12 @@ open Microsoft.Extensions.Options
 open MongoDB.Driver
 open Polly.Extensions.Http
 open otsom.fs.Extensions.DependencyInjection
-open Queue
 open Polly
 
 module Startup =
   [<Literal>]
-  let private chromeUserAgent =
-    "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36"
+  let private customUserAgent =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0"
 
   let private retryPolicy =
     HttpPolicyExtensions
@@ -39,7 +36,7 @@ module Startup =
 
   let addInfra (cfg: IConfiguration) (services: IServiceCollection) =
     services
-      .AddHttpClient(fun (client: HttpClient) -> client.DefaultRequestHeaders.UserAgent.ParseAdd(chromeUserAgent))
+      .AddHttpClient(fun (client: HttpClient) -> client.DefaultRequestHeaders.UserAgent.ParseAdd(customUserAgent))
       .AddPolicyHandler(retryPolicy)
 
     services

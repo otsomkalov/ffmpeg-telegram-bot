@@ -1,0 +1,69 @@
+trigger: none
+pr: none
+
+resources:
+  pipelines:
+    - pipeline: build
+      source: 'Build'
+      trigger: true
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+parameters:
+  - name: functions
+    displayName: 'Functions'
+    type: stringList
+    values:
+      - func-mp4towebm-tg-bot
+      - func-removesound-tg-bot
+      - func-webmtomp4-tg-bot
+    default:
+      - func-mp4towebm-tg-bot
+      - func-removesound-tg-bot
+      - func-webmtomp4-tg-bot
+
+stages:
+  - stage: deploy_dev
+    displayName: 'Deploy DEV'
+    jobs:
+      - deployment: deploy_dev
+        displayName: Deploy DEV
+        environment: 'dev'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: build
+                  artifact: drop
+
+                - ${{ each function in parameters.functions }}:
+                    - task: AzureFunctionApp@2
+                      displayName: 'Deploy ${{ function }}'
+                      inputs:
+                        azureSubscription: '$(subscription)'
+                        appType: 'functionAppLinux'
+                        appName: '${{ function }}-dev'
+                        package: '$(Pipeline.Workspace)/**/*.zip'
+  - stage: deploy_prd
+    displayName: 'Deploy PRD'
+    trigger: manual
+    jobs:
+      - deployment: deploy_prd
+        displayName: Deploy PRD
+        environment: 'prd'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: build
+                  artifact: drop
+
+                - ${{ each function in parameters.functions }}:
+                    - task: AzureFunctionApp@2
+                      displayName: 'Deploy ${{ function }}'
+                      inputs:
+                        azureSubscription: '$(subscription)'
+                        appType: 'functionAppLinux'
+                        appName: '${{ function }}-prd'
+                        package: '$(Pipeline.Workspace)/**/*.zip'

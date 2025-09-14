@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Helpers.fs" />
+    <Compile Include="Helpers.fs"/>
     <Compile Include="Core.fs"/>
     <Compile Include="Resources.fs"/>
     <Compile Include="Repos.fs"/>
@@ -20,10 +20,10 @@
 
   <ItemGroup>
     <PackageReference Include="FSharp.Logf" Version="1.2.2"/>
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.2"/>
-    <PackageReference Include="otsom.fs.Resources" Version="0.0.7"/>
-    <PackageReference Include="otsom.fs.Bot" Version="0.0.34"/>
-    <PackageReference Include="Telegram.Bot" Version="22.5.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8"/>
+    <PackageReference Include="otsom.fs.Resources" Version="0.0.27"/>
+    <PackageReference Include="otsom.fs.Bot" Version="0.0.39"/>
+    <PackageReference Include="Telegram.Bot" Version="22.5.1"/>
   </ItemGroup>
 
 </Project>
