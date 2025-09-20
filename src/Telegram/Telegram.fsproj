@@ -10,6 +10,8 @@
     <Compile Include="Core.fs"/>
     <Compile Include="Resources.fs"/>
     <Compile Include="Repos.fs"/>
+    <Compile Include="Settings.fs" />
+    <Compile Include="Handlers.fs" />
     <Compile Include="Workflows.fs"/>
     <Compile Include="Startup.fs"/>
   </ItemGroup>

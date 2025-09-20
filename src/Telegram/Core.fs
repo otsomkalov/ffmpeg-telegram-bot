@@ -4,7 +4,6 @@ open System.Threading.Tasks
 open Domain.Core
 open Telegram.Bot.Types
 open otsom.fs.Bot
-open otsom.fs.Resources
 
 type Chat = {
   Id: ChatId
@@ -33,17 +32,6 @@ module Core =
   type ProcessPrivateMessage = Message -> Task<unit>
   type ProcessGroupMessage = Message -> Task<unit>
   type ProcessChannelPost = Message -> Task<unit>
-
-  [<RequireQualifiedAccess>]
-  type Command =
-    | Start
-    | Links of string seq
-    | Document of string * string
-    | Video of string * string
-
-  type ParseCommand = Message -> Task<Command option>
-
-open Core
 
 open Core
 

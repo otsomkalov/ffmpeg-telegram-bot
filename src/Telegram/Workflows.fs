@@ -9,6 +9,7 @@ open Domain.Core.Conversion
 open Microsoft.Extensions.Logging
 open Microsoft.FSharp.Core
 open Telegram.Core
+open Telegram.Handlers
 open Telegram.Helpers
 open otsom.fs.Bot
 open otsom.fs.Resources
@@ -41,6 +42,7 @@ type FFMpegBot
     parseCommand: ParseCommand,
     chatSvc: IChatSvc,
     createConversion: Create,
+    handlerFactories: MsgHandlerFactory list,
     logger: ILogger<FFMpegBot>
   ) =
 
@@ -68,43 +70,6 @@ type FFMpegBot
       | None -> loadDefaultResources ())
     )
 
-  let processLinks replyToMessage (resp: IResourceProvider) queueUserConversion links =
-    let sendUrlToQueue (url: string) =
-      task {
-        let! sentMessageId = replyToMessage (resp[Resources.LinkDownload, [| url |]])
-
-        do! queueUserConversion sentMessageId (Conversion.New.InputFile.Link { Url = url })
-      }
-
-    links |> Seq.map sendUrlToQueue |> Task.WhenAll |> Task.ignore
-
-  let processDocument replyToMessage (resp: IResourceProvider) queueUserConversion fileId fileName =
-    task {
-      let! sentMessageId = replyToMessage (resp[Resources.DocumentDownload, [| fileName |]])
-
-      do! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
-    }
-
-  let processVideo replyToMessage (resp: IResourceProvider) queueUserConversion fileId fileName =
-    task {
-      let! sentMessageId = replyToMessage (resp[Resources.VideoDownload, [| fileName |]])
-
-      do! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = fileId; Name = fileName })
-    }
-
-  let processMessage replyToMessage queueConversion (resp: IResourceProvider) =
-    fun message ->
-      task {
-        let! command = parseCommand message
-
-        match command with
-        | Some(Command.Start) -> do! replyToMessage (resp[Resources.Welcome]) |> Task.ignore
-        | Some(Command.Links links) -> do! processLinks replyToMessage resp queueConversion links
-        | Some(Command.Document(fileId, fileName)) -> do! processDocument replyToMessage resp queueConversion fileId fileName
-        | Some(Command.Video(fileId, fileName)) -> do! processVideo replyToMessage resp queueConversion fileId fileName
-        | None -> return ()
-      }
-
   interface IFFMpegBot with
     member this.ProcessMessage(message: Message) =
       let chatId = message.Chat.Id |> ChatId
@@ -114,6 +79,26 @@ type FFMpegBot
       let botService = buildBotService (message.Chat.Id |> ChatId)
       let replyToMessage = Func.wrap2 botService.ReplyToMessage messageId
 
+      let msg: Msg =
+        { MessageId = messageId
+          Text = message.Text |> Option.ofObj
+          Doc =
+            message.Document
+            |> Option.ofObj
+            |> Option.map (fun doc ->
+              { Id = doc.FileId
+                Name = doc.FileName
+                MimeType = doc.MimeType
+                Caption = message.Caption |> Option.ofObj })
+          Vid =
+            message.Video
+            |> Option.ofObj
+            |> Option.map (fun vid ->
+              { Id = vid.FileId
+                Name = vid.FileName |> Option.ofObj
+                MimeType = vid.MimeType
+                Caption = message.Caption |> Option.ofObj }) }
+
       task {
         let! chat = chatRepo.LoadChat chatId
 
@@ -121,10 +106,12 @@ type FFMpegBot
         | Some c ->
           let! resp = loadResources c.Lang
 
+          let handler = globalHandler botService resp handlerFactories
+
           if c.Banned then
             do! replyToMessage (resp[Resources.ChannelBan]) |> Task.ignore
           else
-            do! processMessage replyToMessage queueConversion resp message
+            do! handler msg
         | None ->
           let lang =
             message.From
@@ -134,7 +121,9 @@ type FFMpegBot
           let! chat = chatSvc.CreateChat(chatId, lang)
           let! resp = loadResources chat.Lang
 
-          do! processMessage replyToMessage queueConversion resp message
+          let handler = globalHandler botService resp handlerFactories
+
+          do! handler msg
       }
 
     member this.PrepareConversion(conversionId, file) =

@@ -8,10 +8,9 @@ open Microsoft.Extensions.DependencyInjection
 open MongoDB.Driver
 open Telegram
 open Telegram.Bot
-open Telegram.Core
 open Telegram.Infrastructure.Services
 open Telegram.Infrastructure.Settings
-open Telegram.Infrastructure.Workflows
+open Telegram.Settings
 open otsom.fs.Extensions.DependencyInjection
 open Telegram.Repos
 open otsom.fs.Resources.Mongo
@@ -48,5 +47,3 @@ module Startup =
       .AddSingleton<IChatRepo, ChatRepo>()
 
       .BuildSingleton<BuildExtendedBotService, _, _>(buildExtendedBotService)
-
-      .BuildSingleton<ParseCommand, InputValidationSettings>(parseCommand)
