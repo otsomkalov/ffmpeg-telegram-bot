@@ -2,13 +2,13 @@
 
 open System.Diagnostics
 open System.Threading.Tasks
-open FSharp
 open Infrastructure.Queue
 open Microsoft.ApplicationInsights
 open Microsoft.ApplicationInsights.DataContracts
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
+open Microsoft.Extensions.Logging
 open Telegram
 open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
@@ -39,7 +39,7 @@ type Functions
       try
         do! ffMpegBot.ProcessMessage message
       with e ->
-        Logf.elogfe logger e "Error during processing an update:"
+        logger.LogError(e, "Error during processing an update")
         return ()
     }
 

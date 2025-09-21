@@ -162,8 +162,6 @@ type FFMpegBot
 
         let! resp = userConversion.ChatId |> loadResources'
 
-        let! conversion = conversionRepo.LoadConversion conversionId
-
         match result with
         | ConversionResult.Success file ->
           let video = Video file
@@ -192,8 +190,6 @@ type FFMpegBot
 
         let! resp = userConversion.ChatId |> loadResources'
 
-        let! conversion = conversionRepo.LoadConversion conversionId
-
         match result with
         | ConversionResult.Success file ->
           let video = Thumbnail file
@@ -219,7 +215,6 @@ type FFMpegBot
 
         let botService = buildBotService userConversion.ChatId
 
-        let! conversion = conversionRepo.LoadConversion id
         let! resp = userConversion.ChatId |> loadResources'
 
         match! conversionRepo.LoadConversion id with
