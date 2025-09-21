@@ -3,46 +3,20 @@ module Telegram.Infrastructure.Entities
 
 open MongoDB.Bson.Serialization.Attributes
 open Telegram.Core
+open otsom.fs.Bot
 
 [<CLIMutable>]
-type Channel = {
-    Id: int64
-    Banned: bool
-  }
-with
-  member this.ToDomain(): Telegram.Core.Channel =
-    { Id = ChannelId(this.Id)
-      Banned = this.Banned }
-
-  static member FromDomain(channel: Telegram.Core.Channel) =
-    {Id = channel.Id.Value; Banned = channel.Banned}
-
-[<CLIMutable>]
-type Group =
-  {
-    [<BsonId>]
-    Id: int64
-    Banned: bool
-  }
-  member this.ToDomain(): Telegram.Core.Group =
-    { Id = GroupId(this.Id)
-      Banned = this.Banned }
-
-  static member FromDomain(group: Telegram.Core.Group) =
-    {Id = group.Id.Value; Banned = group.Banned}
-
-[<CLIMutable>]
-type User ={
+type Chat ={
   [<BsonId>]
   Id: int64
   Banned: bool
-  Lang: string | null
+  Lang: string
 }
 with
-  member this.ToDomain(): Telegram.Core.User =
-    { Id = UserId(this.Id)
+  member this.ToDomain(): Telegram.Chat =
+    { Id = ChatId this.Id
       Banned = this.Banned
-      Lang = this.Lang |> Option.ofObj }
+      Lang = this.Lang }
 
-  static member FromDomain(user: Telegram.Core.User) =
-    { Id = user.Id.Value; Banned = user.Banned; Lang = user.Lang |> Option.toObj }
+  static member FromDomain(chat: Telegram.Chat) =
+    { Id = chat.Id.Value; Banned = chat.Banned; Lang = chat.Lang }

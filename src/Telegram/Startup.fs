@@ -4,7 +4,6 @@
 
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
-open Telegram.Core
 open Telegram.Repos
 open Telegram.Workflows
 open otsom.fs.Extensions.DependencyInjection
@@ -16,6 +15,6 @@ let addTelegram (cfg: IConfiguration) (services: IServiceCollection) =
   |> Startup.addResources cfg
 
   services
+    .AddSingleton<IChatSvc, ChatSvc>()
     .AddSingleton<IFFMpegBot, FFMpegBot>()
-    .BuildSingleton<Resources.LoadResources, _, _>(Resources.loadResources)
-    .BuildSingleton<User.LoadResources, IUserRepo, _>(User.loadResources)
+    .BuildSingleton<Chat.LoadResources, IChatRepo, _, _>(Chat.loadResources)

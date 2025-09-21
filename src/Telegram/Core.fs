@@ -6,43 +6,23 @@ open Telegram.Bot.Types
 open otsom.fs.Bot
 open otsom.fs.Resources
 
+type Chat = {
+  Id: ChatId
+  Banned: bool
+  Lang: string
+}
+
+type ICreateChat =
+  abstract CreateChat: ChatId * string option -> Task<Chat>
+
+type IChatSvc =
+  inherit ICreateChat
+
+[<RequireQualifiedAccess>]
+module Chat =
+  type LoadResources = ChatId -> Task<IResourceProvider>
+
 module Core =
-  type UserId =
-    | UserId of int64
-
-    member this.Value = let (UserId id) = this in id
-
-  type ChannelId =
-    | ChannelId of int64
-
-    member this.Value = let (ChannelId id) = this in id
-
-    static member Create id =
-      if id < 0L then
-        ChannelId id
-      else
-        failwith "ChannelId cannot be greater than 0"
-
-  type GroupId =
-    | GroupId of int64
-
-    member this.Value = let (GroupId id) = this in id
-
-    static member Create id =
-      if id < 0L then
-        GroupId id
-      else
-        failwith "GroupId cannot be greater than 0"
-
-  type Group = { Id: GroupId; Banned: bool }
-
-  type User =
-    { Id: UserId
-      Lang: string option
-      Banned: bool }
-
-  type Channel = { Id: ChannelId; Banned: bool }
-
   [<RequireQualifiedAccess>]
   type ConversionResult =
     | Success of name: string
@@ -52,12 +32,11 @@ module Core =
     { ReceivedMessageId: ChatMessageId
       SentMessageId: BotMessageId
       ConversionId: ConversionId
-      UserId: UserId option
       ChatId: ChatId }
 
   [<RequireQualifiedAccess>]
   module UserConversion =
-    type QueueProcessing = ChatMessageId -> UserId option -> ChatId -> BotMessageId -> Conversion.New.InputFile -> Task<unit>
+    type QueueProcessing = ChatMessageId -> ChatId -> BotMessageId -> Conversion.New.InputFile -> Task<unit>
 
   type ProcessPrivateMessage = Message -> Task<unit>
   type ProcessGroupMessage = Message -> Task<unit>
@@ -72,13 +51,7 @@ module Core =
 
   type ParseCommand = Message -> Task<Command option>
 
-  [<RequireQualifiedAccess>]
-  module Resources =
-    type LoadResources = string option -> Task<IResourceProvider>
-
-  [<RequireQualifiedAccess>]
-  module User =
-    type LoadResources = UserId option -> Task<IResourceProvider>
+open Core
 
 open Core
 
