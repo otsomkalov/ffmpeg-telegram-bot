@@ -168,7 +168,7 @@ type FFMpegBot
         | ConversionResult.Success file ->
           let video = Video file
 
-          match conversion with
+          match! conversionRepo.LoadConversion conversionId with
           | Prepared preparedConversion ->
             do! conversionService.SaveVideo(preparedConversion, video) |> Task.ignore
             do! editMessage resp[Resources.VideoConverted]
@@ -198,7 +198,7 @@ type FFMpegBot
         | ConversionResult.Success file ->
           let video = Thumbnail file
 
-          match conversion with
+          match! conversionRepo.LoadConversion conversionId with
           | Prepared preparedConversion ->
             do! conversionService.SaveThumbnail(preparedConversion, video) |> Task.ignore
             do! editMessage resp[Resources.ThumbnailGenerated]
@@ -222,7 +222,7 @@ type FFMpegBot
         let! conversion = conversionRepo.LoadConversion id
         let! resp = userConversion.ChatId |> loadResources'
 
-        match conversion with
+        match! conversionRepo.LoadConversion id with
         | Completed conversion ->
           do!
             botService.ReplyWithVideo(
@@ -230,7 +230,7 @@ type FFMpegBot
               resp[Resources.Completed],
               conversion.OutputFile,
               conversion.ThumbnailFile
-            )
+              )
 
           do! conversionService.CleanupConversion conversion
           do! botService.DeleteBotMessage userConversion.SentMessageId
