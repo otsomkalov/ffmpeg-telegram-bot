@@ -39,7 +39,6 @@ type FFMpegBot
     loadDefaultResources: CreateDefaultResourceProvider,
     buildBotService: BuildExtendedBotService,
     chatRepo: IChatRepo,
-    parseCommand: ParseCommand,
     chatSvc: IChatSvc,
     createConversion: Create,
     handlerFactories: MsgHandlerFactory list,
@@ -70,8 +69,8 @@ type FFMpegBot
       | None -> loadDefaultResources ())
     )
 
-  interface IFFMpegBot with
-    member this.ProcessMessage(message: Message) =
+  let processMessage =
+    fun (message: Message) ->
       let chatId = message.Chat.Id |> ChatId
       let messageId = message.MessageId |> ChatMessageId
       let queueConversion = queueProcessing messageId chatId
@@ -126,6 +125,14 @@ type FFMpegBot
           do! handler msg
       }
 
+  interface IFFMpegBot with
+    member this.ProcessUpdate(update: Update) =
+      match update with
+      | Msg msg -> processMessage msg
+      | Other type' ->
+        logger.LogInformation("Got unsupported update type {Type}!", type'.ToString())
+        Task.FromResult()
+
     member this.PrepareConversion(conversionId, file) =
       task {
         let! userConversion = userConversionRepo.LoadUserConversion conversionId
@@ -151,13 +158,11 @@ type FFMpegBot
 
         let! resp = userConversion.ChatId |> loadResources'
 
-        let! conversion = conversionRepo.LoadConversion conversionId
-
         match result with
         | ConversionResult.Success file ->
           let video = Video file
 
-          match conversion with
+          match! conversionRepo.LoadConversion conversionId with
           | Prepared preparedConversion ->
             do! conversionService.SaveVideo(preparedConversion, video) |> Task.ignore
             do! editMessage resp[Resources.VideoConverted]
@@ -181,13 +186,11 @@ type FFMpegBot
 
         let! resp = userConversion.ChatId |> loadResources'
 
-        let! conversion = conversionRepo.LoadConversion conversionId
-
         match result with
         | ConversionResult.Success file ->
           let video = Thumbnail file
 
-          match conversion with
+          match! conversionRepo.LoadConversion conversionId with
           | Prepared preparedConversion ->
             do! conversionService.SaveThumbnail(preparedConversion, video) |> Task.ignore
             do! editMessage resp[Resources.ThumbnailGenerated]
@@ -208,10 +211,9 @@ type FFMpegBot
 
         let botService = buildBotService userConversion.ChatId
 
-        let! conversion = conversionRepo.LoadConversion id
         let! resp = userConversion.ChatId |> loadResources'
 
-        match conversion with
+        match! conversionRepo.LoadConversion id with
         | Completed conversion ->
           do!
             botService.ReplyWithVideo(
@@ -219,7 +221,7 @@ type FFMpegBot
               resp[Resources.Completed],
               conversion.OutputFile,
               conversion.ThumbnailFile
-            )
+              )
 
           do! conversionService.CleanupConversion conversion
           do! botService.DeleteBotMessage userConversion.SentMessageId

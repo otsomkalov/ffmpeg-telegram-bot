@@ -2,13 +2,14 @@
 
 open System.Diagnostics
 open System.Threading.Tasks
-open FSharp
+open Bot.Mappings
 open Infrastructure.Queue
 open Microsoft.ApplicationInsights
 open Microsoft.ApplicationInsights.DataContracts
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
+open Microsoft.Extensions.Logging
 open Telegram
 open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
@@ -21,25 +22,19 @@ type ConverterResultMessage =
 type Functions
   (
     telemetryClient: TelemetryClient,
-    ffMpegBot: IFFMpegBot
+    ffMpegBot: IFFMpegBot,
+    logger: ILogger<Functions>
   ) =
 
   [<Function("HandleUpdate")>]
   member this.HandleUpdate
     ([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update, ctx: FunctionContext)
     : Task<unit> =
-    let logger = nameof this.HandleUpdate |> ctx.GetLogger
-
-    let message =
-      match update.Type with
-      | UpdateType.Message -> update.Message
-      | UpdateType.ChannelPost -> update.ChannelPost
-
     task {
       try
-        do! ffMpegBot.ProcessMessage message
+        do! ffMpegBot.ProcessUpdate(update.ToBot())
       with e ->
-        Logf.elogfe logger e "Error during processing an update:"
+        logger.LogError(e, "Error during processing an update")
         return ()
     }
 
