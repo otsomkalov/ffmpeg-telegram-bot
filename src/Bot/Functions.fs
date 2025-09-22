@@ -2,6 +2,7 @@
 
 open System.Diagnostics
 open System.Threading.Tasks
+open Bot.Mappings
 open Infrastructure.Queue
 open Microsoft.ApplicationInsights
 open Microsoft.ApplicationInsights.DataContracts
@@ -21,23 +22,17 @@ type ConverterResultMessage =
 type Functions
   (
     telemetryClient: TelemetryClient,
-    ffMpegBot: IFFMpegBot
+    ffMpegBot: IFFMpegBot,
+    logger: ILogger<Functions>
   ) =
 
   [<Function("HandleUpdate")>]
   member this.HandleUpdate
     ([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update, ctx: FunctionContext)
     : Task<unit> =
-    let logger = nameof this.HandleUpdate |> ctx.GetLogger
-
-    let message =
-      match update.Type with
-      | UpdateType.Message -> update.Message
-      | UpdateType.ChannelPost -> update.ChannelPost
-
     task {
       try
-        do! ffMpegBot.ProcessMessage message
+        do! ffMpegBot.ProcessUpdate(update.ToBot())
       with e ->
         logger.LogError(e, "Error during processing an update")
         return ()

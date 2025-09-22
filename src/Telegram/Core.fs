@@ -3,6 +3,7 @@
 open System.Threading.Tasks
 open Domain.Core
 open Telegram.Bot.Types
+open Telegram.Bot.Types.Enums
 open otsom.fs.Bot
 open otsom.fs.Resources
 
@@ -52,8 +53,12 @@ type IExtendedBotService =
 
   inherit IBotService
 
+type Update =
+  | Msg of Message
+  | Other of UpdateType
+
 type IFFMpegBot =
-  abstract ProcessMessage: Message -> Task<unit>
+  abstract ProcessUpdate: Update -> Task<unit>
   abstract PrepareConversion: ConversionId * Conversion.New.InputFile -> Task<unit>
   abstract SaveVideo: ConversionId * ConversionResult -> Task<unit>
   abstract SaveThumbnail: ConversionId * ConversionResult -> Task<unit>

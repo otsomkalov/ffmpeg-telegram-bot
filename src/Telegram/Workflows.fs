@@ -105,8 +105,8 @@ type FFMpegBot
         | None -> return ()
       }
 
-  interface IFFMpegBot with
-    member this.ProcessMessage(message: Message) =
+  let processMessage =
+    fun (message: Message) ->
       let chatId = message.Chat.Id |> ChatId
       let messageId = message.MessageId |> ChatMessageId
       let queueConversion = queueProcessing messageId chatId
@@ -136,6 +136,15 @@ type FFMpegBot
 
           do! processMessage replyToMessage queueConversion resp message
       }
+
+
+  interface IFFMpegBot with
+    member this.ProcessUpdate(update: Update) =
+      match update with
+      | Msg msg -> processMessage msg
+      | Other type' ->
+        logger.LogInformation("Got unsupported update type {Type}!", type'.ToString())
+        Task.FromResult()
 
     member this.PrepareConversion(conversionId, file) =
       task {
