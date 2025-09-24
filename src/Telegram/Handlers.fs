@@ -126,8 +126,6 @@ let videoHandler
           vid.Name
           |> Option.defaultWith (fun _ ->
             let tmpFile = Path.GetTempFileName()
-
-            // TODO: just return tmpFile?
             let fileInfo = FileInfo(tmpFile)
 
             fileInfo.Name)
