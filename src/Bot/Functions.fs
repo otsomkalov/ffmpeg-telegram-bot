@@ -2,72 +2,39 @@
 
 open System.Diagnostics
 open System.Threading.Tasks
-open Domain
-open Domain.Workflows
-open FSharp
-open Infrastructure.Core
+open Bot.Mappings
 open Infrastructure.Queue
 open Microsoft.ApplicationInsights
 open Microsoft.ApplicationInsights.DataContracts
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
+open Microsoft.Extensions.Logging
 open Telegram
 open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums
 open Telegram.Core
-open Telegram.Workflows
 open Domain.Core
-open Telegram.Repos
-open otsom.fs.Resources
 
 type ConverterResultMessage =
   { Id: string; Result: ConversionResult }
 
 type Functions
   (
-    parseCommand: ParseCommand,
-    createConversion: Conversion.Create,
     telemetryClient: TelemetryClient,
-    userConversionRepo: IUserConversionRepo,
-    conversionRepo: IConversionRepo,
-    createResourceProvider: CreateResourceProvider,
-    buildBotService: BuildExtendedBotService,
     ffMpegBot: IFFMpegBot,
-    chatRepo: IChatRepo,
-    chatSvc: IChatSvc
+    logger: ILogger<Functions>
   ) =
 
   [<Function("HandleUpdate")>]
   member this.HandleUpdate
     ([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update, ctx: FunctionContext)
     : Task<unit> =
-    let logger = nameof this.HandleUpdate |> ctx.GetLogger
-
-    let queueUserConversion =
-      UserConversion.queueProcessing createConversion userConversionRepo conversionRepo
-
-    let processPrivateMessage =
-      processPrivateMessage chatRepo chatSvc queueUserConversion parseCommand logger createResourceProvider buildBotService
-
-    let processGroupMessage =
-      processGroupMessage chatRepo chatSvc queueUserConversion parseCommand logger createResourceProvider buildBotService
-
-    let processChannelPost =
-      processChannelPost chatRepo chatSvc queueUserConversion parseCommand logger createResourceProvider buildBotService
-
     task {
       try
-        let processUpdateTask =
-          match update.Type with
-          | UpdateType.Message when update.Message.From.Id = update.Message.Chat.Id -> processPrivateMessage update.Message
-          | UpdateType.Message -> processGroupMessage update.Message
-          | UpdateType.ChannelPost -> processChannelPost update.ChannelPost
-          | _ -> Task.FromResult()
-
-        do! processUpdateTask
+        do! ffMpegBot.ProcessUpdate(update.ToBot())
       with e ->
-        Logf.elogfe logger e "Error during processing an update:"
+        logger.LogError(e, "Error during processing an update")
         return ()
     }
 

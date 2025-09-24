@@ -3,6 +3,7 @@
 open System.Threading.Tasks
 open Domain.Core
 open Telegram.Bot.Types
+open Telegram.Bot.Types.Enums
 open otsom.fs.Bot
 open otsom.fs.Resources
 
@@ -18,10 +19,6 @@ type ICreateChat =
 type IChatSvc =
   inherit ICreateChat
 
-[<RequireQualifiedAccess>]
-module Chat =
-  type LoadResources = ChatId -> Task<IResourceProvider>
-
 module Core =
   [<RequireQualifiedAccess>]
   type ConversionResult =
@@ -33,10 +30,6 @@ module Core =
       SentMessageId: BotMessageId
       ConversionId: ConversionId
       ChatId: ChatId }
-
-  [<RequireQualifiedAccess>]
-  module UserConversion =
-    type QueueProcessing = ChatMessageId -> ChatId -> BotMessageId -> Conversion.New.InputFile -> Task<unit>
 
   type ProcessPrivateMessage = Message -> Task<unit>
   type ProcessGroupMessage = Message -> Task<unit>
@@ -60,7 +53,12 @@ type IExtendedBotService =
 
   inherit IBotService
 
+type Update =
+  | Msg of Message
+  | Other of UpdateType
+
 type IFFMpegBot =
+  abstract ProcessUpdate: Update -> Task<unit>
   abstract PrepareConversion: ConversionId * Conversion.New.InputFile -> Task<unit>
   abstract SaveVideo: ConversionId * ConversionResult -> Task<unit>
   abstract SaveThumbnail: ConversionId * ConversionResult -> Task<unit>
