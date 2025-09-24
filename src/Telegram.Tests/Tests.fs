@@ -34,7 +34,7 @@ let msg =
     Doc = None
     Vid = None }
 
-let logger = Mock<ILogger>()
+let logger = Mock<ILogger<MsgHandler>>()
 
 type StartHandler() =
   let botService = Mock<IBotService>()
