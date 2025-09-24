@@ -23,21 +23,23 @@ let private mapVid (message: Message) : Vid option =
       MimeType = vid.MimeType
       Caption = message.Caption |> Option.ofObj })
 
-let private mapMsg (message: Message) =
+let private mapMsg (message: Message) lang =
+  UserMsg
+    { ChatId = message.Chat.Id |> ChatId
+      Lang = lang
+      MessageId = message.MessageId |> ChatMessageId
+      Text = message.Text |> Option.ofObj
+      Doc = mapDoc message
+      Vid = mapVid message }
+
+let private mapUserMsg (message: Message) =
   match message.From |> Option.ofObj with
   | Some sender when sender.IsBot -> BotMsg
-  | sender ->
-    UserMsg
-      { ChatId = message.Chat.Id |> ChatId
-        Lang = sender |> Option.bind (fun u -> u.LanguageCode |> Option.ofObj)
-        MessageId = message.MessageId |> ChatMessageId
-        Text = message.Text |> Option.ofObj
-        Doc = mapDoc message
-        Vid = mapVid message }
+  | sender -> mapMsg message (sender |> Option.bind (fun u -> u.LanguageCode |> Option.ofObj))
 
 type Update with
   member this.ToBot() =
     match this.Type with
-    | UpdateType.Message -> Update.Msg(mapMsg this.Message)
-    | UpdateType.ChannelPost -> Update.Msg(mapMsg this.ChannelPost)
+    | UpdateType.Message -> Update.Msg(mapUserMsg this.Message)
+    | UpdateType.ChannelPost -> Update.Msg(mapMsg this.ChannelPost None)
     | _ -> Update.Other(string this.Type)
