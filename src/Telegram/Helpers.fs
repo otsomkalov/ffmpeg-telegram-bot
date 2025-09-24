@@ -9,3 +9,6 @@ let (|Regex|_|) (regex: Regex) (text: string) =
     None
   else
     matches |> Seq.map _.Value |> Some
+
+let cleanFileName (text: string) =
+  text |> String.filter ((<>) '_')

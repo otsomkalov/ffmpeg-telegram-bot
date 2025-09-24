@@ -93,7 +93,7 @@ let documentHandler
         ->
         logger.LogInformation("Processing message with document {DocumentName}", doc.Name)
 
-        let! sentMessageId = bot.ReplyToMessage(msg.MessageId, resp[Resources.DocumentDownload, [| doc.Name |]])
+        let! sentMessageId = bot.ReplyToMessage(msg.MessageId, resp[Resources.DocumentDownload, [| cleanFileName doc.Name |]])
 
         do! queueProcessing msg.MessageId msg.ChatId sentMessageId (Conversion.New.InputFile.Document { Id = doc.Id; Name = doc.Name })
 
@@ -124,6 +124,7 @@ let videoHandler
 
         let videoName =
           vid.Name
+          |> Option.map cleanFileName
           |> Option.defaultWith (fun _ ->
             let tmpFile = Path.GetTempFileName()
             let fileInfo = FileInfo(tmpFile)
