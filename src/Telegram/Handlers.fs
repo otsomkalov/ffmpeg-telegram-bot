@@ -14,7 +14,7 @@ open otsom.fs.Resources
 open otsom.fs.Extensions
 open Telegram.Helpers
 
-type MsgHandler = Msg -> Task<unit option>
+type MsgHandler = UserMsg -> Task<unit option>
 type MsgHandlerFactory = IBotService -> IResourceProvider -> MsgHandler
 
 let startHandler (bot: IBotService) (resp: IResourceProvider) : MsgHandler =

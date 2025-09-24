@@ -69,7 +69,7 @@ type FFMpegBot
   interface IFFMpegBot with
     member this.ProcessUpdate(update: Update) =
       match update with
-      | Msg msg ->
+      | Msg (UserMsg msg) ->
         let botService = buildBotService msg.ChatId
 
         task {
@@ -91,6 +91,8 @@ type FFMpegBot
 
             do! globalHandler botService resp msg
         }
+      | Msg BotMsg ->
+        Task.FromResult()
       | Other type' ->
         logger.LogInformation("Got unsupported update type {Type}!", type'.ToString())
         Task.FromResult()

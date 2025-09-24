@@ -23,18 +23,17 @@ let private mapVid (message: Message) : Vid option =
       MimeType = vid.MimeType
       Caption = message.Caption |> Option.ofObj })
 
-let private mapLang (message: Message) =
-  message.From
-  |> Option.ofObj
-  |> Option.bind (fun u -> u.LanguageCode |> Option.ofObj)
-
 let private mapMsg (message: Message) =
-  { ChatId = message.Chat.Id |> ChatId
-    Lang = mapLang message
-    MessageId = message.MessageId |> ChatMessageId
-    Text = message.Text |> Option.ofObj
-    Doc = mapDoc message
-    Vid = mapVid message }
+  match message.From |> Option.ofObj with
+  | Some sender when sender.IsBot -> BotMsg
+  | sender ->
+    UserMsg
+      { ChatId = message.Chat.Id |> ChatId
+        Lang = sender |> Option.bind (fun u -> u.LanguageCode |> Option.ofObj)
+        MessageId = message.MessageId |> ChatMessageId
+        Text = message.Text |> Option.ofObj
+        Doc = mapDoc message
+        Vid = mapVid message }
 
 type Update with
   member this.ToBot() =

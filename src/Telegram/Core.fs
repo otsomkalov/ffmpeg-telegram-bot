@@ -28,8 +28,6 @@ module Core =
       ConversionId: ConversionId
       ChatId: ChatId }
 
-open Core
-
 type IExtendedBotService =
   abstract ReplyWithVideo: ChatMessageId * string * Conversion.Video * Conversion.Thumbnail -> Task<unit>
 
@@ -47,7 +45,7 @@ type Vid =
     Caption: string option
     MimeType: string }
 
-type Msg =
+type UserMsg =
   {
     ChatId: ChatId
     MessageId: ChatMessageId
@@ -56,9 +54,15 @@ type Msg =
     Doc: Doc option
     Vid: Vid option }
 
+type Msg =
+  | UserMsg of UserMsg
+  | BotMsg
+
 type Update =
   | Msg of Msg
   | Other of string
+
+open Core
 
 type IFFMpegBot =
   abstract ProcessUpdate: Update -> Task<unit>
