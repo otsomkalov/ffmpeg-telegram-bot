@@ -1,6 +1,5 @@
 ﻿namespace Telegram
 
-open Telegram.Bot.Types
 open Telegram
 open System.Threading.Tasks
 open Domain
@@ -10,8 +9,6 @@ open Microsoft.Extensions.Logging
 open Microsoft.FSharp.Core
 open Telegram.Core
 open Telegram.Handlers
-open Telegram.Helpers
-open otsom.fs.Bot
 open otsom.fs.Resources
 open otsom.fs.Extensions
 open Telegram.Repos
@@ -40,25 +37,9 @@ type FFMpegBot
     buildBotService: BuildExtendedBotService,
     chatRepo: IChatRepo,
     chatSvc: IChatSvc,
-    createConversion: Create,
-    handlerFactories: MsgHandlerFactory list,
+    handlerFactories: MsgHandlerFactory seq,
     logger: ILogger<FFMpegBot>
   ) =
-
-  let queueProcessing =
-    fun userMessageId chatId sentMessageId inputFile ->
-      task {
-        let! conversion = createConversion ()
-
-        do!
-          userConversionRepo.SaveUserConversion
-            { ChatId = chatId
-              SentMessageId = sentMessageId
-              ReceivedMessageId = userMessageId
-              ConversionId = conversion.Id }
-
-        do! conversionRepo.QueuePreparation(conversion.Id, inputFile)
-      }
 
   let loadResources' =
     chatRepo.LoadChat
@@ -69,66 +50,47 @@ type FFMpegBot
       | None -> loadDefaultResources ())
     )
 
-  let processMessage =
-    fun (message: Message) ->
-      let chatId = message.Chat.Id |> ChatId
-      let messageId = message.MessageId |> ChatMessageId
-      let queueConversion = queueProcessing messageId chatId
-
-      let botService = buildBotService (message.Chat.Id |> ChatId)
-      let replyToMessage = Func.wrap2 botService.ReplyToMessage messageId
-
-      let msg: Msg =
-        { MessageId = messageId
-          Text = message.Text |> Option.ofObj
-          Doc =
-            message.Document
-            |> Option.ofObj
-            |> Option.map (fun doc ->
-              { Id = doc.FileId
-                Name = doc.FileName
-                MimeType = doc.MimeType
-                Caption = message.Caption |> Option.ofObj })
-          Vid =
-            message.Video
-            |> Option.ofObj
-            |> Option.map (fun vid ->
-              { Id = vid.FileId
-                Name = vid.FileName |> Option.ofObj
-                MimeType = vid.MimeType
-                Caption = message.Caption |> Option.ofObj }) }
-
+  let globalHandler bot resp =
+    fun msg ->
       task {
-        let! chat = chatRepo.LoadChat chatId
+        let handlers = handlerFactories |> Seq.map (fun f -> f bot resp)
 
-        match chat with
-        | Some c ->
-          let! resp = loadResources c.Lang
+        let mutable lastHandlerResult = None
+        let mutable e = handlers.GetEnumerator()
 
-          let handler = globalHandler botService resp handlerFactories
+        while e.MoveNext() && lastHandlerResult.IsNone do
+          let! handlerResult = e.Current msg
 
-          if c.Banned then
-            do! replyToMessage (resp[Resources.ChannelBan]) |> Task.ignore
-          else
-            do! handler msg
-        | None ->
-          let lang =
-            message.From
-            |> Option.ofObj
-            |> Option.bind (fun u -> u.LanguageCode |> Option.ofObj)
+          lastHandlerResult <- handlerResult
 
-          let! chat = chatSvc.CreateChat(chatId, lang)
-          let! resp = loadResources chat.Lang
-
-          let handler = globalHandler botService resp handlerFactories
-
-          do! handler msg
+        return ()
       }
 
   interface IFFMpegBot with
     member this.ProcessUpdate(update: Update) =
       match update with
-      | Msg msg -> processMessage msg
+      | Msg msg ->
+        let botService = buildBotService msg.ChatId
+
+        task {
+          let! chat = chatRepo.LoadChat msg.ChatId
+
+          match chat with
+          | Some c ->
+            let! resp = loadResources c.Lang
+
+            if c.Banned then
+              do!
+                botService.ReplyToMessage(msg.MessageId, resp[Resources.ChannelBan])
+                |> Task.ignore
+            else
+              do! globalHandler botService resp msg
+          | None ->
+            let! chat = chatSvc.CreateChat(msg.ChatId, msg.Lang)
+            let! resp = loadResources chat.Lang
+
+            do! globalHandler botService resp msg
+        }
       | Other type' ->
         logger.LogInformation("Got unsupported update type {Type}!", type'.ToString())
         Task.FromResult()
@@ -140,13 +102,11 @@ type FFMpegBot
         let! resp = userConversion.ChatId |> loadResources'
 
         let botService = buildBotService userConversion.ChatId
-        let editMessage = Func.wrap2 botService.EditMessage userConversion.SentMessageId
-
         match! conversionService.PrepareConversion(conversionId, file) with
-        | Ok _ -> do! editMessage resp[Resources.ConversionInProgress]
-        | Error New.DownloadLinkError.Unauthorized -> do! editMessage resp[Resources.NotAuthorized]
-        | Error New.DownloadLinkError.NotFound -> do! editMessage resp[Resources.NotFound]
-        | Error New.DownloadLinkError.ServerError -> do! editMessage resp[Resources.ServerError]
+        | Ok _ -> do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ConversionInProgress])
+        | Error New.DownloadLinkError.Unauthorized -> do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.NotAuthorized])
+        | Error New.DownloadLinkError.NotFound -> do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.NotFound])
+        | Error New.DownloadLinkError.ServerError -> do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ServerError])
       }
 
     member this.SaveVideo(conversionId, result) =
@@ -154,8 +114,6 @@ type FFMpegBot
         let! userConversion = userConversionRepo.LoadUserConversion conversionId
 
         let botService = buildBotService userConversion.ChatId
-        let editMessage = Func.wrap2 botService.EditMessage userConversion.SentMessageId
-
         let! resp = userConversion.ChatId |> loadResources'
 
         match result with
@@ -165,16 +123,16 @@ type FFMpegBot
           match! conversionRepo.LoadConversion conversionId with
           | Prepared preparedConversion ->
             do! conversionService.SaveVideo(preparedConversion, video) |> Task.ignore
-            do! editMessage resp[Resources.VideoConverted]
+            do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.VideoConverted])
           | Thumbnailed thumbnailedConversion ->
             let! completed = conversionService.CompleteConversion(thumbnailedConversion, video)
             do! conversionRepo.QueueUpload completed
-            do! editMessage resp[Resources.Uploading]
+            do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.Uploading])
           | _ ->
             logger.LogError("Conversion {ConversionId} is not thumbnailed to be completed!", conversionId.Value)
 
-            do! editMessage resp[Resources.ConversionError]
-        | ConversionResult.Error _ -> do! editMessage resp[Resources.ConversionError]
+            do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ConversionError])
+        | ConversionResult.Error _ -> do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ConversionError])
       }
 
     member this.SaveThumbnail(conversionId, result) =
@@ -182,8 +140,6 @@ type FFMpegBot
         let! userConversion = userConversionRepo.LoadUserConversion conversionId
 
         let botService = buildBotService userConversion.ChatId
-        let editMessage = Func.wrap2 botService.EditMessage userConversion.SentMessageId
-
         let! resp = userConversion.ChatId |> loadResources'
 
         match result with
@@ -193,16 +149,16 @@ type FFMpegBot
           match! conversionRepo.LoadConversion conversionId with
           | Prepared preparedConversion ->
             do! conversionService.SaveThumbnail(preparedConversion, video) |> Task.ignore
-            do! editMessage resp[Resources.ThumbnailGenerated]
+            do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ThumbnailGenerated])
           | Converted convertedConversion ->
             let! completed = conversionService.CompleteConversion(convertedConversion, video)
             do! conversionRepo.QueueUpload completed
-            do! editMessage resp[Resources.Uploading]
+            do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.Uploading])
           | _ ->
             logger.LogError("Conversion {ConversionId} is not converted to be completed!", conversionId.Value)
 
-            do! editMessage resp[Resources.ConversionError]
-        | ConversionResult.Error _ -> do! editMessage resp[Resources.ThumbnailingError]
+            do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ConversionError])
+        | ConversionResult.Error _ -> do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ThumbnailingError])
       }
 
     member this.UploadConversion(id) =
@@ -221,7 +177,7 @@ type FFMpegBot
               resp[Resources.Completed],
               conversion.OutputFile,
               conversion.ThumbnailFile
-              )
+            )
 
           do! conversionService.CleanupConversion conversion
           do! botService.DeleteBotMessage userConversion.SentMessageId

@@ -3,32 +3,19 @@
 open System.IO
 open System.Text.RegularExpressions
 open System.Threading.Tasks
+open Domain
 open Domain.Core
+open Domain.Core.Conversion
+open Microsoft.Extensions.Logging
+open Telegram.Repos
 open Telegram.Settings
 open otsom.fs.Bot
 open otsom.fs.Resources
 open otsom.fs.Extensions
 open Telegram.Helpers
 
-type Doc =
-  { Id: string
-    Name: string
-    Caption: string option
-    MimeType: string }
-
-type Vid =
-  { Id: string
-    Name: string option
-    Caption: string option
-    MimeType: string }
-
-type Msg =
-  { MessageId: ChatMessageId
-    Text: string option
-    Doc: Doc option
-    Vid: Vid option }
-
 type MsgHandler = Msg -> Task<unit option>
+type MsgHandlerFactory = IBotService -> IResourceProvider -> MsgHandler
 
 let startHandler (bot: IBotService) (resp: IResourceProvider) : MsgHandler =
   fun msg ->
@@ -41,46 +28,100 @@ let startHandler (bot: IBotService) (resp: IResourceProvider) : MsgHandler =
       | _ -> return None
     }
 
-let linksHandler queueUserConversion (settings: InputValidationSettings) (bot: IBotService) (resp: IResourceProvider) : MsgHandler =
+let private queueProcessing (createConversion: Create) (userConversionRepo: IUserConversionRepo) (conversionRepo: IConversionRepo) =
+  fun userMessageId chatId sentMessageId inputFile ->
+    task {
+      let! conversion = createConversion ()
+
+      do!
+        userConversionRepo.SaveUserConversion
+          { ChatId = chatId
+            SentMessageId = sentMessageId
+            ReceivedMessageId = userMessageId
+            ConversionId = conversion.Id }
+
+      do! conversionRepo.QueuePreparation(conversion.Id, inputFile)
+    }
+
+let linksHandler
+  (createConversion: Create)
+  (userConversionRepo: IUserConversionRepo)
+  (conversionRepo: IConversionRepo)
+  (settings: InputValidationSettings)
+  (logger: ILogger<MsgHandler>)
+  (bot: IBotService)
+  (resp: IResourceProvider)
+  : MsgHandler =
+  let queueProcessing =
+    queueProcessing createConversion userConversionRepo conversionRepo
+
   let linkRegex = Regex(settings.LinkRegex)
 
   fun msg ->
     task {
       match msg.Text with
       | Some(Regex linkRegex links) ->
+        logger.LogInformation("Processing message with links")
+
         for link in links do
           let! sentMessageId = bot.ReplyToMessage(msg.MessageId, resp[Resources.LinkDownload, [| link |]])
 
-          do! queueUserConversion sentMessageId (Conversion.New.InputFile.Link { Url = link })
+          do! queueProcessing msg.MessageId msg.ChatId sentMessageId (Conversion.New.InputFile.Link { Url = link })
 
         return Some()
       | _ -> return None
     }
 
-let documentHandler queueUserConversion (settings: InputValidationSettings) (bot: IBotService) (resp: IResourceProvider) : MsgHandler =
+let documentHandler
+  (createConversion: Create)
+  (userConversionRepo: IUserConversionRepo)
+  (conversionRepo: IConversionRepo)
+  (settings: InputValidationSettings)
+  (logger: ILogger<MsgHandler>)
+  (bot: IBotService)
+  (resp: IResourceProvider)
+  : MsgHandler =
+  let queueProcessing =
+    queueProcessing createConversion userConversionRepo conversionRepo
+
   fun msg ->
     task {
       match msg.Doc with
       | Some doc when
         settings.MimeTypes |> Seq.contains doc.MimeType
-        && doc.Caption |> Option.contains "!nsfw"
+        && doc.Caption |> Option.contains "!nsfw" |> not
         ->
+        logger.LogInformation("Processing message with document {DocumentName}", doc.Name)
+
         let! sentMessageId = bot.ReplyToMessage(msg.MessageId, resp[Resources.DocumentDownload, [| doc.Name |]])
 
-        do! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = doc.Id; Name = doc.Name })
+        do! queueProcessing msg.MessageId msg.ChatId sentMessageId (Conversion.New.InputFile.Document { Id = doc.Id; Name = doc.Name })
 
         return Some()
       | _ -> return None
     }
 
-let videoHandler queueUserConversion (settings: InputValidationSettings) (bot: IBotService) (resp: IResourceProvider) : MsgHandler =
+let videoHandler
+  (createConversion: Create)
+  (userConversionRepo: IUserConversionRepo)
+  (conversionRepo: IConversionRepo)
+  (settings: InputValidationSettings)
+  (logger: ILogger<MsgHandler>)
+  (bot: IBotService)
+  (resp: IResourceProvider)
+  : MsgHandler =
+  let queueProcessing =
+    queueProcessing createConversion userConversionRepo conversionRepo
+
   fun msg ->
     task {
       match msg.Vid with
       | Some vid when
         settings.MimeTypes |> Seq.contains vid.MimeType
-        && vid.Caption |> Option.contains "!nsfw"
+        && vid.Caption |> Option.contains "!nsfw" |> not
         ->
+        logger.LogInformation("Processing message with video {VideoName}", vid.Name)
+
         let videoName =
           vid.Name
           |> Option.defaultWith (fun _ ->
@@ -93,27 +134,8 @@ let videoHandler queueUserConversion (settings: InputValidationSettings) (bot: I
 
         let! sentMessageId = bot.ReplyToMessage(msg.MessageId, resp[Resources.VideoDownload, [| videoName |]])
 
-        do! queueUserConversion sentMessageId (Conversion.New.InputFile.Document { Id = vid.Id; Name = videoName })
+        do! queueProcessing msg.MessageId msg.ChatId sentMessageId (Conversion.New.InputFile.Document { Id = vid.Id; Name = videoName })
 
         return Some()
       | _ -> return None
     }
-
-type MsgHandlerFactory = IBotService -> IResourceProvider -> MsgHandler
-
-type GlobalHandler = Msg -> Task<unit>
-
-let globalHandler bot resp (handlerFactories: MsgHandlerFactory seq) : GlobalHandler =
-  fun msg -> task {
-    let handlers = handlerFactories |> Seq.map (fun f -> f bot resp)
-
-    let mutable lastHandlerResult = None
-    let mutable e = handlers.GetEnumerator()
-
-    while e.MoveNext() && lastHandlerResult.IsNone do
-      let! handlerResult = e.Current msg
-
-      lastHandlerResult <- handlerResult
-
-    return ()
-  }

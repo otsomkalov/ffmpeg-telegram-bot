@@ -24,7 +24,6 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8"/>
     <PackageReference Include="otsom.fs.Resources" Version="0.0.27"/>
     <PackageReference Include="otsom.fs.Bot" Version="0.0.39"/>
-    <PackageReference Include="Telegram.Bot" Version="22.5.1"/>
   </ItemGroup>
 
 </Project>

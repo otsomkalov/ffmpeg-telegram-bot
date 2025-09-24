@@ -22,10 +22,6 @@ module Startup =
 
   let addTelegramInfra (cfg: IConfiguration) (services: IServiceCollection) =
     services
-      .BuildSingleton<InputValidationSettings, IConfiguration>(fun cfg ->
-        cfg
-          .GetSection(InputValidationSettings.SectionName)
-          .Get<InputValidationSettings>())
       .BuildSingleton<TelegramSettings, IConfiguration>(fun cfg -> cfg.GetSection(TelegramSettings.SectionName).Get<TelegramSettings>())
 
     services
