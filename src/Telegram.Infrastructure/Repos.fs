@@ -4,13 +4,12 @@ open Domain.Core
 open MongoDB.Bson
 open MongoDB.Driver
 open MongoDB.Driver.Linq
-open Telegram.Core
 open Telegram.Repos
 open otsom.fs.Bot
 open otsom.fs.Extensions
 open Infrastructure
 open Telegram.Infrastructure
-open Telegram.Infrastructure.Helpers
+open Telegram.Infrastructure.Mappings
 
 type UserConversionRepo(db: IMongoDatabase) =
   let collection = db.GetCollection<Entities.Conversion>("users-conversions")

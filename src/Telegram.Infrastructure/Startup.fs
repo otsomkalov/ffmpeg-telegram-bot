@@ -10,7 +10,6 @@ open Telegram
 open Telegram.Bot
 open Telegram.Infrastructure.Services
 open Telegram.Infrastructure.Settings
-open Telegram.Settings
 open otsom.fs.Extensions.DependencyInjection
 open Telegram.Repos
 open otsom.fs.Resources.Mongo

@@ -50,7 +50,7 @@ type FFMpegBot
       | None -> loadDefaultResources ())
     )
 
-  let globalHandler bot resp =
+  let globalHandler (logger: ILogger) bot resp =
     fun msg ->
       task {
         let handlers = handlerFactories |> Seq.map (fun f -> f bot resp)
@@ -63,7 +63,10 @@ type FFMpegBot
 
           lastHandlerResult <- handlerResult
 
-        return ()
+        match lastHandlerResult with
+        | Some _ -> ()
+        | None ->
+          logger.LogInformation("No handler executed for message")
       }
 
   interface IFFMpegBot with
@@ -84,12 +87,12 @@ type FFMpegBot
                 botService.ReplyToMessage(msg.MessageId, resp[Resources.ChannelBan])
                 |> Task.ignore
             else
-              do! globalHandler botService resp msg
+              do! globalHandler logger botService resp msg
           | None ->
             let! chat = chatSvc.CreateChat(msg.ChatId, msg.Lang)
             let! resp = loadResources chat.Lang
 
-            do! globalHandler botService resp msg
+            do! globalHandler logger botService resp msg
         }
       | Msg BotMsg ->
         Task.FromResult()
