@@ -2,10 +2,7 @@
 
 open System.Threading.Tasks
 open Domain.Core
-open Telegram.Bot.Types
-open Telegram.Bot.Types.Enums
 open otsom.fs.Bot
-open otsom.fs.Resources
 
 type Chat = {
   Id: ChatId
@@ -31,31 +28,41 @@ module Core =
       ConversionId: ConversionId
       ChatId: ChatId }
 
-  type ProcessPrivateMessage = Message -> Task<unit>
-  type ProcessGroupMessage = Message -> Task<unit>
-  type ProcessChannelPost = Message -> Task<unit>
-
-  [<RequireQualifiedAccess>]
-  type Command =
-    | Start
-    | Links of string seq
-    | Document of string * string
-    | Video of string * string
-
-  type ParseCommand = Message -> Task<Command option>
-
-open Core
-
-open Core
-
 type IExtendedBotService =
   abstract ReplyWithVideo: ChatMessageId * string * Conversion.Video * Conversion.Thumbnail -> Task<unit>
 
   inherit IBotService
 
+type Doc =
+  { Id: string
+    Name: string
+    Caption: string option
+    MimeType: string }
+
+type Vid =
+  { Id: string
+    Name: string option
+    Caption: string option
+    MimeType: string }
+
+type UserMsg =
+  {
+    ChatId: ChatId
+    MessageId: ChatMessageId
+    Lang: string option
+    Text: string option
+    Doc: Doc option
+    Vid: Vid option }
+
+type Msg =
+  | UserMsg of UserMsg
+  | BotMsg
+
 type Update =
-  | Msg of Message
-  | Other of UpdateType
+  | Msg of Msg
+  | Other of string
+
+open Core
 
 type IFFMpegBot =
   abstract ProcessUpdate: Update -> Task<unit>

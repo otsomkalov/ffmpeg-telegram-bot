@@ -8,10 +8,8 @@ open Microsoft.Extensions.DependencyInjection
 open MongoDB.Driver
 open Telegram
 open Telegram.Bot
-open Telegram.Core
 open Telegram.Infrastructure.Services
 open Telegram.Infrastructure.Settings
-open Telegram.Infrastructure.Workflows
 open otsom.fs.Extensions.DependencyInjection
 open Telegram.Repos
 open otsom.fs.Resources.Mongo
@@ -23,10 +21,6 @@ module Startup =
 
   let addTelegramInfra (cfg: IConfiguration) (services: IServiceCollection) =
     services
-      .BuildSingleton<InputValidationSettings, IConfiguration>(fun cfg ->
-        cfg
-          .GetSection(InputValidationSettings.SectionName)
-          .Get<InputValidationSettings>())
       .BuildSingleton<TelegramSettings, IConfiguration>(fun cfg -> cfg.GetSection(TelegramSettings.SectionName).Get<TelegramSettings>())
 
     services
@@ -48,5 +42,3 @@ module Startup =
       .AddSingleton<IChatRepo, ChatRepo>()
 
       .BuildSingleton<BuildExtendedBotService, _, _>(buildExtendedBotService)
-
-      .BuildSingleton<ParseCommand, InputValidationSettings>(parseCommand)

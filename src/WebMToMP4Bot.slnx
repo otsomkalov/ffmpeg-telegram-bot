@@ -11,5 +11,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="Domain.Tests\Domain.Tests.fsproj" Type="Classic F#" />
+    <Project Path="Telegram.Tests\Telegram.Tests.fsproj" Type="Classic F#" />
   </Folder>
 </Solution>

@@ -2,7 +2,6 @@
 module Telegram.Infrastructure.Entities
 
 open MongoDB.Bson.Serialization.Attributes
-open Telegram.Core
 open otsom.fs.Bot
 
 [<CLIMutable>]
