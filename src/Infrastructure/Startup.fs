@@ -26,7 +26,8 @@ module Startup =
       .WaitAndRetryAsync(5, (fun retryAttempt -> TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))))
 
   let private configureMongoClient loggerFactory (settings: DatabaseSettings) =
-    let mongoClientSettings = MongoClientSettings.FromConnectionString settings.ConnectionString
+    let mongoClientSettings =
+      MongoClientSettings.FromConnectionString settings.ConnectionString
 
 
     new MongoClient(mongoClientSettings) :> IMongoClient
@@ -49,6 +50,7 @@ module Startup =
 
     services
       .BuildSingleton<WorkersSettings, IOptions<WorkersSettings>>(_.Value)
-      .BuildSingleton<DatabaseSettings, IConfiguration>(fun cfg -> cfg.GetSection(DatabaseSettings.SectionName).Get<DatabaseSettings>())
+      .BuildSingleton<DatabaseSettings, IConfiguration>(fun cfg ->
+        cfg.GetSection(DatabaseSettings.SectionName).Get<DatabaseSettings>())
 
     services.AddSingleton<IConversionRepo, ConversionRepo>()

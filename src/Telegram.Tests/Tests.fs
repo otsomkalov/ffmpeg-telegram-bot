@@ -90,7 +90,14 @@ type LinksHandler() =
     botService.Setup(_.ReplyToMessage(msgId, Resources.LinkDownload)).ReturnsAsync(botMsgId)
 
   let handler =
-    linksHandler createConversion userConversionRepo.Object conversionRepo.Object settings logger.Object botService.Object resp.Object
+    linksHandler
+      createConversion
+      userConversionRepo.Object
+      conversionRepo.Object
+      settings
+      logger.Object
+      botService.Object
+      resp.Object
 
   [<Fact>]
   member _.``Sends message with link from message matching to the regex``() =
@@ -179,11 +186,20 @@ type DocHandler() =
     |> ignore
 
   do
-    conversionRepo.Setup(_.QueuePreparation(conversionId, New.InputFile.Document { Id = docId; Name = docName })).ReturnsAsync(())
+    conversionRepo
+      .Setup(_.QueuePreparation(conversionId, New.InputFile.Document { Id = docId; Name = docName }))
+      .ReturnsAsync(())
     |> ignore
 
   let handler =
-    documentHandler createConversion userConversionRepo.Object conversionRepo.Object settings logger.Object botService.Object resp.Object
+    documentHandler
+      createConversion
+      userConversionRepo.Object
+      conversionRepo.Object
+      settings
+      logger.Object
+      botService.Object
+      resp.Object
 
   [<Fact>]
   member _.``Sends message with document name if it's valid``() =
@@ -280,11 +296,20 @@ type VidHandler() =
     |> ignore
 
   do
-    conversionRepo.Setup(_.QueuePreparation(conversionId, New.InputFile.Document { Id = vidId; Name = vidName })).ReturnsAsync(())
+    conversionRepo
+      .Setup(_.QueuePreparation(conversionId, New.InputFile.Document { Id = vidId; Name = vidName }))
+      .ReturnsAsync(())
     |> ignore
 
   let handler =
-    videoHandler createConversion userConversionRepo.Object conversionRepo.Object settings logger.Object botService.Object resp.Object
+    videoHandler
+      createConversion
+      userConversionRepo.Object
+      conversionRepo.Object
+      settings
+      logger.Object
+      botService.Object
+      resp.Object
 
   [<Fact>]
   member _.``Sends message with video name if it's valid``() =

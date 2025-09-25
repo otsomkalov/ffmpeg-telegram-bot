@@ -19,17 +19,14 @@ open Domain.Core
 type ConverterResultMessage =
   { Id: string; Result: ConversionResult }
 
-type Functions
-  (
-    telemetryClient: TelemetryClient,
-    ffMpegBot: IFFMpegBot,
-    logger: ILogger<Functions>
-  ) =
+type Functions(telemetryClient: TelemetryClient, ffMpegBot: IFFMpegBot, logger: ILogger<Functions>) =
 
   [<Function("HandleUpdate")>]
   member this.HandleUpdate
-    ([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update, ctx: FunctionContext)
-    : Task<unit> =
+    ([<HttpTrigger("POST", Route = "telegram")>] request: HttpRequest, [<FromBody>] update: Update, ctx: FunctionContext) : Task<
+                                                                                                                              unit
+                                                                                                                             >
+    =
     task {
       try
         do! ffMpegBot.ProcessUpdate(update.ToBot())
@@ -41,8 +38,8 @@ type Functions
   [<Function("Downloader")>]
   member this.Downloader
     (
-      [<QueueTrigger("%Workers:Downloader:Queue%", Connection = "Workers:ConnectionString")>]
-      message: BaseMessage<DownloaderMessage>,
+      [<QueueTrigger("%Workers:Downloader:Queue%", Connection = "Workers:ConnectionString")>] message:
+        BaseMessage<DownloaderMessage>,
       _: FunctionContext
     ) : Task<unit> =
     let data = message.Data
@@ -59,8 +56,8 @@ type Functions
   [<Function("Converter")>]
   member this.Converter
     (
-      [<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>]
-      message: BaseMessage<ConverterResultMessage>,
+      [<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>] message:
+        BaseMessage<ConverterResultMessage>,
       _: FunctionContext
     ) : Task<unit> =
     let data = message.Data
@@ -78,8 +75,8 @@ type Functions
   [<Function("Thumbnailer")>]
   member this.Thumbnailer
     (
-      [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>]
-      message: BaseMessage<ConverterResultMessage>,
+      [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>] message:
+        BaseMessage<ConverterResultMessage>,
       _: FunctionContext
     ) : Task<unit> =
     let data = message.Data
@@ -97,8 +94,8 @@ type Functions
   [<Function("Uploader")>]
   member this.Uploader
     (
-      [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>]
-      message: BaseMessage<UploaderMessage>,
+      [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>] message:
+        BaseMessage<UploaderMessage>,
       _: FunctionContext
     ) : Task =
     let conversionId = message.Data.ConversionId |> ConversionId
