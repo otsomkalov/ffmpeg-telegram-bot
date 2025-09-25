@@ -9,7 +9,7 @@ open Telegram.Settings
 open otsom.fs.Extensions.DependencyInjection
 open otsom.fs.Resources
 
-let addHandlers (services: IServiceCollection) =
+let private addHandlers (services: IServiceCollection) =
   services
     .AddSingleton<MsgHandlerFactory>(startHandler)
     .BuildSingleton<MsgHandlerFactory, _, _, _, _, _>(linksHandler)

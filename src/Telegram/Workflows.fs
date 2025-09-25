@@ -73,27 +73,18 @@ type FFMpegBot
     member this.ProcessUpdate(update: Update) =
       match update with
       | Msg (UserMsg msg) ->
-        let botService = buildBotService msg.ChatId
+        chatRepo.LoadChat msg.ChatId
+        |> Task.bind (Option.defaultWithTask (fun () -> chatSvc.CreateChat(msg.ChatId, msg.Lang)))
+        |> Task.bind(fun chat -> task {
+          let botService = buildBotService msg.ChatId
+          let! resp = msg.ChatId |> loadResources'
 
-        task {
-          let! chat = chatRepo.LoadChat msg.ChatId
-
-          match chat with
-          | Some c ->
-            let! resp = loadResources c.Lang
-
-            if c.Banned then
-              do!
-                botService.ReplyToMessage(msg.MessageId, resp[Resources.ChannelBan])
-                |> Task.ignore
-            else
-              do! globalHandler logger botService resp msg
-          | None ->
-            let! chat = chatSvc.CreateChat(msg.ChatId, msg.Lang)
-            let! resp = loadResources chat.Lang
-
+          match chat.Banned with
+          | true ->
+            do! botService.ReplyToMessage(msg.MessageId, resp[Resources.ChannelBan]) |> Task.ignore
+          | false ->
             do! globalHandler logger botService resp msg
-        }
+        })
       | Msg BotMsg ->
         Task.FromResult()
       | Other type' ->
