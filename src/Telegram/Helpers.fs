@@ -1,5 +1,14 @@
 ﻿module Telegram.Helpers
 
-[<RequireQualifiedAccess>]
-module Func =
-  let wrap2 f = fun x y -> f (x, y)
+open System.Text.RegularExpressions
+
+let (|Regex|_|) (regex: Regex) (text: string) =
+  let matches = regex.Matches text
+
+  if matches |> Seq.isEmpty then
+    None
+  else
+    matches |> Seq.map _.Value |> Some
+
+let cleanFileName (text: string) =
+  text |> String.filter ((<>) '_')
