@@ -65,28 +65,28 @@ type FFMpegBot
 
         match lastHandlerResult with
         | Some _ -> ()
-        | None -> logger.LogInformation("No handler executed for message")
+        | None ->
+          logger.LogInformation("No handler executed for message")
       }
 
   interface IFFMpegBot with
     member this.ProcessUpdate(update: Update) =
       match update with
-      | Msg(UserMsg msg) ->
+      | Msg (UserMsg msg) ->
         chatRepo.LoadChat msg.ChatId
         |> Task.bind (Option.defaultWithTask (fun () -> chatSvc.CreateChat(msg.ChatId, msg.Lang)))
-        |> Task.bind (fun chat ->
-          task {
-            let botService = buildBotService msg.ChatId
-            let! resp = msg.ChatId |> loadResources'
+        |> Task.bind(fun chat -> task {
+          let botService = buildBotService msg.ChatId
+          let! resp = msg.ChatId |> loadResources'
 
-            match chat.Banned with
-            | true ->
-              do!
-                botService.ReplyToMessage(msg.MessageId, resp[Resources.ChannelBan])
-                |> Task.ignore
-            | false -> do! globalHandler logger botService resp msg
-          })
-      | Msg BotMsg -> Task.FromResult()
+          match chat.Banned with
+          | true ->
+            do! botService.ReplyToMessage(msg.MessageId, resp[Resources.ChannelBan]) |> Task.ignore
+          | false ->
+            do! globalHandler logger botService resp msg
+        })
+      | Msg BotMsg ->
+        Task.FromResult()
       | Other type' ->
         logger.LogInformation("Got unsupported update type {Type}!", type'.ToString())
         Task.FromResult()
@@ -98,15 +98,11 @@ type FFMpegBot
         let! resp = userConversion.ChatId |> loadResources'
 
         let botService = buildBotService userConversion.ChatId
-
         match! conversionService.PrepareConversion(conversionId, file) with
         | Ok _ -> do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ConversionInProgress])
-        | Error New.DownloadLinkError.Unauthorized ->
-          do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.NotAuthorized])
-        | Error New.DownloadLinkError.NotFound ->
-          do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.NotFound])
-        | Error New.DownloadLinkError.ServerError ->
-          do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ServerError])
+        | Error New.DownloadLinkError.Unauthorized -> do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.NotAuthorized])
+        | Error New.DownloadLinkError.NotFound -> do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.NotFound])
+        | Error New.DownloadLinkError.ServerError -> do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ServerError])
       }
 
     member this.SaveVideo(conversionId, result) =
@@ -132,8 +128,7 @@ type FFMpegBot
             logger.LogError("Conversion {ConversionId} is not thumbnailed to be completed!", conversionId.Value)
 
             do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ConversionError])
-        | ConversionResult.Error _ ->
-          do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ConversionError])
+        | ConversionResult.Error _ -> do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ConversionError])
       }
 
     member this.SaveThumbnail(conversionId, result) =
@@ -159,8 +154,7 @@ type FFMpegBot
             logger.LogError("Conversion {ConversionId} is not converted to be completed!", conversionId.Value)
 
             do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ConversionError])
-        | ConversionResult.Error _ ->
-          do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ThumbnailingError])
+        | ConversionResult.Error _ -> do! botService.EditMessage(userConversion.SentMessageId, resp[Resources.ThumbnailingError])
       }
 
     member this.UploadConversion(id) =

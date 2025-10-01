@@ -4,10 +4,11 @@ open System.Threading.Tasks
 open Domain.Core
 open otsom.fs.Bot
 
-type Chat =
-  { Id: ChatId
-    Banned: bool
-    Lang: string }
+type Chat = {
+  Id: ChatId
+  Banned: bool
+  Lang: string
+}
 
 type ICreateChat =
   abstract CreateChat: ChatId * string option -> Task<Chat>
@@ -45,7 +46,8 @@ type Vid =
     MimeType: string }
 
 type UserMsg =
-  { ChatId: ChatId
+  {
+    ChatId: ChatId
     MessageId: ChatMessageId
     Lang: string option
     Text: string option
