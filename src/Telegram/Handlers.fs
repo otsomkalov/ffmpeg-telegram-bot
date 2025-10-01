@@ -28,7 +28,11 @@ let startHandler (bot: IBotService) (resp: IResourceProvider) : MsgHandler =
       | _ -> return None
     }
 
-let private queueProcessing (createConversion: Create) (userConversionRepo: IUserConversionRepo) (conversionRepo: IConversionRepo) =
+let private queueProcessing
+  (createConversion: Create)
+  (userConversionRepo: IUserConversionRepo)
+  (conversionRepo: IConversionRepo)
+  =
   fun userMessageId chatId sentMessageId inputFile ->
     task {
       let! conversion = createConversion ()
@@ -93,9 +97,15 @@ let documentHandler
         ->
         logger.LogInformation("Processing message with document {DocumentName}", doc.Name)
 
-        let! sentMessageId = bot.ReplyToMessage(msg.MessageId, resp[Resources.DocumentDownload, [| cleanFileName doc.Name |]])
+        let! sentMessageId =
+          bot.ReplyToMessage(msg.MessageId, resp[Resources.DocumentDownload, [| cleanFileName doc.Name |]])
 
-        do! queueProcessing msg.MessageId msg.ChatId sentMessageId (Conversion.New.InputFile.Document { Id = doc.Id; Name = doc.Name })
+        do!
+          queueProcessing
+            msg.MessageId
+            msg.ChatId
+            sentMessageId
+            (Conversion.New.InputFile.Document { Id = doc.Id; Name = doc.Name })
 
         return Some()
       | _ -> return None
@@ -133,7 +143,12 @@ let videoHandler
 
         let! sentMessageId = bot.ReplyToMessage(msg.MessageId, resp[Resources.VideoDownload, [| videoName |]])
 
-        do! queueProcessing msg.MessageId msg.ChatId sentMessageId (Conversion.New.InputFile.Document { Id = vid.Id; Name = videoName })
+        do!
+          queueProcessing
+            msg.MessageId
+            msg.ChatId
+            sentMessageId
+            (Conversion.New.InputFile.Document { Id = vid.Id; Name = videoName })
 
         return Some()
       | _ -> return None

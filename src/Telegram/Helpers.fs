@@ -10,5 +10,4 @@ let (|Regex|_|) (regex: Regex) (text: string) =
   else
     matches |> Seq.map _.Value |> Some
 
-let cleanFileName (text: string) =
-  text |> String.filter ((<>) '_')
+let cleanFileName (text: string) = text |> String.filter ((<>) '_')

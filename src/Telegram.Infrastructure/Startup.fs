@@ -20,18 +20,18 @@ module Startup =
     fun chatId -> ExtendedBotService(workerOptions, bot, chatId)
 
   let addTelegramInfra (cfg: IConfiguration) (services: IServiceCollection) =
-    services
-      .BuildSingleton<TelegramSettings, IConfiguration>(fun cfg -> cfg.GetSection(TelegramSettings.SectionName).Get<TelegramSettings>())
+    services.BuildSingleton<TelegramSettings, IConfiguration>(fun cfg ->
+      cfg.GetSection(TelegramSettings.SectionName).Get<TelegramSettings>())
 
     services
-      .AddSingleton<HttpClientHandler>(fun _ -> new HttpClientHandler(ServerCertificateCustomValidationCallback = (fun a b c d -> true)))
+      .AddSingleton<HttpClientHandler>(fun _ ->
+        new HttpClientHandler(ServerCertificateCustomValidationCallback = (fun a b c d -> true)))
       .BuildSingleton<HttpClient, HttpClientHandler>(fun handler -> new HttpClient(handler))
       .BuildSingleton<ITelegramBotClient, TelegramSettings, HttpClient>(fun settings client ->
         let options = TelegramBotClientOptions(settings.Token, settings.ApiUrl)
         TelegramBotClient(options, client) :> ITelegramBotClient)
 
-    services
-      .BuildSingleton<IMongoCollection<Entities.Chat>, IMongoDatabase>(_.GetCollection("chats"))
+    services.BuildSingleton<IMongoCollection<Entities.Chat>, IMongoDatabase>(_.GetCollection("chats"))
 
     services |> Startup.addMongoResources cfg |> Startup.addTelegramBot cfg
 
