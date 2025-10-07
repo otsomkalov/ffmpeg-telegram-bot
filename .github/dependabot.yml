@@ -4,6 +4,20 @@ updates:
   - package-ecosystem: "nuget"
     directory: "/src"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
     ignore:
       - dependency-name: "FSharp.Core"
+        update-types: [ "version-update:semver-minor", "version-update:semver-patch" ]
+    groups:
+      deps:
+        patterns: [ "*" ]
+  - package-ecosystem: "nuget"
+    directory: "/tests"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "FSharp.Core"
+        update-types: [ "version-update:semver-minor", "version-update:semver-patch" ]
+    groups:
+      tests:
+        patterns: [ "*" ]
