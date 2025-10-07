@@ -25,12 +25,26 @@ resource "azurerm_resource_group" "rg-tg-bot" {
   tags = local.tags
 }
 
+resource "azurerm_log_analytics_workspace" "appi-ws-tg-bot" {
+  name                = "appi-ws-${var.bot-name}-tg-bot-${var.env}"
+  location            = azurerm_resource_group.rg-tg-bot.location
+  resource_group_name = azurerm_resource_group.rg-tg-bot.name
+
+  sku               = "PerGB2018"
+  retention_in_days = 30
+
+  tags = local.tags
+}
+
 resource "azurerm_application_insights" "appi-tg-bot" {
   resource_group_name = azurerm_resource_group.rg-tg-bot.name
   location            = azurerm_resource_group.rg-tg-bot.location
+  workspace_id        = azurerm_log_analytics_workspace.appi-ws-tg-bot.id
 
   name             = "appi-${var.bot-name}-tg-bot-${var.env}"
   application_type = "web"
+
+  tags = local.tags
 }
 
 resource "azurerm_storage_account" "st-tg-bot" {
@@ -40,7 +54,7 @@ resource "azurerm_storage_account" "st-tg-bot" {
   name                     = "st${var.bot-name}tgbot${var.env}"
   account_tier             = "Standard"
   account_replication_type = "LRS"
-  account_kind             = "Storage"
+  account_kind             = "StorageV2"
 
   tags = local.tags
 }
@@ -172,5 +186,5 @@ resource "azurerm_linux_function_app" "func-tg-bot" {
     },
     {
       for idx, type in var.mime-types : "Validation__MimeTypes__${idx}" => type
-    })
+  })
 }
