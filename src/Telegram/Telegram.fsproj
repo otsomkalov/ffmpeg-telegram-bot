@@ -21,8 +21,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8"/>
-    <PackageReference Include="otsom.fs.Resources" Version="0.0.27"/>
+    <PackageReference Include="FSharp.Core" Version="9.0.303" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9"/>
+    <PackageReference Include="otsom.fs.Resources" Version="0.0.32"/>
     <PackageReference Include="otsom.fs.Bot" Version="0.0.39"/>
   </ItemGroup>
 
