@@ -93,9 +93,7 @@ type ConversionRepo
 
         use! thumbnailerBlobStream = Storage.getBlobStream settings document.Name settings.Thumbnailer.Input.Container
 
-        do!
-          bot.GetInfoAndDownloadFile(document.Id, thumbnailerBlobStream)
-          |> Task.ignore
+        do! bot.GetInfoAndDownloadFile(document.Id, thumbnailerBlobStream) |> Task.ignore
 
         return document.Name
       }

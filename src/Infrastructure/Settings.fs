@@ -28,4 +28,3 @@ module Settings =
       Name: string }
 
     static member SectionName = "Database"
-

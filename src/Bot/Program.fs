@@ -47,7 +47,7 @@ module Startup =
     |> Startup.addTelegram ctx.Configuration
     |> Startup.addTelegramInfra ctx.Configuration
 
-    services.ConfigureTelegramBot<Microsoft.AspNetCore.Http.Json.JsonOptions>(_.SerializerOptions);
+    services.ConfigureTelegramBot<Microsoft.AspNetCore.Http.Json.JsonOptions>(_.SerializerOptions)
 
     ()
 
