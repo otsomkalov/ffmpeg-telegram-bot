@@ -12,7 +12,6 @@ open Microsoft.Azure.Functions.Worker.Http
 open Microsoft.Extensions.Logging
 open Telegram
 open Telegram.Bot.Types
-open Telegram.Bot.Types.Enums
 open Telegram.Core
 open Domain.Core
 

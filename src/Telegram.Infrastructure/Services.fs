@@ -10,7 +10,6 @@ open Telegram.Bot
 open Telegram.Bot.Types
 open otsom.fs.Bot
 open otsom.fs.Bot.Telegram
-open otsom.fs.Extensions
 open FsToolkit.ErrorHandling
 
 type ExtendedBotService(bot: ITelegramBotClient, workersOptions: IOptions<WorkersSettings>, chatId: ChatId) =

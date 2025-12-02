@@ -6,7 +6,6 @@ open MongoDB.Driver
 open MongoDB.Driver.Linq
 open Telegram.Repos
 open otsom.fs.Bot
-open otsom.fs.Extensions
 open Infrastructure
 open Telegram.Infrastructure
 open Telegram.Infrastructure.Mappings

@@ -11,7 +11,6 @@ open Telegram.Repos
 open Telegram.Settings
 open otsom.fs.Bot
 open otsom.fs.Resources
-open otsom.fs.Extensions
 open Telegram.Helpers
 open FsToolkit.ErrorHandling
 

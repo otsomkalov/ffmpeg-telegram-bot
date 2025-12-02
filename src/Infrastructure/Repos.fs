@@ -17,8 +17,6 @@ open MongoDB.Bson
 open MongoDB.Driver
 open MongoDB.Driver.Linq
 open Telegram.Bot
-open otsom.fs.Extensions
-open System.Threading.Tasks
 open FsToolkit.ErrorHandling
 
 type ConversionRepo
