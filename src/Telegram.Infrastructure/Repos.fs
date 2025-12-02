@@ -10,6 +10,7 @@ open otsom.fs.Extensions
 open Infrastructure
 open Telegram.Infrastructure
 open Telegram.Infrastructure.Mappings
+open FsToolkit.ErrorHandling
 
 type UserConversionRepo(db: IMongoDatabase) =
   let collection = db.GetCollection<Entities.Conversion>("users-conversions")

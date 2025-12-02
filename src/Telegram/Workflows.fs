@@ -12,6 +12,7 @@ open Telegram.Handlers
 open otsom.fs.Resources
 open otsom.fs.Extensions
 open Telegram.Repos
+open FsToolkit.ErrorHandling
 
 type ChatSvc(resourcesSettings: ResourcesSettings, chatRepo: IChatRepo) =
   interface IChatSvc with

@@ -13,6 +13,7 @@ open otsom.fs.Bot
 open otsom.fs.Resources
 open otsom.fs.Extensions
 open Telegram.Helpers
+open FsToolkit.ErrorHandling
 
 type MsgHandler = UserMsg -> Task<unit option>
 type MsgHandlerFactory = IBotService -> IResourceProvider -> MsgHandler

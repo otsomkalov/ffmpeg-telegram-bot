@@ -5,6 +5,7 @@ open Domain.Core
 open Domain.Core.Conversion
 open Microsoft.FSharp.Core
 open otsom.fs.Extensions
+open FsToolkit.ErrorHandling
 
 module Workflows =
   [<RequireQualifiedAccess>]

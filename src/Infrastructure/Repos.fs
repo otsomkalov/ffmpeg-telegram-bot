@@ -19,6 +19,7 @@ open MongoDB.Driver.Linq
 open Telegram.Bot
 open otsom.fs.Extensions
 open System.Threading.Tasks
+open FsToolkit.ErrorHandling
 
 type ConversionRepo
   (
@@ -37,14 +38,14 @@ type ConversionRepo
 
     member _.LoadConversion(ConversionId id) =
       collection.AsQueryable().FirstOrDefaultAsync(fun c -> c.Id = ObjectId(id))
-      &|> _.ToDomain
+      |> Task.map _.ToDomain
 
     member _.SaveConversion conversion =
       let filter =
         Builders<Entities.Conversion>.Filter.Eq(_.Id, ObjectId(conversion.Id.Value))
 
       collection.ReplaceOneAsync(filter, Entities.Conversion.FromDomain conversion, ReplaceOptions(IsUpsert = true))
-      &|> ignore
+      |> Task.map ignore
 
     member this.DeleteThumbnail(Conversion.Thumbnail thumbnail) =
       let container =
@@ -52,7 +53,7 @@ type ConversionRepo
 
       let blob = container.GetBlobClient(thumbnail)
 
-      blob.DeleteAsync() &|> ignore
+      blob.DeleteAsync() |> Task.map ignore
 
     member this.DeleteVideo(Conversion.Video video) =
       let container =
@@ -60,7 +61,7 @@ type ConversionRepo
 
       let blob = container.GetBlobClient(video)
 
-      blob.DeleteAsync() &|> ignore
+      blob.DeleteAsync() |> Task.map ignore
 
     member this.QueueConversion(conversion) =
       let queueClient = queueServiceClient.GetQueueClient(settings.Converter.Input.Queue)
@@ -71,7 +72,7 @@ type ConversionRepo
             { Id = conversion.Id.Value
               Name = conversion.InputFile } }
 
-      message |> JSON.serialize |> queueClient.SendMessageAsync &|> ignore
+      message |> JSON.serialize |> queueClient.SendMessageAsync |> Task.map ignore
 
     member this.QueueThumbnailing(conversion) =
       let queueClient =
@@ -83,7 +84,7 @@ type ConversionRepo
             { Id = conversion.Id.Value
               Name = conversion.InputFile } }
 
-      message |> JSON.serialize |> queueClient.SendMessageAsync &|> ignore
+      message |> JSON.serialize |> queueClient.SendMessageAsync |> Task.map ignore
 
     member this.DownloadDocument(document) =
       task {
