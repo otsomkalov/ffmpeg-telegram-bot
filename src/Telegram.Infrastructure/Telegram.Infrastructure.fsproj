@@ -8,15 +8,15 @@
   <ItemGroup>
     <Compile Include="Settings.fs"/>
     <Compile Include="Entities.fs"/>
-    <Compile Include="Mappings.fs" />
+    <Compile Include="Mappings.fs"/>
     <Compile Include="Repos.fs"/>
-    <Compile Include="Services.fs" />
+    <Compile Include="Services.fs"/>
     <Compile Include="Startup.fs"/>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="otsom.fs.Resources.Mongo" Version="0.0.47" />
-    <PackageReference Include="otsom.fs.Bot.Telegram" Version="0.0.69" />
+    <PackageReference Include="otsom.fs.Resources.Mongo" Version="0.0.55"/>
+    <PackageReference Include="otsom.fs.Bot.Telegram" Version="0.0.75"/>
   </ItemGroup>
 
   <ItemGroup>
