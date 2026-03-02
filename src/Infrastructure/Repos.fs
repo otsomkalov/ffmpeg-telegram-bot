@@ -65,7 +65,7 @@ type ConversionRepo
       let queueClient = queueServiceClient.GetQueueClient(settings.Converter.Input.Queue)
 
       let message: BaseMessage<Conversion.Prepared.ConverterMessage> =
-        { OperationId = Activity.Current.ParentId
+        { Context = Observability.getTraceContext ()
           Data =
             { Id = conversion.Id.Value
               Name = conversion.InputFile } }
@@ -77,7 +77,7 @@ type ConversionRepo
         queueServiceClient.GetQueueClient(settings.Thumbnailer.Input.Queue)
 
       let message: BaseMessage<Conversion.Prepared.ConverterMessage> =
-        { OperationId = Activity.Current.ParentId
+        { Context = Observability.getTraceContext ()
           Data =
             { Id = conversion.Id.Value
               Name = conversion.InputFile } }
@@ -126,7 +126,7 @@ type ConversionRepo
 
       let messageBody =
         JSON.serialize
-          { OperationId = Activity.Current.ParentId
+          { Context = Observability.getTraceContext ()
             Data = { ConversionId = conversion.Id.Value } }
 
       queueClient.SendMessageAsync(messageBody) |> Task.ignore
@@ -135,7 +135,7 @@ type ConversionRepo
       let queueClient = queueServiceClient.GetQueueClient(settings.Downloader.Queue)
 
       let message =
-        { OperationId = Activity.Current.ParentId
+        { Context = Observability.getTraceContext ()
           Data =
             { ConversionId = conversionId
               File = inputFile } }
