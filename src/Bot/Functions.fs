@@ -27,10 +27,7 @@ type Functions(ffMpegBot: IFFMpegBot, logger: ILogger<Functions>) =
     =
     task {
       use activity =
-        Observability.ActivitySource.StartActivity(
-          "HandleUpdate",
-          ActivityKind.Internal
-        )
+        Observability.ActivitySource.StartActivity("HandleUpdate", ActivityKind.Internal)
 
       try
         do! ffMpegBot.ProcessUpdate(update.ToBot())

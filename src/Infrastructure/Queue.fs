@@ -8,7 +8,9 @@ open Infrastructure.Core
 
 module Queue =
   [<CLIMutable>]
-  type BaseMessage<'a> = { Context: Observability.TraceContext; Data: 'a }
+  type BaseMessage<'a> =
+    { Context: Observability.TraceContext
+      Data: 'a }
 
   [<CLIMutable>]
   type UploaderMessage = { ConversionId: string }
