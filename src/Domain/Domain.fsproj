@@ -9,13 +9,12 @@
     <Compile Include="Core.fs"/>
     <Compile Include="Repos.fs"/>
     <Compile Include="Workflows.fs"/>
-    <Compile Include="Startup.fs" />
+    <Compile Include="Startup.fs"/>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
-    <PackageReference Include="otsom.fs.Extensions" Version="0.0.52" />
-    <PackageReference Include="shortid" Version="4.0.0"/>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3"/>
+    <PackageReference Include="otsom.fs.Extensions" Version="0.0.65"/>
     <PackageReference Include="otsom.fs.Extensions.DependencyInjection" Version="0.0.28"/>
   </ItemGroup>
 
