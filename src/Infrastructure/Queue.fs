@@ -1,12 +1,16 @@
 ﻿namespace Infrastructure
 
+open System.Diagnostics
 open Domain.Core
+open Infrastructure.Helpers
 open Microsoft.FSharp.Core
 open Infrastructure.Core
 
 module Queue =
   [<CLIMutable>]
-  type BaseMessage<'a> = { OperationId: string; Data: 'a }
+  type BaseMessage<'a> =
+    { Context: Observability.TraceContext
+      Data: 'a }
 
   [<CLIMutable>]
   type UploaderMessage = { ConversionId: string }

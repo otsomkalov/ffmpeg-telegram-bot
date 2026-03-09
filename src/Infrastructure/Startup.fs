@@ -8,7 +8,6 @@ open Domain
 open Infrastructure.Settings
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
-open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Options
 open MongoDB.Driver
 open Polly.Extensions.Http
@@ -25,10 +24,9 @@ module Startup =
       .HandleTransientHttpError()
       .WaitAndRetryAsync(5, (fun retryAttempt -> TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))))
 
-  let private configureMongoClient loggerFactory (settings: DatabaseSettings) =
+  let private configureMongoClient (settings: DatabaseSettings) =
     let mongoClientSettings =
       MongoClientSettings.FromConnectionString settings.ConnectionString
-
 
     new MongoClient(mongoClientSettings) :> IMongoClient
 
@@ -41,7 +39,7 @@ module Startup =
       .AddPolicyHandler(retryPolicy)
 
     services
-      .BuildSingleton<IMongoClient, ILoggerFactory, DatabaseSettings>(configureMongoClient)
+      .BuildSingleton<IMongoClient, DatabaseSettings>(configureMongoClient)
       .BuildSingleton<IMongoDatabase, DatabaseSettings, IMongoClient>(configureMongoDatabase)
 
       .BuildSingleton<IMongoCollection<Entities.Conversion>, IMongoDatabase>(_.GetCollection("conversions"))
