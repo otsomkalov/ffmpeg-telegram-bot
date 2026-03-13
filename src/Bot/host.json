@@ -5,6 +5,11 @@
   "logging": {
     "logLevel": {
       "default": "Warning"
+    },
+    "OpenTelemetry" : {
+      "logLevel": {
+        "default": "Warning"
+      }
     }
   },
   "extensions": {
