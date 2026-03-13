@@ -3,6 +3,7 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "Logging__LogLevel__Default": "Warning",
     "Workers__ConnectionString": "UseDevelopmentStorage=true",
     "Workers__Downloader__Queue": "downloader",
     "Workers__Converter__Input__Container": "converter-input",
