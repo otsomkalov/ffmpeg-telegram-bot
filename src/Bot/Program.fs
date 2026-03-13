@@ -46,14 +46,6 @@ module Startup =
     services
       .AddOpenTelemetry()
       .UseFunctionsWorkerDefaults()
-      .WithTracing(fun builder ->
-        builder.AddSource(Observability.ActivitySource.Name)
-
-        builder.AddHttpClientInstrumentation(fun options ->
-          options.FilterHttpRequestMessage <- _.RequestUri.AbsolutePath.StartsWith("/admin") >> not
-          ())
-
-        ())
       .UseAzureMonitorExporter()
 
     services
