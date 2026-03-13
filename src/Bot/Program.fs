@@ -43,10 +43,7 @@ module Startup =
     ()
 
   let private configureServices (ctx: HostBuilderContext) (services: IServiceCollection) =
-    services
-      .AddOpenTelemetry()
-      .UseFunctionsWorkerDefaults()
-      .UseAzureMonitorExporter()
+    services.AddOpenTelemetry().UseFunctionsWorkerDefaults().UseAzureMonitorExporter()
 
     services
     |> Startup.addDomain
