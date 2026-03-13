@@ -47,8 +47,7 @@ module Startup =
       .AddOpenTelemetry()
       .UseFunctionsWorkerDefaults()
       .WithTracing(fun builder ->
-        builder.AddSource(Observability.ActivitySource.Name, "Azure.Storage.*")
-        builder.AddHttpClientInstrumentation()
+        builder.AddSource(Observability.ActivitySource.Name)
         ())
       .UseAzureMonitorExporter()
 

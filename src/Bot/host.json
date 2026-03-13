@@ -4,8 +4,7 @@
   "functionTimeout": "00:01:00",
   "logging": {
     "logLevel": {
-      "default": "Information",
-      "Azure.Core": "Warning"
+      "default": "Warning"
     }
   },
   "extensions": {
