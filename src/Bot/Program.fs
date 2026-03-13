@@ -52,6 +52,7 @@ module Startup =
         builder.AddHttpClientInstrumentation(fun options ->
           options.FilterHttpRequestMessage <- _.RequestUri.AbsolutePath.StartsWith("/admin") >> not
           ())
+
         ())
       .UseAzureMonitorExporter()
 
