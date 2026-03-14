@@ -1,17 +1,20 @@
 namespace Bot
 
-open System
+open Azure.Monitor.OpenTelemetry.Exporter
+open OpenTelemetry
 open System.Reflection
 open System.Text.Json
 open System.Text.Json.Serialization
 open Infrastructure.Helpers
+open Microsoft.Azure.Functions.Worker.OpenTelemetry
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Extensions.Logging
-open Microsoft.Extensions.Logging.ApplicationInsights
 open Infrastructure
+open OpenTelemetry.Metrics
+open OpenTelemetry.Trace
 open Telegram.Infrastructure
 open Domain
 open Telegram
@@ -31,15 +34,16 @@ module Startup =
     ()
 
   let configureLogging (builder: ILoggingBuilder) =
-    builder.AddFilter<ApplicationInsightsLoggerProvider>(String.Empty, LogLevel.Information)
 
-    builder.AddFilter<ApplicationInsightsLoggerProvider>("MongoDB.Command", LogLevel.Debug)
+    builder.AddOpenTelemetry(fun b ->
+      b.IncludeScopes <- true
+      b.IncludeFormattedMessage <- true
+      ())
 
     ()
 
   let private configureServices (ctx: HostBuilderContext) (services: IServiceCollection) =
-    services.AddApplicationInsightsTelemetryWorkerService()
-    services.ConfigureFunctionsApplicationInsights()
+    services.AddOpenTelemetry().UseFunctionsWorkerDefaults().UseAzureMonitorExporter()
 
     services
     |> Startup.addDomain

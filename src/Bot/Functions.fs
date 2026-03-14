@@ -2,10 +2,9 @@
 
 open System.Diagnostics
 open System.Threading.Tasks
+open Bot
 open Bot.Mappings
 open Infrastructure.Queue
-open Microsoft.ApplicationInsights
-open Microsoft.ApplicationInsights.DataContracts
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
@@ -18,7 +17,7 @@ open Domain.Core
 type ConverterResultMessage =
   { Id: string; Result: ConversionResult }
 
-type Functions(telemetryClient: TelemetryClient, ffMpegBot: IFFMpegBot, logger: ILogger<Functions>) =
+type Functions(ffMpegBot: IFFMpegBot, logger: ILogger<Functions>) =
 
   [<Function("HandleUpdate")>]
   member this.HandleUpdate
@@ -27,6 +26,9 @@ type Functions(telemetryClient: TelemetryClient, ffMpegBot: IFFMpegBot, logger: 
                                                                                                                              >
     =
     task {
+      use activity =
+        Observability.ActivitySource.StartActivity("HandleUpdate", ActivityKind.Internal)
+
       try
         do! ffMpegBot.ProcessUpdate(update.ToBot())
       with e ->
@@ -39,17 +41,20 @@ type Functions(telemetryClient: TelemetryClient, ffMpegBot: IFFMpegBot, logger: 
     (
       [<QueueTrigger("%Workers:Downloader:Queue%", Connection = "Workers:ConnectionString")>] message:
         BaseMessage<DownloaderMessage>,
-      _: FunctionContext
+      ctx: FunctionContext
     ) : Task<unit> =
     let data = message.Data
 
     task {
-      use activity = (new Activity("Downloader")).SetParentId(message.OperationId)
-      use operation = telemetryClient.StartOperation<RequestTelemetry>(activity)
+      use activity =
+        Observability.ActivitySource.StartActivity(
+          "Downloader",
+          ActivityKind.Consumer,
+          Activity.Current.Context,
+          links = [ ActivityLink(ActivityContext.Parse(message.Context["traceparent"], null)) ]
+        )
 
       do! ffMpegBot.PrepareConversion(data.ConversionId, data.File)
-
-      operation.Telemetry.Success <- true
     }
 
   [<Function("Converter")>]
@@ -57,18 +62,20 @@ type Functions(telemetryClient: TelemetryClient, ffMpegBot: IFFMpegBot, logger: 
     (
       [<QueueTrigger("%Workers:Converter:Output:Queue%", Connection = "Workers:ConnectionString")>] message:
         BaseMessage<ConverterResultMessage>,
-      _: FunctionContext
+      ctx: FunctionContext
     ) : Task<unit> =
     let data = message.Data
 
     task {
-      use activity = (new Activity("Converter")).SetParentId(message.OperationId)
-
-      use operation = telemetryClient.StartOperation<RequestTelemetry>(activity)
+      use activity =
+        Observability.ActivitySource.StartActivity(
+          "Converter",
+          ActivityKind.Consumer,
+          Activity.Current.Context,
+          links = [ ActivityLink(ActivityContext.Parse(message.Context["traceparent"], null)) ]
+        )
 
       do! ffMpegBot.SaveVideo(ConversionId data.Id, data.Result)
-
-      operation.Telemetry.Success <- true
     }
 
   [<Function("Thumbnailer")>]
@@ -76,18 +83,20 @@ type Functions(telemetryClient: TelemetryClient, ffMpegBot: IFFMpegBot, logger: 
     (
       [<QueueTrigger("%Workers:Thumbnailer:Output:Queue%", Connection = "Workers:ConnectionString")>] message:
         BaseMessage<ConverterResultMessage>,
-      _: FunctionContext
+      ctx: FunctionContext
     ) : Task<unit> =
     let data = message.Data
 
     task {
-      use activity = (new Activity("Thumbnailer")).SetParentId(message.OperationId)
-
-      use operation = telemetryClient.StartOperation<RequestTelemetry>(activity)
+      use activity =
+        Observability.ActivitySource.StartActivity(
+          "Thumbnailer",
+          ActivityKind.Consumer,
+          Activity.Current.Context,
+          links = [ ActivityLink(ActivityContext.Parse(message.Context["traceparent"], null)) ]
+        )
 
       do! ffMpegBot.SaveThumbnail(ConversionId data.Id, data.Result)
-
-      operation.Telemetry.Success <- true
     }
 
   [<Function("Uploader")>]
@@ -95,16 +104,18 @@ type Functions(telemetryClient: TelemetryClient, ffMpegBot: IFFMpegBot, logger: 
     (
       [<QueueTrigger("%Workers:Uploader:Queue%", Connection = "Workers:ConnectionString")>] message:
         BaseMessage<UploaderMessage>,
-      _: FunctionContext
+      ctx: FunctionContext
     ) : Task =
     let conversionId = message.Data.ConversionId |> ConversionId
 
     task {
-      use activity = (new Activity("Uploader")).SetParentId(message.OperationId)
-
-      use operation = telemetryClient.StartOperation<RequestTelemetry>(activity)
+      use activity =
+        Observability.ActivitySource.StartActivity(
+          "Uploader",
+          ActivityKind.Consumer,
+          Activity.Current.Context,
+          links = [ ActivityLink(ActivityContext.Parse(message.Context["traceparent"], null)) ]
+        )
 
       do! ffMpegBot.UploadConversion conversionId
-
-      operation.Telemetry.Success <- true
     }
