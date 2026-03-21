@@ -32,7 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Domain\Domain.fsproj"/>
+    <ProjectReference Include="..\..\src\Domain\Domain.fsproj"/>
   </ItemGroup>
 
 </Project>

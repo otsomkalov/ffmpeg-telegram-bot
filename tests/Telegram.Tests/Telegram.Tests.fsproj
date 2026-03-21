@@ -28,7 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Telegram\Telegram.fsproj"/>
+    <ProjectReference Include="..\..\src\Telegram\Telegram.fsproj"/>
   </ItemGroup>
 
 </Project>
