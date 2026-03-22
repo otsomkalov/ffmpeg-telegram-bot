@@ -183,8 +183,6 @@ resource "azurerm_linux_function_app" "func-tg-bot" {
       Workers__Uploader__Queue = azurerm_storage_queue.stq-uploader-tg-bot.name
 
       Validation__LinkRegex = var.link-regex
-
-      OTEL_METRICS_EXPORTER = "none"
     },
     {
       for idx, type in var.mime-types : "Validation__MimeTypes__${idx}" => type
