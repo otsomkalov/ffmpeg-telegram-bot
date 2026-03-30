@@ -154,10 +154,14 @@ resource "azurerm_linux_function_app" "func-tg-bot" {
 
   tags = local.tags
 
+  connection_string {
+    name  = "APPLICATIONINSIGHTS"
+    type  = "Custom"
+    value = azurerm_application_insights.appi-tg-bot.connection_string
+  }
+
   app_settings = merge(
     {
-      ConnectionStrings__APPLICATIONINSIGHTS = azurerm_application_insights.appi-tg-bot.connection_string
-
       Telegram__Token  = var.telegram-token
       Telegram__ApiUrl = var.telegram-api-url
 

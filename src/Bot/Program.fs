@@ -13,8 +13,6 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Extensions.Logging
 open Infrastructure
-open OpenTelemetry.Metrics
-open OpenTelemetry.Trace
 open Telegram.Infrastructure
 open Domain
 open Telegram
