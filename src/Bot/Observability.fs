@@ -2,13 +2,12 @@
 module internal Bot.Observability
 
 open System.Diagnostics
-open System.Reflection
 open Infrastructure.Helpers
 open OpenTelemetry.Context.Propagation
 
-let private assembly = Assembly.GetExecutingAssembly()
+let private name = "Bot"
 
-let ActivitySource = new ActivitySource(assembly.FullName)
+let ActivitySource = new ActivitySource(name)
 
 let extractContext (context: Observability.TraceContext) =
   Propagators.DefaultTextMapPropagator.Extract(

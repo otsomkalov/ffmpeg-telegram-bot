@@ -13,8 +13,6 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Extensions.Logging
 open Infrastructure
-open OpenTelemetry.Metrics
-open OpenTelemetry.Trace
 open Telegram.Infrastructure
 open Domain
 open Telegram
@@ -43,7 +41,19 @@ module Startup =
     ()
 
   let private configureServices (ctx: HostBuilderContext) (services: IServiceCollection) =
-    services.AddOpenTelemetry().UseFunctionsWorkerDefaults().UseAzureMonitorExporter()
+    services
+      .AddOpenTelemetry()
+      .UseFunctionsWorkerDefaults()
+
+      .WithTracing(fun tracing ->
+        tracing.AddSource(Observability.ActivitySource.Name, "Azure.*")
+
+        ())
+
+      .UseAzureMonitorExporter(fun opts ->
+        opts.ConnectionString <- ctx.Configuration.GetConnectionString("APPLICATIONINSIGHTS")
+
+        ())
 
     services
     |> Startup.addDomain
