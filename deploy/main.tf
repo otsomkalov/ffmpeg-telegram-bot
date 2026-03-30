@@ -144,7 +144,6 @@ resource "azurerm_linux_function_app" "func-tg-bot" {
   builtin_logging_enabled     = false
 
   site_config {
-    application_insights_connection_string = azurerm_application_insights.appi-tg-bot.connection_string
     app_scale_limit                        = 10
 
     application_stack {
@@ -157,6 +156,8 @@ resource "azurerm_linux_function_app" "func-tg-bot" {
 
   app_settings = merge(
     {
+      ConnectionStrings__APPLICATIONINSIGHTS = azurerm_application_insights.appi-tg-bot.connection_string
+
       Telegram__Token  = var.telegram-token
       Telegram__ApiUrl = var.telegram-api-url
 
@@ -183,8 +184,6 @@ resource "azurerm_linux_function_app" "func-tg-bot" {
       Workers__Uploader__Queue = azurerm_storage_queue.stq-uploader-tg-bot.name
 
       Validation__LinkRegex = var.link-regex
-
-      OTEL_METRICS_EXPORTER = "none"
     },
     {
       for idx, type in var.mime-types : "Validation__MimeTypes__${idx}" => type

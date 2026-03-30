@@ -3,14 +3,6 @@
   "telemetryMode": "OpenTelemetry",
   "functionTimeout": "00:01:00",
   "logging": {
-    "logLevel": {
-      "default": "Warning"
-    },
-    "OpenTelemetry" : {
-      "logLevel": {
-        "default": "Warning"
-      }
-    }
   },
   "extensions": {
     "queues": {
