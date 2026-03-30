@@ -35,3 +35,11 @@ variable "default-lang" {
   type = string
   default = "en"
 }
+
+variable "otlp-endpoint" {
+  type = string
+}
+
+variable "otlp-headers" {
+  type = string
+}

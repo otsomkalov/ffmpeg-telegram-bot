@@ -1,6 +1,5 @@
 namespace Bot
 
-open Azure.Monitor.OpenTelemetry.Exporter
 open OpenTelemetry
 open System.Reflection
 open System.Text.Json
@@ -14,7 +13,6 @@ open Microsoft.Azure.Functions.Worker
 open Microsoft.Extensions.Logging
 open Infrastructure
 open OpenTelemetry.Metrics
-open OpenTelemetry.Trace
 open Telegram.Infrastructure
 open Domain
 open Telegram
@@ -43,7 +41,20 @@ module Startup =
     ()
 
   let private configureServices (ctx: HostBuilderContext) (services: IServiceCollection) =
-    services.AddOpenTelemetry().UseFunctionsWorkerDefaults().UseAzureMonitorExporter()
+    services
+      .AddOpenTelemetry()
+      .WithMetrics(fun metrics ->
+        metrics.AddRuntimeInstrumentation().AddAspNetCoreInstrumentation().AddHttpClientInstrumentation()
+
+        ())
+      .WithTracing(fun tracing ->
+        tracing.AddSource("*")
+
+        ())
+      .WithLogging(fun logging ->
+
+        ())
+      .UseOtlpExporter()
 
     services
     |> Startup.addDomain

@@ -184,7 +184,8 @@ resource "azurerm_linux_function_app" "func-tg-bot" {
 
       Validation__LinkRegex = var.link-regex
 
-      OTEL_METRICS_EXPORTER = "none"
+      OTEL_EXPORTER_OTLP_ENDPOINT = var.otlp-endpoint
+      OTEL_EXPORTER_OTLP_HEADERS  = var.otlp-headers
     },
     {
       for idx, type in var.mime-types : "Validation__MimeTypes__${idx}" => type
