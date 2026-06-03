@@ -15,13 +15,13 @@ parameters:
     displayName: 'Functions'
     type: stringList
     values:
-      - func-mp4towebm-tg-bot
-      - func-removesound-tg-bot
-      - func-webmtomp4-tg-bot
+      - mp4towebm
+      - removesound
+      - webmtomp4
     default:
-      - func-mp4towebm-tg-bot
-      - func-removesound-tg-bot
-      - func-webmtomp4-tg-bot
+      - mp4towebm
+      - removesound
+      - webmtomp4
 
 stages:
   - stage: deploy_dev
@@ -41,9 +41,9 @@ stages:
                     - task: AzureFunctionApp@2
                       displayName: 'Deploy ${{ function }}'
                       inputs:
-                        azureSubscription: '$(subscription)'
+                        azureSubscription: 'az-dev-${{ function }}'
                         appType: 'functionAppLinux'
-                        appName: '${{ function }}-dev'
+                        appName: 'func-${{ function }}-tg-bot-dev'
                         package: '$(Pipeline.Workspace)/**/*.zip'
   - stage: deploy_prd
     displayName: 'Deploy PRD'
@@ -63,7 +63,7 @@ stages:
                     - task: AzureFunctionApp@2
                       displayName: 'Deploy ${{ function }}'
                       inputs:
-                        azureSubscription: '$(subscription)'
+                        azureSubscription: 'az-prd-${{ function }}'
                         appType: 'functionAppLinux'
-                        appName: '${{ function }}-prd'
+                        appName: 'func-${{ function }}-tg-bot-prd'
                         package: '$(Pipeline.Workspace)/**/*.zip'
