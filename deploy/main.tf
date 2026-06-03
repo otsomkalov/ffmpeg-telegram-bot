@@ -113,6 +113,14 @@ resource "azurerm_storage_container" "stc-thumbnailer-output-tg-bot" {
   name = "thumbnailer-output"
 }
 
+# Identity
+
+resource "azurerm_user_assigned_identity" "ui-ado-pipeline" {
+  location            = azurerm_resource_group.rg-tg-bot.location
+  name                = "ui-ado-pipeline-${var.bot-name}-${var.env}"
+  resource_group_name = azurerm_resource_group.rg-tg-bot.name
+}
+
 resource "azurerm_storage_queue" "stq-uploader-tg-bot" {
   storage_account_id = azurerm_storage_account.st-tg-bot.id
 
