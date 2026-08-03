@@ -45,6 +45,7 @@ stages:
                         appType: 'functionAppLinux'
                         appName: 'func-${{ function }}-tg-bot-dev'
                         package: '$(Pipeline.Workspace)/**/*.zip'
+                        isFlexConsumption: true
   - stage: deploy_prd
     displayName: 'Deploy PRD'
     trigger: manual
@@ -67,3 +68,4 @@ stages:
                         appType: 'functionAppLinux'
                         appName: 'func-${{ function }}-tg-bot-prd'
                         package: '$(Pipeline.Workspace)/**/*.zip'
+                        isFlexConsumption: true
