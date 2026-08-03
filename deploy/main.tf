@@ -153,7 +153,7 @@ resource "azurerm_function_app_flex_consumption" "func-tg-bot" {
   name = "func-${var.bot-name}-tg-bot-${var.env}"
 
   runtime_name    = "dotnet-isolated"
-  runtime_version = "9.0"
+  runtime_version = "10.0"
 
   storage_authentication_type = "StorageAccountConnectionString"
   storage_access_key          = azurerm_storage_account.st-tg-bot.primary_access_key
