@@ -133,39 +133,48 @@ resource "azurerm_service_plan" "asp-tg-bot" {
 
   name     = "asp-${var.bot-name}-tg-bot-${var.env}"
   os_type  = "Linux"
-  sku_name = "Y1"
+  sku_name = "FC1"
 
   tags = local.tags
 }
 
-resource "azurerm_linux_function_app" "func-tg-bot" {
+resource "azurerm_storage_container" "stc-bot-deployments" {
+  storage_account_id = azurerm_storage_account.st-tg-bot.id
+
+  name = "deployments"
+}
+
+resource "azurerm_function_app_flex_consumption" "func-tg-bot" {
   resource_group_name = azurerm_resource_group.rg-tg-bot.name
   location            = azurerm_resource_group.rg-tg-bot.location
 
-  storage_account_name       = azurerm_storage_account.st-tg-bot.name
-  storage_account_access_key = azurerm_storage_account.st-tg-bot.primary_access_key
-  service_plan_id            = azurerm_service_plan.asp-tg-bot.id
+  service_plan_id = azurerm_service_plan.asp-tg-bot.id
 
   name = "func-${var.bot-name}-tg-bot-${var.env}"
 
-  functions_extension_version = "~4"
-  builtin_logging_enabled     = false
+  runtime_name    = "dotnet-isolated"
+  runtime_version = "10.0"
 
-  site_config {
-    app_scale_limit                        = 10
+  storage_authentication_type = "StorageAccountConnectionString"
+  storage_access_key          = azurerm_storage_account.st-tg-bot.primary_access_key
+  storage_container_endpoint  = "${azurerm_storage_account.st-tg-bot.primary_blob_endpoint}${azurerm_storage_container.stc-bot-deployments.name}"
+  storage_container_type      = "blobContainer"
 
-    application_stack {
-      dotnet_version              = "9.0"
-      use_dotnet_isolated_runtime = true
-    }
+  instance_memory_in_mb  = 512
+  maximum_instance_count = 10
+
+  identity {
+    type = "SystemAssigned"
   }
-
-  tags = local.tags
 
   connection_string {
     name  = "APPLICATIONINSIGHTS"
     type  = "Custom"
     value = azurerm_application_insights.appi-tg-bot.connection_string
+  }
+
+  site_config {
+
   }
 
   app_settings = merge(
@@ -200,4 +209,6 @@ resource "azurerm_linux_function_app" "func-tg-bot" {
     {
       for idx, type in var.mime-types : "Validation__MimeTypes__${idx}" => type
   })
+
+  tags = local.tags
 }
