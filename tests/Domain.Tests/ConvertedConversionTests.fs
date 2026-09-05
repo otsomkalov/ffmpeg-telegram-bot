@@ -6,7 +6,6 @@ open Domain.Core
 open Domain.Core.Conversion
 open Moq
 open Xunit
-open FsUnit.Xunit
 
 [<Fact>]
 let ``Converted conversion completes with thumbnail`` () =
@@ -32,7 +31,7 @@ let ``Converted conversion completes with thumbnail`` () =
   task {
     let! result = sut.CompleteConversion(input, testThumbnail)
 
-    result |> should equal expected
+    Assert.Equal(expected, result)
 
     repo.VerifyAll()
   }

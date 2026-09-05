@@ -7,7 +7,6 @@ open Domain.Core.Conversion
 open Domain.Workflows
 open Moq
 open Xunit
-open FsUnit.Xunit
 
 [<Fact>]
 let ``New Conversion is created and saved`` () =
@@ -25,7 +24,7 @@ let ``New Conversion is created and saved`` () =
   task {
     let! result = sut ()
 
-    result |> should equal expected
+    Assert.Equal(expected, result)
 
     repo.VerifyAll()
   }
@@ -56,7 +55,7 @@ let ``Prepare New Conversion downloads document and saves it`` () =
   task {
     let! result = sut.PrepareConversion(conversionId, New.InputFile.Document(doc))
 
-    result |> should equal expectedResult
+    Assert.Equal(expectedResult, result)
 
     repo.VerifyAll()
   }
@@ -87,7 +86,7 @@ let ``Prepare New Conversion downloads link and saves it`` () =
   task {
     let! result = sut.PrepareConversion(conversionId, New.InputFile.Link(link))
 
-    result |> should equal expectedResult
+    Assert.Equal(expectedResult, result)
 
     repo.VerifyAll()
   }
@@ -112,7 +111,7 @@ let ``Prepare New Conversion stops if link file not found`` () =
   task {
     let! result = sut.PrepareConversion(conversionId, New.InputFile.Link(link))
 
-    result |> should equal expectedResult
+    Assert.Equal(expectedResult, result)
 
     repo.VerifyAll()
   }
@@ -136,7 +135,7 @@ let ``Prepare New Conversion stops if unauthorized to download link file`` () =
   task {
     let! result = sut.PrepareConversion(conversionId, New.InputFile.Link(link))
 
-    result |> should equal expectedResult
+    Assert.Equal(expectedResult, result)
 
     repo.VerifyAll()
   }
@@ -161,7 +160,7 @@ let ``Prepare New Conversion stops if internal server error happened during the 
   task {
     let! result = sut.PrepareConversion(conversionId, Conversion.New.InputFile.Link(link))
 
-    result |> should equal expectedResult
+    Assert.Equal(expectedResult, result)
 
     repo.VerifyAll()
   }

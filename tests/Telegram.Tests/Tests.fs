@@ -1,12 +1,14 @@
-﻿module Telegram.Tests
+﻿namespace Telegram.Tests
 
 open System
+open System.Net.Mime
 open System.Threading.Tasks
 open Domain
 open Domain.Core
 open Domain.Core.Conversion
 open Microsoft.Extensions.Logging
 open Moq
+open Telegram
 open Telegram.Core
 open Telegram.Repos
 open Telegram.Settings
@@ -14,27 +16,29 @@ open Xunit
 open Telegram.Handlers
 open otsom.fs.Bot
 open otsom.fs.Resources
-open FsUnit.Xunit
 
-let chatId = ChatId 1
-let msgId = ChatMessageId 1
-let botMsgId = BotMessageId 2
-let conversionId = ConversionId(Guid.NewGuid().ToString())
-let conversion = { Id = conversionId }
+module Mocks =
+  let chatId = ChatId 1
+  let msgId = ChatMessageId 1
+  let botMsgId = BotMessageId 2
+  let conversionId = ConversionId(Guid.NewGuid().ToString())
+  let conversion = { Id = conversionId }
 
-let settings: InputValidationSettings =
-  { LinkRegex = "https?[^ ]*.webm\\??(?:&?[^=&]*=[^=&]*)*"
-    MimeTypes = [ "video/webm" ] }
+  let settings: InputValidationSettings =
+    { LinkRegex = "https?[^ ]*.webm\\??(?:&?[^=&]*=[^=&]*)*"
+      MimeTypes = [ "video/webm" ] }
 
-let msg =
-  { MessageId = msgId
-    Text = Some "/start"
-    ChatId = chatId
-    Lang = None
-    Doc = None
-    Vid = None }
+  let msg =
+    { MessageId = msgId
+      Text = Some "/start"
+      ChatId = chatId
+      Lang = None
+      Doc = None
+      Vid = None }
 
-let logger = Mock<ILogger<MsgHandler>>()
+  let logger = Mock<ILogger<MsgHandler>>()
+
+open Mocks
 
 type StartHandler() =
   let botService = Mock<IBotService>()
@@ -53,7 +57,7 @@ type StartHandler() =
     task {
       let! result = handler msg
 
-      result |> should equal (Some())
+      Assert.Equal(Some(), result)
 
       resp.VerifyAll()
       botService.VerifyAll()
@@ -66,7 +70,7 @@ type StartHandler() =
     task {
       let! result = handler msg
 
-      result |> should equal None
+      Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
       botService.VerifyNoOtherCalls()
     }
@@ -106,7 +110,7 @@ type LinksHandler() =
     task {
       let! result = handler msg
 
-      result |> should equal (Some())
+      Assert.Equal(Some(), result)
       resp.VerifyAll()
       botService.VerifyAll()
       userConversionRepo.VerifyAll()
@@ -125,7 +129,7 @@ type LinksHandler() =
     task {
       let! result = handler msg
 
-      result |> should equal (Some())
+      Assert.Equal(Some(), result)
 
       resp.VerifyAll()
       botService.VerifyAll()
@@ -140,7 +144,7 @@ type LinksHandler() =
     task {
       let! result = handler msg
 
-      result |> should equal None
+      Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
       botService.VerifyNoOtherCalls()
     }
@@ -152,7 +156,7 @@ type LinksHandler() =
     task {
       let! result = handler msg
 
-      result |> should equal None
+      Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
       botService.VerifyNoOtherCalls()
     }
@@ -214,7 +218,7 @@ type DocHandler() =
     task {
       let! result = handler msg
 
-      result |> should equal (Some())
+      Assert.Equal(Some(), result)
       resp.VerifyAll()
       botService.VerifyAll()
       userConversionRepo.VerifyAll()
@@ -234,7 +238,7 @@ type DocHandler() =
     task {
       let! result = handler msg
 
-      result |> should equal None
+      Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
       botService.VerifyNoOtherCalls()
     }
@@ -252,7 +256,7 @@ type DocHandler() =
     task {
       let! result = handler msg
 
-      result |> should equal None
+      Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
       botService.VerifyNoOtherCalls()
     }
@@ -262,7 +266,7 @@ type DocHandler() =
     task {
       let! result = handler msg
 
-      result |> should equal None
+      Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
       botService.VerifyNoOtherCalls()
     }
@@ -324,7 +328,7 @@ type VidHandler() =
     task {
       let! result = handler msg
 
-      result |> should equal (Some())
+      Assert.Equal(Some(), result)
       resp.VerifyAll()
       botService.VerifyAll()
       userConversionRepo.VerifyAll()
@@ -344,7 +348,7 @@ type VidHandler() =
     task {
       let! result = handler msg
 
-      result |> should equal None
+      Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
       botService.VerifyNoOtherCalls()
     }
@@ -362,7 +366,7 @@ type VidHandler() =
     task {
       let! result = handler msg
 
-      result |> should equal None
+      Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
       botService.VerifyNoOtherCalls()
     }
@@ -372,7 +376,7 @@ type VidHandler() =
     task {
       let! result = handler msg
 
-      result |> should equal None
+      Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
       botService.VerifyNoOtherCalls()
     }
