@@ -55,7 +55,7 @@ stages:
             inputs:
               command: 'test'
               projects: '**/*.fsproj'
-              arguments: '-r $(Runtime) --collect:"XPlat Code Coverage"'
+              arguments: '--coverage --coverage-output-format cobertura'
           - task: PublishCodeCoverageResults@2
             displayName: 'Publish coverage'
             inputs:
