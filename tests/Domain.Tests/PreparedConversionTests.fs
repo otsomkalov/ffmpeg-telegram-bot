@@ -6,7 +6,6 @@ open Domain.Core
 open Domain.Core.Conversion
 open Moq
 open Xunit
-open FsUnit.Xunit
 
 [<Fact>]
 let ``Converted file successfully added to Prepared conversion`` () =
@@ -31,7 +30,7 @@ let ``Converted file successfully added to Prepared conversion`` () =
   task {
     let! result = sut.SaveVideo(input, testOutput)
 
-    result |> should equal expected
+    Assert.Equal(expected, result)
 
     repo.VerifyAll()
   }
@@ -59,7 +58,7 @@ let ``Thumbnail successfully added to Prepared conversion`` () =
   task {
     let! result = sut.SaveThumbnail(input, testThumbnail)
 
-    result |> should equal expected
+    Assert.Equal(expected, result)
 
     repo.VerifyAll()
   }
