@@ -54,7 +54,7 @@ stages:
             name: Test
             inputs:
               command: 'test'
-              projects: '**/*.fsproj'
+              projects: 'tests/**/*.fsproj'
               arguments: '--coverage --coverage-output-format cobertura'
           - task: PublishCodeCoverageResults@2
             displayName: 'Publish coverage'
