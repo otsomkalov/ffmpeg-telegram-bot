@@ -9,7 +9,7 @@ let private mapDoc (message: Message) : Doc option =
   message.Document
   |> Option.ofObj
   |> Option.map (fun doc ->
-     {
+    {
       Id = doc.FileId
       Name = doc.FileName
       MimeType = doc.MimeType
