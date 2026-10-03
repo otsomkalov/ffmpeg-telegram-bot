@@ -9,22 +9,28 @@ module Settings =
 
   [<CLIMutable>]
   type ConverterSettings =
-    { Input: ConverterSettings'
-      Output: ConverterSettings' }
+    {
+      Input: ConverterSettings'
+      Output: ConverterSettings'
+    }
 
   [<CLIMutable>]
   type WorkersSettings =
-    { ConnectionString: string
+    {
+      ConnectionString: string
       Downloader: StorageSettings
       Converter: ConverterSettings
       Thumbnailer: ConverterSettings
-      Uploader: StorageSettings }
+      Uploader: StorageSettings
+    }
 
     static member SectionName = "Workers"
 
   [<CLIMutable>]
   type DatabaseSettings =
-    { ConnectionString: string
-      Name: string }
+    {
+      ConnectionString: string
+      Name: string
+    }
 
     static member SectionName = "Database"

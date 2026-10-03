@@ -14,12 +14,16 @@ let ``Converted file successfully added to Prepared conversion`` () =
   let testOutput = Video "test-output.mp4"
 
   let input: Prepared =
-    { Id = conversionId
-      InputFile = testInputFile }
+    {
+      Id = conversionId
+      InputFile = testInputFile
+    }
 
   let expected =
-    { Id = conversionId
-      OutputFile = testOutput }
+    {
+      Id = conversionId
+      OutputFile = testOutput
+    }
 
   let repo = Mock<IConversionRepo>()
 
@@ -42,12 +46,16 @@ let ``Thumbnail successfully added to Prepared conversion`` () =
   let testThumbnail = Thumbnail "test-thumbnail.jpg"
 
   let input: Prepared =
-    { Id = conversionId
-      InputFile = testInputFile }
+    {
+      Id = conversionId
+      InputFile = testInputFile
+    }
 
   let expected =
-    { Id = conversionId
-      ThumbnailName = testThumbnail }
+    {
+      Id = conversionId
+      ThumbnailName = testThumbnail
+    }
 
   let repo = Mock<IConversionRepo>()
 

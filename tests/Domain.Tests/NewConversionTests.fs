@@ -37,8 +37,10 @@ let ``Prepare New Conversion downloads document and saves it`` () =
   let doc: New.InputDocument = { Id = "document-id"; Name = docName }
 
   let expectedConversion =
-    { Id = conversionId
-      InputFile = docName }
+    {
+      Id = conversionId
+      InputFile = docName
+    }
 
   let expectedResult: Result<_, Conversion.New.DownloadLinkError> =
     Ok(expectedConversion)
@@ -66,8 +68,10 @@ let ``Prepare New Conversion downloads link and saves it`` () =
   let testLink = "http://test.com/document-name.webm"
 
   let expectedConversion =
-    { Id = conversionId
-      InputFile = "document-name.webm" }
+    {
+      Id = conversionId
+      InputFile = "document-name.webm"
+    }
 
   let link: New.InputLink = { Url = testLink }
 
@@ -158,7 +162,8 @@ let ``Prepare New Conversion stops if internal server error happened during the 
   let sut: IConversionService = ConversionService(repo.Object)
 
   task {
-    let! result = sut.PrepareConversion(conversionId, Conversion.New.InputFile.Link(link))
+    let! result =
+      sut.PrepareConversion(conversionId, Conversion.New.InputFile.Link(link))
 
     Assert.Equal(expectedResult, result)
 

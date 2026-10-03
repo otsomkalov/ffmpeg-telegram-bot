@@ -8,10 +8,12 @@ open otsom.fs.Bot
 
 type Entities.Conversion with
   member this.ToUserConversion() : UserConversion =
-    { ConversionId = (this.Id |> string |> ConversionId)
+    {
+      ConversionId = (this.Id |> string |> ConversionId)
       ReceivedMessageId = (this.ReceivedMessageId |> ChatMessageId)
       SentMessageId = BotMessageId this.SentMessageId
-      ChatId = ChatId this.ChatId }
+      ChatId = ChatId this.ChatId
+    }
 
   static member FromUserConversion(conversion: UserConversion) : Entities.Conversion =
     Entities.Conversion(

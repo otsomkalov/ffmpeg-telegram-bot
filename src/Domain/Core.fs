@@ -29,13 +29,17 @@ module Core =
     type Converted = { Id: ConversionId; OutputFile: Video }
 
     type Thumbnailed =
-      { Id: ConversionId
-        ThumbnailName: Thumbnail }
+      {
+        Id: ConversionId
+        ThumbnailName: Thumbnail
+      }
 
     type Completed =
-      { Id: ConversionId
+      {
+        Id: ConversionId
         OutputFile: Video
-        ThumbnailFile: Thumbnail }
+        ThumbnailFile: Thumbnail
+      }
 
     [<RequireQualifiedAccess>]
     module New =

@@ -25,16 +25,20 @@ module Mocks =
   let conversion = { Id = conversionId }
 
   let settings: InputValidationSettings =
-    { LinkRegex = "https?[^ ]*.webm\\??(?:&?[^=&]*=[^=&]*)*"
-      MimeTypes = [ "video/webm" ] }
+    {
+      LinkRegex = "https?[^ ]*.webm\\??(?:&?[^=&]*=[^=&]*)*"
+      MimeTypes = [ "video/webm" ]
+    }
 
   let msg =
-    { MessageId = msgId
+    {
+      MessageId = msgId
       Text = Some "/start"
       ChatId = chatId
       Lang = None
       Doc = None
-      Vid = None }
+      Vid = None
+    }
 
   let logger = Mock<ILogger<MsgHandler>>()
 
@@ -124,7 +128,8 @@ type LinksHandler() =
 
     let msg =
       { msg with
-          Text = Some(sprintf "%s %s" link1 link2) }
+          Text = Some(sprintf "%s %s" link1 link2)
+      }
 
     task {
       let! result = handler msg
@@ -180,10 +185,12 @@ type DocHandler() =
     |> ignore
 
   let userConversion: UserConversion =
-    { ChatId = chatId
+    {
+      ChatId = chatId
       SentMessageId = botMsgId
       ReceivedMessageId = msgId
-      ConversionId = conversionId }
+      ConversionId = conversionId
+    }
 
   do
     userConversionRepo.Setup(_.SaveUserConversion(userConversion)).ReturnsAsync(())
@@ -208,10 +215,12 @@ type DocHandler() =
   [<Fact>]
   member _.``Sends message with document name if it's valid``() =
     let doc: Doc =
-      { Id = docId
+      {
+        Id = docId
         Name = docName
         MimeType = "video/webm"
-        Caption = None }
+        Caption = None
+      }
 
     let msg = { msg with Doc = Some doc }
 
@@ -228,10 +237,12 @@ type DocHandler() =
   [<Fact>]
   member _.``Does nothing if document caption contains !nsfw``() =
     let doc: Doc =
-      { Id = docId
+      {
+        Id = docId
         Name = docName
         MimeType = "video/webm"
-        Caption = Some "!nsfw" }
+        Caption = Some "!nsfw"
+      }
 
     let msg = { msg with Doc = Some doc }
 
@@ -246,10 +257,12 @@ type DocHandler() =
   [<Fact>]
   member _.``Does nothing if document mime type doesn't match to the settings``() =
     let doc: Doc =
-      { Id = docId
+      {
+        Id = docId
         Name = docName
         MimeType = "video/mp4"
-        Caption = None }
+        Caption = None
+      }
 
     let msg = { msg with Doc = Some doc }
 
@@ -290,10 +303,12 @@ type VidHandler() =
     |> ignore
 
   let userConversion: UserConversion =
-    { ChatId = chatId
+    {
+      ChatId = chatId
       SentMessageId = botMsgId
       ReceivedMessageId = msgId
-      ConversionId = conversionId }
+      ConversionId = conversionId
+    }
 
   do
     userConversionRepo.Setup(_.SaveUserConversion(userConversion)).ReturnsAsync(())
@@ -318,10 +333,12 @@ type VidHandler() =
   [<Fact>]
   member _.``Sends message with video name if it's valid``() =
     let vid: Vid =
-      { Id = vidId
+      {
+        Id = vidId
         Name = Some vidName
         MimeType = "video/webm"
-        Caption = None }
+        Caption = None
+      }
 
     let msg = { msg with Vid = Some vid }
 
@@ -338,10 +355,12 @@ type VidHandler() =
   [<Fact>]
   member _.``Does nothing if video caption contains !nsfw``() =
     let vid: Vid =
-      { Id = vidId
+      {
+        Id = vidId
         Name = Some vidName
         MimeType = "video/webm"
-        Caption = Some "!nsfw" }
+        Caption = Some "!nsfw"
+      }
 
     let msg = { msg with Vid = Some vid }
 
@@ -356,10 +375,12 @@ type VidHandler() =
   [<Fact>]
   member _.``Does nothing if video mime type doesn't match to the settings``() =
     let vid: Vid =
-      { Id = vidId
+      {
+        Id = vidId
         Name = Some vidName
         MimeType = "video/mp4"
-        Caption = None }
+        Caption = None
+      }
 
     let msg = { msg with Vid = Some vid }
 

@@ -2,7 +2,9 @@
 
 [<CLIMutable>]
 type InputValidationSettings =
-  { LinkRegex: string
-    MimeTypes: string seq }
+  {
+    LinkRegex: string
+    MimeTypes: string seq
+  }
 
   static member SectionName = "Validation"
