@@ -65,10 +65,14 @@ type ConversionRepo
       let queueClient = queueServiceClient.GetQueueClient(settings.Converter.Input.Queue)
 
       let message: BaseMessage<Conversion.Prepared.ConverterMessage> =
-        { Context = Observability.getTraceContext ()
+        {
+          Context = Observability.getTraceContext ()
           Data =
-            { Id = conversion.Id.Value
-              Name = conversion.InputFile } }
+            {
+              Id = conversion.Id.Value
+              Name = conversion.InputFile
+            }
+        }
 
       message |> JSON.serialize |> queueClient.SendMessageAsync |> Task.map ignore
 
@@ -77,20 +81,26 @@ type ConversionRepo
         queueServiceClient.GetQueueClient(settings.Thumbnailer.Input.Queue)
 
       let message: BaseMessage<Conversion.Prepared.ConverterMessage> =
-        { Context = Observability.getTraceContext ()
+        {
+          Context = Observability.getTraceContext ()
           Data =
-            { Id = conversion.Id.Value
-              Name = conversion.InputFile } }
+            {
+              Id = conversion.Id.Value
+              Name = conversion.InputFile
+            }
+        }
 
       message |> JSON.serialize |> queueClient.SendMessageAsync |> Task.map ignore
 
     member this.DownloadDocument(document) =
       task {
-        use! converterBlobStream = Storage.getBlobStream settings document.Name settings.Converter.Input.Container
+        use! converterBlobStream =
+          Storage.getBlobStream settings document.Name settings.Converter.Input.Container
 
         do! bot.GetInfoAndDownloadFile(document.Id, converterBlobStream) |> Task.ignore
 
-        use! thumbnailerBlobStream = Storage.getBlobStream settings document.Name settings.Thumbnailer.Input.Container
+        use! thumbnailerBlobStream =
+          Storage.getBlobStream settings document.Name settings.Thumbnailer.Input.Container
 
         do! bot.GetInfoAndDownloadFile(document.Id, thumbnailerBlobStream) |> Task.ignore
 
@@ -113,7 +123,9 @@ type ConversionRepo
           let fileName = link.Url |> Uri |> _.Segments |> Seq.last
 
           use! converterBlobStream = getBlobStream fileName settings.Converter.Input.Container
-          use! thumbnailerBlobStream = getBlobStream fileName settings.Thumbnailer.Input.Container
+
+          use! thumbnailerBlobStream =
+            getBlobStream fileName settings.Thumbnailer.Input.Container
 
           do! response.Content.CopyToAsync(converterBlobStream)
           do! response.Content.CopyToAsync(thumbnailerBlobStream)
@@ -126,8 +138,10 @@ type ConversionRepo
 
       let messageBody =
         JSON.serialize
-          { Context = Observability.getTraceContext ()
-            Data = { ConversionId = conversion.Id.Value } }
+          {
+            Context = Observability.getTraceContext ()
+            Data = { ConversionId = conversion.Id.Value }
+          }
 
       queueClient.SendMessageAsync(messageBody) |> Task.ignore
 
@@ -135,10 +149,14 @@ type ConversionRepo
       let queueClient = queueServiceClient.GetQueueClient(settings.Downloader.Queue)
 
       let message =
-        { Context = Observability.getTraceContext ()
+        {
+          Context = Observability.getTraceContext ()
           Data =
-            { ConversionId = conversionId
-              File = inputFile } }
+            {
+              ConversionId = conversionId
+              File = inputFile
+            }
+        }
 
       let messageBody = JSON.serialize message
 

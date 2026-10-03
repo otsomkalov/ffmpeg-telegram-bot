@@ -14,13 +14,17 @@ let ``Converted conversion completes with thumbnail`` () =
   let testThumbnail = Thumbnail "test-thumbnail.jpg"
 
   let input: Converted =
-    { Id = conversionId
-      OutputFile = testOutput }
+    {
+      Id = conversionId
+      OutputFile = testOutput
+    }
 
   let expected =
-    { Id = conversionId
+    {
+      Id = conversionId
       OutputFile = testOutput
-      ThumbnailFile = testThumbnail }
+      ThumbnailFile = testThumbnail
+    }
 
   let repo = Mock<IConversionRepo>()
 

@@ -39,10 +39,12 @@ let private queueProcessing
 
       do!
         userConversionRepo.SaveUserConversion
-          { ChatId = chatId
+          {
+            ChatId = chatId
             SentMessageId = sentMessageId
             ReceivedMessageId = userMessageId
-            ConversionId = conversion.Id }
+            ConversionId = conversion.Id
+          }
 
       do! conversionRepo.QueuePreparation(conversion.Id, inputFile)
     }
@@ -68,7 +70,8 @@ let linksHandler
         logger.LogInformation("Processing message with links")
 
         for link in links do
-          let! sentMessageId = bot.ReplyToMessage(msg.MessageId, resp[Resources.LinkDownload, [| link |]])
+          let! sentMessageId =
+            bot.ReplyToMessage(msg.MessageId, resp[Resources.LinkDownload, [| link |]])
 
           do! queueProcessing msg.MessageId msg.ChatId sentMessageId (Conversion.New.InputFile.Link { Url = link })
 
@@ -141,7 +144,8 @@ let videoHandler
 
             fileInfo.Name)
 
-        let! sentMessageId = bot.ReplyToMessage(msg.MessageId, resp[Resources.VideoDownload, [| videoName |]])
+        let! sentMessageId =
+          bot.ReplyToMessage(msg.MessageId, resp[Resources.VideoDownload, [| videoName |]])
 
         do!
           queueProcessing

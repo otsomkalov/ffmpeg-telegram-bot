@@ -18,9 +18,11 @@ type ChatSvc(resourcesSettings: ResourcesSettings, chatRepo: IChatRepo) =
   interface IChatSvc with
     member this.CreateChat(chatId, lang) =
       let chat: Chat =
-        { Id = chatId
+        {
+          Id = chatId
           Lang = lang |> Option.defaultValue resourcesSettings.DefaultLang
-          Banned = false }
+          Banned = false
+        }
 
       task {
         do! chatRepo.SaveChat chat

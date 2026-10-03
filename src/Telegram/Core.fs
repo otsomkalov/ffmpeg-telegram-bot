@@ -5,9 +5,11 @@ open Domain.Core
 open otsom.fs.Bot
 
 type Chat =
-  { Id: ChatId
+  {
+    Id: ChatId
     Banned: bool
-    Lang: string }
+    Lang: string
+  }
 
 type ICreateChat =
   abstract CreateChat: ChatId * string option -> Task<Chat>
@@ -22,10 +24,12 @@ module Core =
     | Error of error: string
 
   type UserConversion =
-    { ReceivedMessageId: ChatMessageId
+    {
+      ReceivedMessageId: ChatMessageId
       SentMessageId: BotMessageId
       ConversionId: ConversionId
-      ChatId: ChatId }
+      ChatId: ChatId
+    }
 
 type IExtendedBotService =
   abstract ReplyWithVideo: ChatMessageId * string * Conversion.Video * Conversion.Thumbnail -> Task<unit>
@@ -33,24 +37,30 @@ type IExtendedBotService =
   inherit IBotService
 
 type Doc =
-  { Id: string
+  {
+    Id: string
     Name: string
     Caption: string option
-    MimeType: string }
+    MimeType: string
+  }
 
 type Vid =
-  { Id: string
+  {
+    Id: string
     Name: string option
     Caption: string option
-    MimeType: string }
+    MimeType: string
+  }
 
 type UserMsg =
-  { ChatId: ChatId
+  {
+    ChatId: ChatId
     MessageId: ChatMessageId
     Lang: string option
     Text: string option
     Doc: Doc option
-    Vid: Vid option }
+    Vid: Vid option
+  }
 
 type Msg =
   | UserMsg of UserMsg

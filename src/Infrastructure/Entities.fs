@@ -47,24 +47,34 @@ type Conversion() =
   member val CreatedAt: DateTime = DateTime.Now with get
 
   member this.ToNew() : Conversion.New =
-    { Id = (this.Id |> string |> ConversionId) }
+    {
+      Id = (this.Id |> string |> ConversionId)
+    }
 
   member this.ToPrepared() : Conversion.Prepared =
-    { Id = (this.Id |> string |> ConversionId)
-      InputFile = this.InputFileName }
+    {
+      Id = (this.Id |> string |> ConversionId)
+      InputFile = this.InputFileName
+    }
 
   member this.ToConverted() : Conversion.Converted =
-    { Id = (this.Id |> string |> ConversionId)
-      OutputFile = Video this.OutputFileName }
+    {
+      Id = (this.Id |> string |> ConversionId)
+      OutputFile = Video this.OutputFileName
+    }
 
   member this.ToThumbnailed() : Conversion.Thumbnailed =
-    { Id = (this.Id |> string |> ConversionId)
-      ThumbnailName = Thumbnail this.ThumbnailFileName }
+    {
+      Id = (this.Id |> string |> ConversionId)
+      ThumbnailName = Thumbnail this.ThumbnailFileName
+    }
 
   member this.ToCompleted() : Conversion.Completed =
-    { Id = (this.Id |> string |> ConversionId)
+    {
+      Id = (this.Id |> string |> ConversionId)
       OutputFile = (this.OutputFileName |> Video)
-      ThumbnailFile = (this.ThumbnailFileName |> Thumbnail) }
+      ThumbnailFile = (this.ThumbnailFileName |> Thumbnail)
+    }
 
   member this.ToDomain: Domain.Core.Conversion =
     match this.State with

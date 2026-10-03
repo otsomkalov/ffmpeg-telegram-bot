@@ -31,9 +31,11 @@ type ConversionService(repo: IConversionRepo) =
     member this.CompleteConversion(conversion: Converted, thumbnail: Thumbnail) : Task<Completed> =
       task {
         let completedConversion: Conversion.Completed =
-          { Id = conversion.Id
+          {
+            Id = conversion.Id
             OutputFile = conversion.OutputFile
-            ThumbnailFile = thumbnail }
+            ThumbnailFile = thumbnail
+          }
 
         do! repo.SaveConversion(Conversion.Completed completedConversion)
 
@@ -43,9 +45,11 @@ type ConversionService(repo: IConversionRepo) =
     member this.CompleteConversion(conversion: Thumbnailed, video: Video) : Task<Completed> =
       task {
         let completedConversion: Conversion.Completed =
-          { Id = conversion.Id
+          {
+            Id = conversion.Id
             OutputFile = video
-            ThumbnailFile = conversion.ThumbnailName }
+            ThumbnailFile = conversion.ThumbnailName
+          }
 
         do! repo.SaveConversion(Conversion.Completed completedConversion)
 
@@ -55,8 +59,10 @@ type ConversionService(repo: IConversionRepo) =
     member this.SaveThumbnail(conversion, thumbnail) =
       task {
         let thumbnailedConversion: Thumbnailed =
-          { Id = conversion.Id
-            ThumbnailName = thumbnail }
+          {
+            Id = conversion.Id
+            ThumbnailName = thumbnail
+          }
 
         do! repo.SaveConversion(Conversion.Thumbnailed thumbnailedConversion)
 
@@ -66,8 +72,10 @@ type ConversionService(repo: IConversionRepo) =
     member this.SaveVideo(conversion, video) =
       task {
         let convertedConversion: Conversion.Converted =
-          { Id = conversion.Id
-            OutputFile = video }
+          {
+            Id = conversion.Id
+            OutputFile = video
+          }
 
         do! repo.SaveConversion(Conversion.Converted convertedConversion)
 
@@ -79,8 +87,10 @@ type ConversionService(repo: IConversionRepo) =
       | New.Link l -> repo.DownloadLink l
       | New.Document d -> repo.DownloadDocument d |> Task.map Ok
       |> TaskResult.map (fun downloadedFile ->
-        { Id = conversionId
-          InputFile = downloadedFile })
+        {
+          Id = conversionId
+          InputFile = downloadedFile
+        })
       |> TaskResult.taskTap (Conversion.Prepared >> repo.SaveConversion)
       |> TaskResult.taskTap repo.QueueConversion
       |> TaskResult.taskTap repo.QueueThumbnailing

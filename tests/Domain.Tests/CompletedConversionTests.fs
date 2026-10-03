@@ -14,9 +14,11 @@ let ``Completed conversion cleanup removes video and thumbnail`` () =
   let thumbnail = Thumbnail("test-output-thumbnail.jpg")
 
   let conversion: Core.Conversion.Completed =
-    { Id = Guid.NewGuid().ToString() |> ConversionId
+    {
+      Id = Guid.NewGuid().ToString() |> ConversionId
       OutputFile = video
-      ThumbnailFile = thumbnail }
+      ThumbnailFile = thumbnail
+    }
 
   let repo = Mock<IConversionRepo>()
 
