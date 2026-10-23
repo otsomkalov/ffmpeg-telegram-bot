@@ -12,6 +12,7 @@ open Microsoft.FSharp.Core
 open otsom.fs.Resources
 open otsom.fs.Extensions
 open FsToolkit.ErrorHandling
+open otsom.fs.Bot
 
 type ChatSvc(resourcesSettings: ResourcesSettings, chatRepo: IChatRepo) =
   interface IChatSvc with
@@ -53,7 +54,7 @@ type FFMpegBot
     )
 
   let globalHandler (logger: ILogger) bot resp =
-    fun msg ->
+    fun chat msg ->
       task {
         let handlers = handlerFactories |> Seq.map (fun f -> f bot resp)
 
@@ -61,7 +62,7 @@ type FFMpegBot
         let mutable e = handlers.GetEnumerator()
 
         while e.MoveNext() && lastHandlerResult.IsNone do
-          let! handlerResult = e.Current msg
+          let! handlerResult = e.Current chat msg
 
           lastHandlerResult <- handlerResult
 
@@ -69,8 +70,6 @@ type FFMpegBot
         | Some _ -> ()
         | None -> logger.LogInformation("No handler executed for message")
       }
-
-
 
   interface IFFMpegBot with
     member this.ProcessUpdate(update: Update) =
@@ -88,7 +87,7 @@ type FFMpegBot
               do!
                 botService.ReplyToMessage(msg.MessageId, resp[Resources.ChannelBan])
                 |> Task.ignore
-            | false -> do! globalHandler logger botService resp msg
+            | false -> do! globalHandler logger botService resp chat msg
           })
       | Msg BotMsg -> Task.FromResult()
       | Other type' ->
