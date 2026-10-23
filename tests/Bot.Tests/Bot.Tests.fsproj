@@ -7,6 +7,7 @@
     <IsTestProject>true</IsTestProject>
     <NoWarn>20</NoWarn>
     <OutputType>Exe</OutputType>
+    <RootNamespace>Telegram.Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Telegram\Telegram.fsproj"/>
+    <ProjectReference Include="..\..\src\Bot\Bot.fsproj" />
   </ItemGroup>
 
 </Project>

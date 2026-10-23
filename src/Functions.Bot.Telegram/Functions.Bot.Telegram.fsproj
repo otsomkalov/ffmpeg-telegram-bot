@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>exe</OutputType>
+    <WarningLevel>5</WarningLevel>
+    <AzureFunctionsVersion>v4</AzureFunctionsVersion>
+    <UserSecretsId>329382fe-0a82-4799-8f36-656313791e61</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App"/>
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.52.0"/>
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.1.1"/>
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Queues" Version="5.5.5"/>
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.1.0"/>
+
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.OpenTelemetry" Version="1.2.0"/>
+
+    <PackageReference Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Mappings.fs"/>
+    <Compile Include="Observability.fs"/>
+    <Compile Include="Functions.fs"/>
+    <Compile Include="Program.fs"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="host.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="local.settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Infrastructure\Infrastructure.fsproj"/>
+    <ProjectReference Include="..\Bot.Infrastructure\Bot.Infrastructure.fsproj" />
+  </ItemGroup>
+</Project>

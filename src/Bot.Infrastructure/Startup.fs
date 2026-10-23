@@ -1,17 +1,18 @@
 ﻿#nowarn "20"
 
-namespace Telegram.Infrastructure
+namespace Bot.Infrastructure
 
 open System.Net.Http
+open Bot
+open Bot.Repos
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open MongoDB.Driver
 open Telegram
 open Telegram.Bot
-open Telegram.Infrastructure.Services
-open Telegram.Infrastructure.Settings
+open Bot.Infrastructure.Services
+open Bot.Infrastructure.Settings
 open otsom.fs.Extensions.DependencyInjection
-open Telegram.Repos
 open otsom.fs.Resources.Mongo
 open otsom.fs.Bot.Telegram
 

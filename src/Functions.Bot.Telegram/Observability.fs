@@ -1,5 +1,5 @@
 ﻿[<RequireQualifiedAccess>]
-module internal Bot.Observability
+module internal Function.Bot.Telegram.Observability
 
 open System.Diagnostics
 open Infrastructure.Helpers

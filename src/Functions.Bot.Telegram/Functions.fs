@@ -1,17 +1,17 @@
-﻿namespace Bot.Functions
+﻿namespace Function.Bot.Telegram.Functions
 
 open System.Diagnostics
 open System.Threading.Tasks
 open Bot
-open Bot.Mappings
+open Bot.Core
+open Function.Bot.Telegram
+open Function.Bot.Telegram.Mappings
 open Infrastructure.Queue
 open Microsoft.AspNetCore.Http
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Azure.Functions.Worker.Http
 open Microsoft.Extensions.Logging
-open Telegram
 open Telegram.Bot.Types
-open Telegram.Core
 open Domain.Core
 
 type ConverterResultMessage =

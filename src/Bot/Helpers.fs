@@ -1,4 +1,4 @@
-﻿module Telegram.Helpers
+﻿module Bot.Helpers
 
 open System.Text.RegularExpressions
 

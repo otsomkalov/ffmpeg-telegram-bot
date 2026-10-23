@@ -1,14 +1,14 @@
-﻿namespace Telegram.Infrastructure
+﻿namespace Bot.Infrastructure
 
+open Bot.Repos
 open Domain.Core
 open MongoDB.Bson
 open MongoDB.Driver
 open MongoDB.Driver.Linq
-open Telegram.Repos
 open otsom.fs.Bot
 open Infrastructure
-open Telegram.Infrastructure
-open Telegram.Infrastructure.Mappings
+open Bot.Infrastructure
+open Bot.Infrastructure.Mappings
 open FsToolkit.ErrorHandling
 
 type UserConversionRepo(db: IMongoDatabase) =

@@ -1,4 +1,4 @@
-﻿namespace Telegram
+﻿namespace Bot
 
 open System.Threading.Tasks
 open Domain.Core

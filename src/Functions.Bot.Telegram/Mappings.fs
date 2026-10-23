@@ -1,5 +1,6 @@
-﻿module Bot.Mappings
+﻿module Function.Bot.Telegram.Mappings
 
+open Bot
 open Telegram
 open Telegram.Bot.Types
 open Telegram.Bot.Types.Enums

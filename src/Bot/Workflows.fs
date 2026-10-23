@@ -1,17 +1,16 @@
-﻿namespace Telegram
+﻿namespace Bot
 
-open Telegram
 open System.Threading.Tasks
+open Bot.Core
+open Bot.Handlers
+open Bot.Repos
 open Domain
 open Domain.Core
 open Domain.Core.Conversion
 open Microsoft.Extensions.Logging
 open Microsoft.FSharp.Core
-open Telegram.Core
-open Telegram.Handlers
 open otsom.fs.Resources
 open otsom.fs.Extensions
-open Telegram.Repos
 open FsToolkit.ErrorHandling
 
 type ChatSvc(resourcesSettings: ResourcesSettings, chatRepo: IChatRepo) =
@@ -70,6 +69,8 @@ type FFMpegBot
         | Some _ -> ()
         | None -> logger.LogInformation("No handler executed for message")
       }
+
+
 
   interface IFFMpegBot with
     member this.ProcessUpdate(update: Update) =

@@ -1,4 +1,4 @@
-﻿module Telegram.Settings
+﻿module Bot.Settings
 
 [<CLIMutable>]
 type InputValidationSettings =
