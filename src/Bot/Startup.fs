@@ -1,11 +1,11 @@
-﻿module Telegram.Startup
+﻿module Bot.Startup
 
 #nowarn "20"
 
+open Bot.Handlers
+open Bot.Settings
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
-open Telegram.Handlers
-open Telegram.Settings
 open otsom.fs.Extensions.DependencyInjection
 open otsom.fs.Resources
 

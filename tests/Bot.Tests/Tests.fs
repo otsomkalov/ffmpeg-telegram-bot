@@ -1,19 +1,18 @@
-﻿namespace Telegram.Tests
+﻿namespace Bot.Tests
 
 open System
-open System.Net.Mime
 open System.Threading.Tasks
+open Bot
+open Bot.Core
+open Bot.Handlers
+open Bot.Repos
+open Bot.Settings
 open Domain
 open Domain.Core
 open Domain.Core.Conversion
 open Microsoft.Extensions.Logging
 open Moq
-open Telegram
-open Telegram.Core
-open Telegram.Repos
-open Telegram.Settings
 open Xunit
-open Telegram.Handlers
 open otsom.fs.Bot
 open otsom.fs.Resources
 

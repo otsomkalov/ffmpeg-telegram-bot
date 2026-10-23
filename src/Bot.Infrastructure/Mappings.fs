@@ -1,9 +1,9 @@
-﻿module Telegram.Infrastructure.Mappings
+﻿module Bot.Infrastructure.Mappings
 
+open Bot.Core
 open Domain.Core
 open Infrastructure
 open MongoDB.Bson
-open Telegram.Core
 open otsom.fs.Bot
 
 type Entities.Conversion with

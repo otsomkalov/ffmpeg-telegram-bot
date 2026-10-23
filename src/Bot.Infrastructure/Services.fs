@@ -1,7 +1,8 @@
-﻿namespace Telegram.Infrastructure.Services
+﻿namespace Bot.Infrastructure.Services
 
 open System.Threading.Tasks
 open Azure.Storage.Blobs
+open Bot
 open Domain.Core
 open Infrastructure.Settings
 open Microsoft.Extensions.Options

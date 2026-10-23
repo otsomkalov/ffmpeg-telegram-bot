@@ -1,4 +1,4 @@
-﻿namespace Telegram.Infrastructure
+﻿namespace Bot.Infrastructure
 
 module Settings =
   [<CLIMutable>]

@@ -1,6 +1,8 @@
-namespace Bot
+namespace Function.Bot.Telegram
 
 open Azure.Monitor.OpenTelemetry.Exporter
+open Infrastructure
+open Bot
 open OpenTelemetry
 open System.Reflection
 open System.Text.Json
@@ -12,10 +14,8 @@ open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Azure.Functions.Worker
 open Microsoft.Extensions.Logging
-open Infrastructure
-open Telegram.Infrastructure
+open Bot.Infrastructure
 open Domain
-open Telegram
 
 #nowarn "20"
 

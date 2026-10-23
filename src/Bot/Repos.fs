@@ -1,9 +1,9 @@
-﻿namespace Telegram.Repos
+﻿namespace Bot.Repos
 
 open System.Threading.Tasks
+open Bot
+open Bot.Core
 open Domain.Core
-open Telegram
-open Telegram.Core
 open otsom.fs.Bot
 
 type ILoadUserConversion =

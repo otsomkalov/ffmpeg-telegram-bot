@@ -1,4 +1,4 @@
-﻿namespace Telegram
+﻿namespace Bot
 
 [<RequireQualifiedAccess>]
 module Resources =

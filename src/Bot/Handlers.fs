@@ -1,17 +1,17 @@
-﻿module Telegram.Handlers
+﻿module Bot.Handlers
 
 open System.IO
 open System.Text.RegularExpressions
 open System.Threading.Tasks
+open Bot.Repos
+open Bot.Settings
+open Bot.Helpers
 open Domain
 open Domain.Core
 open Domain.Core.Conversion
 open Microsoft.Extensions.Logging
-open Telegram.Repos
-open Telegram.Settings
 open otsom.fs.Bot
 open otsom.fs.Resources
-open Telegram.Helpers
 open FsToolkit.ErrorHandling
 
 type MsgHandler = UserMsg -> Task<unit option>
