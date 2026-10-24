@@ -11,6 +11,9 @@ type Chat =
     Lang: string
   }
 
+  interface IChat with
+    member this.Id = this.Id
+
 type ICreateChat =
   abstract CreateChat: ChatId * string option -> Task<Chat>
 
@@ -61,6 +64,9 @@ type UserMsg =
     Doc: Doc option
     Vid: Vid option
   }
+
+  interface IMessage with
+    member this.Id = this.MessageId
 
 type Msg =
   | UserMsg of UserMsg

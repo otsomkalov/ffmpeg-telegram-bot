@@ -2,7 +2,6 @@
 
 open System.IO
 open System.Text.RegularExpressions
-open System.Threading.Tasks
 open Bot.Repos
 open Bot.Settings
 open Bot.Helpers
@@ -14,11 +13,10 @@ open otsom.fs.Bot
 open otsom.fs.Resources
 open FsToolkit.ErrorHandling
 
-type MsgHandler = UserMsg -> Task<unit option>
-type MsgHandlerFactory = IBotService -> IResourceProvider -> MsgHandler
+type MsgHandlerFactory = IBotService -> IResourceProvider -> MessageHandler<Chat, UserMsg>
 
-let startHandler (bot: IBotService) (resp: IResourceProvider) : MsgHandler =
-  fun msg ->
+let startHandler (bot: IBotService) (resp: IResourceProvider) : MessageHandler<Chat, UserMsg> =
+  fun chat msg ->
     task {
       match msg.Text with
       | Some "/start" ->
@@ -54,16 +52,16 @@ let linksHandler
   (userConversionRepo: IUserConversionRepo)
   (conversionRepo: IConversionRepo)
   (settings: InputValidationSettings)
-  (logger: ILogger<MsgHandler>)
+  (logger: ILogger<MessageHandler<Chat, UserMsg>>)
   (bot: IBotService)
   (resp: IResourceProvider)
-  : MsgHandler =
+  : MessageHandler<Chat, UserMsg> =
   let queueProcessing =
     queueProcessing createConversion userConversionRepo conversionRepo
 
   let linkRegex = Regex(settings.LinkRegex)
 
-  fun msg ->
+  fun chat msg ->
     task {
       match msg.Text with
       | Some(Regex linkRegex links) ->
@@ -73,7 +71,7 @@ let linksHandler
           let! sentMessageId =
             bot.ReplyToMessage(msg.MessageId, resp[Resources.LinkDownload, [| link |]])
 
-          do! queueProcessing msg.MessageId msg.ChatId sentMessageId (Conversion.New.InputFile.Link { Url = link })
+          do! queueProcessing msg.MessageId chat.Id sentMessageId (Conversion.New.InputFile.Link { Url = link })
 
         return Some()
       | _ -> return None
@@ -84,14 +82,14 @@ let documentHandler
   (userConversionRepo: IUserConversionRepo)
   (conversionRepo: IConversionRepo)
   (settings: InputValidationSettings)
-  (logger: ILogger<MsgHandler>)
+  (logger: ILogger)
   (bot: IBotService)
   (resp: IResourceProvider)
-  : MsgHandler =
+  : MessageHandler<Chat, UserMsg> =
   let queueProcessing =
     queueProcessing createConversion userConversionRepo conversionRepo
 
-  fun msg ->
+  fun chat msg ->
     task {
       match msg.Doc with
       | Some doc when
@@ -106,7 +104,7 @@ let documentHandler
         do!
           queueProcessing
             msg.MessageId
-            msg.ChatId
+            chat.Id
             sentMessageId
             (Conversion.New.InputFile.Document { Id = doc.Id; Name = doc.Name })
 
@@ -119,14 +117,14 @@ let videoHandler
   (userConversionRepo: IUserConversionRepo)
   (conversionRepo: IConversionRepo)
   (settings: InputValidationSettings)
-  (logger: ILogger<MsgHandler>)
+  (logger: ILogger<MessageHandler<Chat, UserMsg>>)
   (bot: IBotService)
   (resp: IResourceProvider)
-  : MsgHandler =
+  : MessageHandler<Chat, UserMsg> =
   let queueProcessing =
     queueProcessing createConversion userConversionRepo conversionRepo
 
-  fun msg ->
+  fun chat msg ->
     task {
       match msg.Vid with
       | Some vid when
@@ -150,7 +148,7 @@ let videoHandler
         do!
           queueProcessing
             msg.MessageId
-            msg.ChatId
+            chat.Id
             sentMessageId
             (Conversion.New.InputFile.Document { Id = vid.Id; Name = videoName })
 

@@ -23,6 +23,13 @@ module Mocks =
   let conversionId = ConversionId(Guid.NewGuid().ToString())
   let conversion = { Id = conversionId }
 
+  let chat: Chat =
+    {
+      Id = chatId
+      Lang = "en"
+      Banned = false
+    }
+
   let settings: InputValidationSettings =
     {
       LinkRegex = "https?[^ ]*.webm\\??(?:&?[^=&]*=[^=&]*)*"
@@ -39,7 +46,7 @@ module Mocks =
       Vid = None
     }
 
-  let logger = Mock<ILogger<MsgHandler>>()
+  let logger = Mock<ILogger<MessageHandler<Chat, UserMsg>>>()
 
 open Mocks
 
@@ -58,7 +65,7 @@ type StartHandler() =
   [<Fact>]
   member _.``Sends welcome message on /start command``() =
     task {
-      let! result = handler msg
+      let! result = handler chat msg
 
       Assert.Equal(Some(), result)
 
@@ -71,7 +78,7 @@ type StartHandler() =
     let msg = { msg with Text = Some "/other" }
 
     task {
-      let! result = handler msg
+      let! result = handler chat msg
 
       Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
@@ -111,7 +118,7 @@ type LinksHandler() =
     let msg = { msg with Text = Some link1 }
 
     task {
-      let! result = handler msg
+      let! result = handler chat msg
 
       Assert.Equal(Some(), result)
       resp.VerifyAll()
@@ -131,7 +138,7 @@ type LinksHandler() =
       }
 
     task {
-      let! result = handler msg
+      let! result = handler chat msg
 
       Assert.Equal(Some(), result)
 
@@ -146,7 +153,7 @@ type LinksHandler() =
     let msg = { msg with Text = Some link3 }
 
     task {
-      let! result = handler msg
+      let! result = handler chat msg
 
       Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
@@ -158,7 +165,7 @@ type LinksHandler() =
     let msg = { msg with Text = Some "some text" }
 
     task {
-      let! result = handler msg
+      let! result = handler chat msg
 
       Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
@@ -224,7 +231,7 @@ type DocHandler() =
     let msg = { msg with Doc = Some doc }
 
     task {
-      let! result = handler msg
+      let! result = handler chat msg
 
       Assert.Equal(Some(), result)
       resp.VerifyAll()
@@ -246,7 +253,7 @@ type DocHandler() =
     let msg = { msg with Doc = Some doc }
 
     task {
-      let! result = handler msg
+      let! result = handler chat msg
 
       Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
@@ -266,7 +273,7 @@ type DocHandler() =
     let msg = { msg with Doc = Some doc }
 
     task {
-      let! result = handler msg
+      let! result = handler chat msg
 
       Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
@@ -276,7 +283,7 @@ type DocHandler() =
   [<Fact>]
   member _.``Does nothing if message has no document``() =
     task {
-      let! result = handler msg
+      let! result = handler chat msg
 
       Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
@@ -342,7 +349,7 @@ type VidHandler() =
     let msg = { msg with Vid = Some vid }
 
     task {
-      let! result = handler msg
+      let! result = handler chat msg
 
       Assert.Equal(Some(), result)
       resp.VerifyAll()
@@ -364,7 +371,7 @@ type VidHandler() =
     let msg = { msg with Vid = Some vid }
 
     task {
-      let! result = handler msg
+      let! result = handler chat msg
 
       Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
@@ -384,7 +391,7 @@ type VidHandler() =
     let msg = { msg with Vid = Some vid }
 
     task {
-      let! result = handler msg
+      let! result = handler chat msg
 
       Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
@@ -394,7 +401,7 @@ type VidHandler() =
   [<Fact>]
   member _.``Does nothing if message has no video``() =
     task {
-      let! result = handler msg
+      let! result = handler chat msg
 
       Assert.Equal(None, result)
       resp.VerifyNoOtherCalls()
